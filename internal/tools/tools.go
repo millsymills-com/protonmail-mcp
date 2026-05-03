@@ -26,6 +26,7 @@ func Register(server *mcp.Server, d Deps) {
 	registerDomains(server, d)
 	registerSettings(server, d)
 	registerKeys(server, d)
+	registerMessages(server, d)
 }
 
 // WritesEnabled returns true when PROTONMAIL_MCP_ENABLE_WRITES is set to a
