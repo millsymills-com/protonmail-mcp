@@ -23,13 +23,15 @@ A Model Context Protocol (MCP) server for [Proton Mail](https://proton.me/mail),
 
 Requires Go 1.26+ (the toolchain is auto-bumped by `go-proton-api` master).
 
-The Go module path is currently `protonmail-mcp` — bare local; not yet published on GitHub. Building from a clone works:
+The Go module path is `github.com/millsmillsymills/protonmail-mcp`. Build from a clone:
 
 ```
-git clone <repo>
+git clone https://github.com/millsmillsymills/protonmail-mcp.git
 cd protonmail-mcp
 go build -o ./protonmail-mcp ./cmd/protonmail-mcp
 ```
+
+Or `go install github.com/millsmillsymills/protonmail-mcp/cmd/protonmail-mcp@latest`.
 
 `go.mod` already pins `go-proton-api` to a master HEAD pseudo-version and adds a `replace` directive routing `github.com/go-resty/resty/v2` to ProtonMail's fork. Both are required — do not remove them.
 

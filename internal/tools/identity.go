@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
-	"protonmail-mcp/internal/proterr"
+	"github.com/millsmillsymills/protonmail-mcp/internal/proterr"
 )
 
 type whoamiInput struct{}

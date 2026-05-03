@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/zalando/go-keyring"
-	"protonmail-mcp/internal/keychain"
+	"github.com/millsmillsymills/protonmail-mcp/internal/keychain"
 )
 
 func TestRoundTrip(t *testing.T) {

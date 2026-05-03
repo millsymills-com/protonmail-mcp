@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"protonmail-mcp/internal/testharness"
+	"github.com/millsmillsymills/protonmail-mcp/internal/testharness"
 )
 
 func TestWhoamiRoundTrip(t *testing.T) {

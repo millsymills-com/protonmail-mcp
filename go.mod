@@ -1,4 +1,4 @@
-module protonmail-mcp
+module github.com/millsmillsymills/protonmail-mcp
 
 go 1.26.1
 

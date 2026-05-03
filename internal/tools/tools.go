@@ -8,8 +8,8 @@ import (
 
 	proton "github.com/ProtonMail/go-proton-api"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
-	"protonmail-mcp/internal/proterr"
-	"protonmail-mcp/internal/session"
+	"github.com/millsmillsymills/protonmail-mcp/internal/proterr"
+	"github.com/millsmillsymills/protonmail-mcp/internal/session"
 )
 
 // Deps is what handlers need. Kept tiny on purpose.

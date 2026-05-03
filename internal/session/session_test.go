@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/zalando/go-keyring"
-	"protonmail-mcp/internal/keychain"
-	"protonmail-mcp/internal/session"
+	"github.com/millsmillsymills/protonmail-mcp/internal/keychain"
+	"github.com/millsmillsymills/protonmail-mcp/internal/session"
 )
 
 func TestRawSharesBearerToken(t *testing.T) {

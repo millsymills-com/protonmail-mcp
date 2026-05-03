@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	"protonmail-mcp/internal/keychain"
-	"protonmail-mcp/internal/session"
+	"github.com/millsmillsymills/protonmail-mcp/internal/keychain"
+	"github.com/millsmillsymills/protonmail-mcp/internal/session"
 )
 
 func runStatus(ctx context.Context) error {

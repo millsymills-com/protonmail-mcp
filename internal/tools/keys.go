@@ -5,7 +5,7 @@ import (
 
 	"github.com/ProtonMail/gopenpgp/v2/crypto"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
-	"protonmail-mcp/internal/proterr"
+	"github.com/millsmillsymills/protonmail-mcp/internal/proterr"
 )
 
 // keyDTO exposes the public-facing properties of an address key. We derive

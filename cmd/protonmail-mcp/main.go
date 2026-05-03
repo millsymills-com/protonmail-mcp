@@ -9,8 +9,8 @@ import (
 	"syscall"
 	"time"
 
-	mcplog "protonmail-mcp/internal/log"
-	"protonmail-mcp/internal/server"
+	mcplog "github.com/millsmillsymills/protonmail-mcp/internal/log"
+	"github.com/millsmillsymills/protonmail-mcp/internal/server"
 )
 
 func main() {

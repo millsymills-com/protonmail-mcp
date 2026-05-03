@@ -10,7 +10,7 @@ import (
 	"sync"
 
 	proton "github.com/ProtonMail/go-proton-api"
-	"protonmail-mcp/internal/keychain"
+	"github.com/millsmillsymills/protonmail-mcp/internal/keychain"
 )
 
 type Session struct {

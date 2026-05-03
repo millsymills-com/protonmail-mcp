@@ -11,9 +11,9 @@ import (
 
 	"golang.org/x/term"
 
-	"protonmail-mcp/internal/keychain"
-	"protonmail-mcp/internal/proterr"
-	"protonmail-mcp/internal/session"
+	"github.com/millsmillsymills/protonmail-mcp/internal/keychain"
+	"github.com/millsmillsymills/protonmail-mcp/internal/proterr"
+	"github.com/millsmillsymills/protonmail-mcp/internal/session"
 )
 
 func runLogin(ctx context.Context) error {

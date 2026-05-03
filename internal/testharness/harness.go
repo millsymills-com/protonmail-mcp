@@ -21,9 +21,9 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/zalando/go-keyring"
 
-	"protonmail-mcp/internal/keychain"
-	"protonmail-mcp/internal/session"
-	"protonmail-mcp/internal/tools"
+	"github.com/millsmillsymills/protonmail-mcp/internal/keychain"
+	"github.com/millsmillsymills/protonmail-mcp/internal/session"
+	"github.com/millsmillsymills/protonmail-mcp/internal/tools"
 )
 
 // Harness is a live test rig: dev server + session + MCP server/client over

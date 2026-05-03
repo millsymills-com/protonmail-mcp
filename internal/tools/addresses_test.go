@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"protonmail-mcp/internal/tools"
+	"github.com/millsmillsymills/protonmail-mcp/internal/tools"
 )
 
 func TestWritesEnabledRespectsEnv(t *testing.T) {

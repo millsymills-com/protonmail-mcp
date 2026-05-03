@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
-	"protonmail-mcp/internal/proterr"
-	"protonmail-mcp/internal/protonraw"
+	"github.com/millsmillsymills/protonmail-mcp/internal/proterr"
+	"github.com/millsmillsymills/protonmail-mcp/internal/protonraw"
 )
 
 type domainDTO struct {
