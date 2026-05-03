@@ -60,3 +60,17 @@ func clientOrFail(ctx context.Context, d Deps) (*proton.Client, *mcp.CallToolRes
 	}
 	return c, nil
 }
+
+// requireField returns a structured validation failure when value is empty.
+// Used at tool entry to give callers a clear "missing X" error before any
+// API call, instead of letting the raw layer reject the request with a
+// less specific "domain_id is required" generic error.
+func requireField(name, value string) *mcp.CallToolResult {
+	if value != "" {
+		return nil
+	}
+	return failure(&proterr.Error{
+		Code:    "proton/validation",
+		Message: name + " is required",
+	})
+}

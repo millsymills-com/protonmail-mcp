@@ -158,6 +158,112 @@ func TestCreateAddress(t *testing.T) {
 	}
 }
 
+func TestListDomainAddresses(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/core/v4/domains/d1/addresses" || r.Method != http.MethodGet {
+			t.Errorf("unexpected: %s %s", r.Method, r.URL.Path)
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"Code": 1000,
+			"Addresses": []protonraw.DomainAddress{
+				{ID: "a1", Email: "andy@example.com", DomainID: "d1", CatchAll: true},
+				{ID: "a2", Email: "info@example.com", DomainID: "d1", CatchAll: false},
+			},
+		})
+	}))
+	defer srv.Close()
+
+	got, err := protonraw.ListDomainAddresses(context.Background(), newFakeDoer(srv.URL), "d1")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if len(got) != 2 || !got[0].CatchAll || got[1].CatchAll {
+		t.Fatalf("unexpected: %+v", got)
+	}
+}
+
+func TestUpdateCatchAllEnable(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/core/v4/domains/d1/catchall" || r.Method != http.MethodPut {
+			t.Errorf("unexpected: %s %s", r.Method, r.URL.Path)
+		}
+		var body map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		if body["AddressID"] != "a1" {
+			t.Errorf("body AddressID=%v want a1", body["AddressID"])
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"Code": 1000})
+	}))
+	defer srv.Close()
+
+	id := "a1"
+	if err := protonraw.UpdateCatchAll(context.Background(), newFakeDoer(srv.URL), "d1", &id); err != nil {
+		t.Fatalf("err: %v", err)
+	}
+}
+
+func TestUpdateCatchAllDisable(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/core/v4/domains/d1/catchall" || r.Method != http.MethodPut {
+			t.Errorf("unexpected: %s %s", r.Method, r.URL.Path)
+		}
+		var body map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		// Disabling must serialize AddressID as JSON null. After Decode, that
+		// surfaces as a present key with nil value.
+		v, present := body["AddressID"]
+		if !present {
+			t.Errorf("AddressID key missing; want explicit null")
+		}
+		if v != nil {
+			t.Errorf("AddressID=%v want nil (json null)", v)
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"Code": 1000})
+	}))
+	defer srv.Close()
+
+	if err := protonraw.UpdateCatchAll(context.Background(), newFakeDoer(srv.URL), "d1", nil); err != nil {
+		t.Fatalf("err: %v", err)
+	}
+}
+
+func TestUpdateCatchAllRejectsBadDomainID(t *testing.T) {
+	called := false
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		_ = json.NewEncoder(w).Encode(map[string]any{"Code": 1000})
+	}))
+	defer srv.Close()
+
+	id := "a1"
+	for _, bad := range []string{"", "d1/catchall?x=1", "d1#frag", "d1?foo"} {
+		if err := protonraw.UpdateCatchAll(context.Background(), newFakeDoer(srv.URL), bad, &id); err == nil {
+			t.Errorf("UpdateCatchAll(%q) want err, got nil", bad)
+		}
+	}
+	if called {
+		t.Fatal("server hit despite invalid domain_id; guard failed")
+	}
+}
+
+func TestListDomainAddressesRejectsBadDomainID(t *testing.T) {
+	called := false
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+	}))
+	defer srv.Close()
+
+	if _, err := protonraw.ListDomainAddresses(context.Background(), newFakeDoer(srv.URL), ""); err == nil {
+		t.Fatal("empty domain_id must fail")
+	}
+	if _, err := protonraw.ListDomainAddresses(context.Background(), newFakeDoer(srv.URL), "d1/etc"); err == nil {
+		t.Fatal("slash in domain_id must fail")
+	}
+	if called {
+		t.Fatal("server hit despite invalid domain_id; guard failed")
+	}
+}
+
 func TestErrorResponseSurfaced(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(map[string]any{
