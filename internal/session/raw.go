@@ -6,13 +6,19 @@ import (
 	"github.com/go-resty/resty/v2"
 )
 
-// rawClient is a thin resty wrapper that shares its bearer token with the
-// owning Session. setBearer is called from Session under its own mutex; the
+// rawClient is a thin resty wrapper that shares its bearer token + UID with
+// the owning Session. setAuth is called from Session under its own mutex; the
 // inner mutex here serializes header swaps against in-flight R() calls.
+//
+// Proton's /core/v4 endpoints (e.g. /core/v4/domains) require BOTH
+// Authorization: Bearer <token> AND x-pm-uid: <uid>. go-proton-api adds the
+// UID itself for calls routed through proton.Client; the raw resty path must
+// set it explicitly or those endpoints reject with 401 Invalid access token.
 type rawClient struct {
 	mu   sync.RWMutex
 	rc   *resty.Client
 	bear string
+	uid  string
 }
 
 func newRawClient(baseURL string) *rawClient {
@@ -23,15 +29,22 @@ func newRawClient(baseURL string) *rawClient {
 	return &rawClient{rc: rc}
 }
 
-func (r *rawClient) setBearer(token string) {
+func (r *rawClient) setAuth(token, uid string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.bear = token
-	if token == "" {
+	r.uid = uid
+	// Treat (token != "" && uid == "") as a logout. A half-authenticated
+	// request would 401 on x-pm-uid endpoints anyway, and clearing both
+	// headers prevents a stale UID from leaking onto a request signed with
+	// a fresh token.
+	if token == "" || uid == "" {
 		r.rc.Header.Del("Authorization")
-	} else {
-		r.rc.SetHeader("Authorization", "Bearer "+token)
+		r.rc.Header.Del("x-pm-uid")
+		return
 	}
+	r.rc.SetHeader("Authorization", "Bearer "+token)
+	r.rc.SetHeader("x-pm-uid", uid)
 }
 
 func (r *rawClient) R() *resty.Request {

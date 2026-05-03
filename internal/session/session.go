@@ -42,7 +42,7 @@ func NewForTesting(apiURL string, seed keychain.Session) (*Session, error) {
 	}
 	s := New(apiURL, kc)
 	s.current = seed
-	s.raw.setBearer(seed.AccessToken)
+	s.raw.setAuth(seed.AccessToken, seed.UID)
 	return s, nil
 }
 
@@ -92,7 +92,7 @@ func (s *Session) Client(ctx context.Context) (*proton.Client, error) {
 	}
 	s.client = c
 	s.current = rotated
-	s.raw.setBearer(rotated.AccessToken)
+	s.raw.setAuth(rotated.AccessToken, rotated.UID)
 	if err := s.kc.SaveSession(rotated); err != nil {
 		// Best-effort: log only. In-memory state is correct; next cold start
 		// will re-login if the persisted state is stale.
@@ -119,7 +119,7 @@ func (s *Session) Raw(ctx context.Context) *rawClient {
 func (s *Session) OnAuthRotated(next keychain.Session) {
 	s.mu.Lock()
 	s.current = next
-	s.raw.setBearer(next.AccessToken)
+	s.raw.setAuth(next.AccessToken, next.UID)
 	s.mu.Unlock()
 	if err := s.kc.SaveSession(next); err != nil {
 		_ = err // best-effort
@@ -134,7 +134,7 @@ func (s *Session) Logout() error {
 		s.client = nil
 	}
 	s.current = keychain.Session{}
-	s.raw.setBearer("")
+	s.raw.setAuth("", "")
 	return s.kc.Clear()
 }
 
@@ -200,6 +200,6 @@ func (s *Session) Login(ctx context.Context, in LoginInput) error {
 
 	s.client = c
 	s.current = next
-	s.raw.setBearer(next.AccessToken)
+	s.raw.setAuth(next.AccessToken, next.UID)
 	return nil
 }
