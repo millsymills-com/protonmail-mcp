@@ -246,6 +246,30 @@ func TestUpdateCatchAllRejectsBadDomainID(t *testing.T) {
 	}
 }
 
+func TestCustomDomainCRUDRejectsBadID(t *testing.T) {
+	called := false
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+	}))
+	defer srv.Close()
+
+	bad := []string{"", "d1/etc", "d1?x=1", "d1#frag", "../addresses/a1"}
+	for _, id := range bad {
+		if _, err := protonraw.GetCustomDomain(context.Background(), newFakeDoer(srv.URL), id); err == nil {
+			t.Errorf("GetCustomDomain(%q) want err, got nil", id)
+		}
+		if _, err := protonraw.VerifyCustomDomain(context.Background(), newFakeDoer(srv.URL), id); err == nil {
+			t.Errorf("VerifyCustomDomain(%q) want err, got nil", id)
+		}
+		if err := protonraw.RemoveCustomDomain(context.Background(), newFakeDoer(srv.URL), id); err == nil {
+			t.Errorf("RemoveCustomDomain(%q) want err, got nil", id)
+		}
+	}
+	if called {
+		t.Fatal("server hit despite invalid id; guard failed")
+	}
+}
+
 func TestListDomainAddressesRejectsBadDomainID(t *testing.T) {
 	called := false
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

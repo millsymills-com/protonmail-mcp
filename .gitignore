@@ -16,3 +16,7 @@ coverage.txt
 
 # Compound Engineering
 .compound-engineering/*.local.yaml
+
+# Worktrees
+.worktrees/
+*.fuzz-corpus.local/

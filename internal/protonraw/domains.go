@@ -43,6 +43,9 @@ func ListCustomDomains(ctx context.Context, d Doer) ([]CustomDomain, error) {
 // GetCustomDomain -> GET /core/v4/domains/{id}
 // Source: WebClients/packages/shared/lib/api/domains.ts: getDomain
 func GetCustomDomain(ctx context.Context, d Doer, id string) (CustomDomain, error) {
+	if err := validatePathID("id", id); err != nil {
+		return CustomDomain{}, err
+	}
 	var out struct {
 		Domain CustomDomain `json:"Domain"`
 	}
@@ -76,6 +79,9 @@ func AddCustomDomain(ctx context.Context, d Doer, domain string) (CustomDomain, 
 // VerifyCustomDomain -> PUT /core/v4/domains/{id}/verify
 // Source: WebClients/packages/shared/lib/api/domains.ts: verifyDomain
 func VerifyCustomDomain(ctx context.Context, d Doer, id string) (CustomDomain, error) {
+	if err := validatePathID("id", id); err != nil {
+		return CustomDomain{}, err
+	}
 	var out struct {
 		Domain CustomDomain `json:"Domain"`
 	}
@@ -92,6 +98,9 @@ func VerifyCustomDomain(ctx context.Context, d Doer, id string) (CustomDomain, e
 // RemoveCustomDomain -> DELETE /core/v4/domains/{id}
 // Source: WebClients/packages/shared/lib/api/domains.ts: deleteDomain
 func RemoveCustomDomain(ctx context.Context, d Doer, id string) error {
+	if err := validatePathID("id", id); err != nil {
+		return err
+	}
 	resp, err := d.R().SetContext(ctx).Delete("/core/v4/domains/" + id)
 	if err != nil {
 		return err

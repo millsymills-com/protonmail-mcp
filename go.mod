@@ -1,6 +1,6 @@
 module github.com/millsmillsymills/protonmail-mcp
 
-go 1.26.1
+go 1.26.2
 
 require (
 	github.com/ProtonMail/go-proton-api v0.4.1-0.20260424150947-6bf7f5a61eb8
@@ -24,7 +24,7 @@ require (
 	github.com/bytedance/gopkg v0.1.3 // indirect
 	github.com/bytedance/sonic v1.15.0 // indirect
 	github.com/bytedance/sonic/loader v0.5.0 // indirect
-	github.com/cloudflare/circl v1.6.2 // indirect
+	github.com/cloudflare/circl v1.6.3 // indirect
 	github.com/cloudwego/base64x v0.1.6 // indirect
 	github.com/cronokirby/saferith v0.33.0 // indirect
 	github.com/danieljoos/wincred v1.2.3 // indirect
