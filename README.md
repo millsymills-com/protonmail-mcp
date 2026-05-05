@@ -1,3 +1,5 @@
+<img src="assets/logo.png" alt="protonmail-mcp logo" width="160" align="right">
+
 # protonmail-mcp
 
 A Model Context Protocol (MCP) server for [Proton Mail](https://proton.me/mail), letting Claude Code (or any MCP client) manage addresses, custom domains, mail settings, and encryption keys.
