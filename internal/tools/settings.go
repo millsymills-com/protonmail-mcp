@@ -4,8 +4,8 @@ import (
 	"context"
 
 	proton "github.com/ProtonMail/go-proton-api"
-	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/millsmillsymills/protonmail-mcp/internal/proterr"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 // mailSettingsDTO mirrors the actual proton.MailSettings shape. Note: the

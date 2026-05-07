@@ -3,8 +3,8 @@ package tools
 import (
 	"context"
 
-	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/millsmillsymills/protonmail-mcp/internal/proterr"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 type whoamiInput struct{}

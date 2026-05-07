@@ -8,10 +8,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/millsmillsymills/protonmail-mcp/internal/keychain"
 	"github.com/millsmillsymills/protonmail-mcp/internal/session"
 	"github.com/millsmillsymills/protonmail-mcp/internal/tools"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 const (

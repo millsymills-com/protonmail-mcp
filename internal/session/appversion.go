@@ -13,7 +13,8 @@ import "runtime"
 // versions per product (HTTP 5002/5003 once minimums advance). When live
 // auth starts rejecting this with code 5002 ("Invalid app version") or 5003
 // ("AppVersionBad"), bump to whatever proton-bridge has tagged latest:
-//   gh api repos/ProtonMail/proton-bridge/releases/latest -q .tag_name
+//
+//	gh api repos/ProtonMail/proton-bridge/releases/latest -q .tag_name
 const bridgeAppVersion = "3.24.1"
 
 // appVersionHeader returns a Proton-acceptable x-pm-appversion header value.

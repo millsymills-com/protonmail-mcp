@@ -4,9 +4,9 @@ import (
 	"context"
 
 	proton "github.com/ProtonMail/go-proton-api"
-	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/millsmillsymills/protonmail-mcp/internal/proterr"
 	"github.com/millsmillsymills/protonmail-mcp/internal/protonraw"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 // addressDTO mirrors the relevant fields of proton.Address. Note the upstream

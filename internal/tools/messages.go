@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	proton "github.com/ProtonMail/go-proton-api"
-	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/millsmillsymills/protonmail-mcp/internal/proterr"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 // sensitiveHeaders are removed from parsed_headers before returning. Bcc
@@ -18,11 +18,11 @@ import (
 // conventional mail UI. Raw headers are still returned verbatim — callers
 // asking for raw_headers have explicitly opted into the full block.
 var sensitiveHeaders = map[string]struct{}{
-	"bcc":                    {},
-	"x-originating-ip":       {},
-	"x-original-sender-ip":   {},
-	"x-original-sender":      {},
-	"x-real-ip":              {},
+	"bcc":                  {},
+	"x-originating-ip":     {},
+	"x-original-sender-ip": {},
+	"x-original-sender":    {},
+	"x-real-ip":            {},
 }
 
 // messageStubDTO is the search-result projection. Fields chosen for the

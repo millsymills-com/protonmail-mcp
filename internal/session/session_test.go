@@ -6,9 +6,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/zalando/go-keyring"
 	"github.com/millsmillsymills/protonmail-mcp/internal/keychain"
 	"github.com/millsmillsymills/protonmail-mcp/internal/session"
+	"github.com/zalando/go-keyring"
 )
 
 func TestRawSharesBearerToken(t *testing.T) {

@@ -3,8 +3,8 @@ package keychain_test
 import (
 	"testing"
 
-	"github.com/zalando/go-keyring"
 	"github.com/millsmillsymills/protonmail-mcp/internal/keychain"
+	"github.com/zalando/go-keyring"
 )
 
 func TestRoundTrip(t *testing.T) {

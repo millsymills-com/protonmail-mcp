@@ -18,6 +18,15 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+      - name: gofmt
+        run: |
+          out=$(git ls-files -z '*.go' | xargs -0 gofmt -l)
+          if [ -n "$out" ]; then
+            echo "::error::gofmt found unformatted files:"
+            echo "$out"
+            git ls-files -z '*.go' | xargs -0 gofmt -d
+            exit 1
+          fi
       - name: vet
         run: go vet ./...
       - name: build
