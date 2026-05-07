@@ -32,7 +32,7 @@ func TestRawSharesBearerToken(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewForTesting: %v", err)
 	}
-	defer s.Logout()
+	defer func() { _ = s.Logout() }()
 
 	if _, err := s.Raw(context.Background()).R().Get(srv.URL + "/ping"); err != nil {
 		t.Fatalf("first Raw req: %v", err)
@@ -113,7 +113,7 @@ func TestSetAuthEmptyUIDClearsBoth(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewForTesting: %v", err)
 	}
-	defer s.Logout()
+	defer func() { _ = s.Logout() }()
 
 	// Simulate a pathological caller: non-empty token, empty UID. Must not
 	// emit a half-authenticated request.
@@ -137,7 +137,7 @@ func TestRotatedTokenPersistedToKeychain(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewForTesting: %v", err)
 	}
-	defer s.Logout()
+	defer func() { _ = s.Logout() }()
 
 	s.OnAuthRotated(keychain.Session{UID: "u", AccessToken: "tok-B", RefreshToken: "ref2"})
 	got, err := kc.LoadSession()

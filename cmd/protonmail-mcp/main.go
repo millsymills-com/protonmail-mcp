@@ -14,6 +14,10 @@ import (
 )
 
 func main() {
+	os.Exit(run())
+}
+
+func run() int {
 	level := slog.LevelInfo
 	if v := os.Getenv("PROTONMAIL_MCP_LOG_LEVEL"); v == "debug" {
 		level = slog.LevelDebug
@@ -40,29 +44,30 @@ func main() {
 		case "login":
 			if err := runLogin(ctx); err != nil {
 				fmt.Fprintln(os.Stderr, "login:", err)
-				os.Exit(1)
+				return 1
 			}
-			return
+			return 0
 		case "logout":
 			if err := runLogout(ctx); err != nil {
 				fmt.Fprintln(os.Stderr, "logout:", err)
-				os.Exit(1)
+				return 1
 			}
-			return
+			return 0
 		case "status":
 			if err := runStatus(ctx); err != nil {
 				fmt.Fprintln(os.Stderr, "status:", err)
-				os.Exit(1)
+				return 1
 			}
-			return
+			return 0
 		default:
 			fmt.Fprintf(os.Stderr, "unknown subcommand %q\n", os.Args[1])
-			os.Exit(2)
+			return 2
 		}
 	}
 
 	if err := server.Run(ctx); err != nil {
 		fmt.Fprintln(os.Stderr, "server:", err)
-		os.Exit(1)
+		return 1
 	}
+	return 0
 }

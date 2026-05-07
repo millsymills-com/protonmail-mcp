@@ -1,0 +1,28 @@
+version: "2"
+
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  default: none
+  enable:
+    - errcheck
+    - govet
+    - staticcheck
+    - unused
+    - gocritic
+    - ineffassign
+  settings:
+    gocritic:
+      disabled-checks:
+        - ifElseChain
+        - singleCaseSwitch
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0

@@ -24,8 +24,8 @@ func TestRoundTrip(t *testing.T) {
 	}
 
 	sess := keychain.Session{UID: "u", AccessToken: "a", RefreshToken: "r"}
-	if err := kc.SaveSession(sess); err != nil {
-		t.Fatalf("SaveSession: %v", err)
+	if e := kc.SaveSession(sess); e != nil {
+		t.Fatalf("SaveSession: %v", e)
 	}
 	gotS, err := kc.LoadSession()
 	if err != nil {
@@ -65,8 +65,8 @@ func TestSaveCredsClearsStaleTOTP(t *testing.T) {
 	}
 
 	// Second login: same user, TOTP NOT supplied (one-shot code path).
-	if err := kc.SaveCreds(keychain.Creds{Username: "u", Password: "p"}); err != nil {
-		t.Fatalf("second SaveCreds: %v", err)
+	if e := kc.SaveCreds(keychain.Creds{Username: "u", Password: "p"}); e != nil {
+		t.Fatalf("second SaveCreds: %v", e)
 	}
 	got, err = kc.LoadCreds()
 	if err != nil {

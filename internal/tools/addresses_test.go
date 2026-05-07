@@ -8,7 +8,7 @@ import (
 )
 
 func TestWritesEnabledRespectsEnv(t *testing.T) {
-	os.Unsetenv("PROTONMAIL_MCP_ENABLE_WRITES")
+	_ = os.Unsetenv("PROTONMAIL_MCP_ENABLE_WRITES")
 	if tools.WritesEnabled() {
 		t.Fatalf("want false when env unset")
 	}
