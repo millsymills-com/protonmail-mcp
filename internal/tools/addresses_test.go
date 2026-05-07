@@ -12,12 +12,24 @@ func TestWritesEnabledRespectsEnv(t *testing.T) {
 	if tools.WritesEnabled() {
 		t.Fatalf("want false when env unset")
 	}
-	t.Setenv("PROTONMAIL_MCP_ENABLE_WRITES", "1")
-	if !tools.WritesEnabled() {
-		t.Fatalf("want true when env=1")
+	tests := []struct {
+		name  string
+		value string
+		want  bool
+	}{
+		{"enabled_one", "1", true},
+		{"enabled_true", "true", true},
+		{"enabled_yes", "yes", true},
+		{"disabled_no", "no", false},
+		{"disabled_zero", "0", false},
+		{"disabled_empty", "", false},
 	}
-	t.Setenv("PROTONMAIL_MCP_ENABLE_WRITES", "no")
-	if tools.WritesEnabled() {
-		t.Fatalf("want false when env=no")
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("PROTONMAIL_MCP_ENABLE_WRITES", tc.value)
+			if got := tools.WritesEnabled(); got != tc.want {
+				t.Fatalf("env=%q: got %v want %v", tc.value, got, tc.want)
+			}
+		})
 	}
 }

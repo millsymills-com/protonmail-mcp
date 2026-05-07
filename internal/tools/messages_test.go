@@ -7,23 +7,22 @@ import (
 	proton "github.com/ProtonMail/go-proton-api"
 )
 
-func TestFormatAddressWithName(t *testing.T) {
-	got := formatAddress(&mail.Address{Name: "Andy", Address: "andy@example.com"})
-	if got != "Andy <andy@example.com>" {
-		t.Fatalf("got %q", got)
+func TestFormatAddress(t *testing.T) {
+	tests := []struct {
+		name string
+		in   *mail.Address
+		want string
+	}{
+		{"with_name", &mail.Address{Name: "Andy", Address: "andy@example.com"}, "Andy <andy@example.com>"},
+		{"bare_email", &mail.Address{Address: "andy@example.com"}, "andy@example.com"},
+		{"nil", nil, ""},
 	}
-}
-
-func TestFormatAddressBareEmail(t *testing.T) {
-	got := formatAddress(&mail.Address{Address: "andy@example.com"})
-	if got != "andy@example.com" {
-		t.Fatalf("got %q", got)
-	}
-}
-
-func TestFormatAddressNil(t *testing.T) {
-	if got := formatAddress(nil); got != "" {
-		t.Fatalf("got %q", got)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := formatAddress(tc.in); got != tc.want {
+				t.Fatalf("got %q want %q", got, tc.want)
+			}
+		})
 	}
 }
 

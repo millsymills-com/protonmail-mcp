@@ -28,7 +28,7 @@ func TestRedactsSensitiveFields(t *testing.T) {
 		t.Fatalf("not valid JSON: %v\noutput: %s", err, buf.String())
 	}
 
-	cases := []struct {
+	tests := []struct {
 		key      string
 		redacted bool
 	}{
@@ -41,13 +41,13 @@ func TestRedactsSensitiveFields(t *testing.T) {
 		{"private_key", true},
 		{"safe_field", false},
 	}
-	for _, c := range cases {
-		got, _ := rec[c.key].(string)
-		if c.redacted && got != "<redacted>" {
-			t.Errorf("%s: want <redacted>, got %q", c.key, got)
+	for _, tc := range tests {
+		got, _ := rec[tc.key].(string)
+		if tc.redacted && got != "<redacted>" {
+			t.Errorf("%s: want <redacted>, got %q", tc.key, got)
 		}
-		if !c.redacted && got == "<redacted>" {
-			t.Errorf("%s: was unexpectedly redacted", c.key)
+		if !tc.redacted && got == "<redacted>" {
+			t.Errorf("%s: was unexpectedly redacted", tc.key)
 		}
 	}
 }

@@ -16,7 +16,7 @@ func TestReadToolsRoundTrip(t *testing.T) {
 	h := testharness.Boot(t, "user@example.test", "hunter2")
 	defer h.Close()
 
-	cases := []struct {
+	tests := []struct {
 		tool string
 		args map[string]any
 	}{
@@ -27,14 +27,14 @@ func TestReadToolsRoundTrip(t *testing.T) {
 		{"proton_get_core_settings", map[string]any{}},
 		{"proton_search_messages", map[string]any{"limit": 10}},
 	}
-	for _, c := range cases {
-		t.Run(c.tool, func(t *testing.T) {
-			out, err := h.Call(context.Background(), c.tool, c.args)
+	for _, tc := range tests {
+		t.Run(tc.tool, func(t *testing.T) {
+			out, err := h.Call(context.Background(), tc.tool, tc.args)
 			if err != nil {
-				t.Fatalf("call %s: %v", c.tool, err)
+				t.Fatalf("call %s: %v", tc.tool, err)
 			}
 			if out == nil {
-				t.Fatalf("%s: nil structured output", c.tool)
+				t.Fatalf("%s: nil structured output", tc.tool)
 			}
 		})
 	}
