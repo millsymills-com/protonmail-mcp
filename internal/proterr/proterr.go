@@ -47,6 +47,11 @@ func (e *HTTPError) Error() string {
 	return http.StatusText(e.Status)
 }
 
+// ErrToMCP is the canonical name (per the project's MCP standards, rule
+// PROTO-010) for the exception-to-MCP-code mapping helper. It is a thin
+// re-export of [Map]; prefer [Map] in new code.
+var ErrToMCP = Map
+
 // Map turns any error from go-proton-api or raw HTTP into a stable *Error.
 // Returns nil for nil input.
 func Map(err error) *Error {
