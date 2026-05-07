@@ -98,7 +98,7 @@ See `docs/superpowers/specs/2026-04-26-protonmail-mcp-design.md` §5 for the ful
 See spec §8. tl;dr:
 
 - Credentials and refresh tokens stored in macOS Keychain only; never in files.
-- Logs redact any field name containing `password`, `passphrase`, `token`, `secret`, `totp`.
+- Logs redact any field name containing `password`, `passphrase`, `token`, `secret`, `totp`, `key`.
 - Writes opt-in via env flag — Claude Code's per-tool permission UI provides defense-in-depth.
 - No daemon, no IPC socket, no HTTP listener — stdio MCP only.
 - Sends `x-pm-appversion: macos-bridge@3.24.1` because Proton's API rejects unknown product names with code 2064. We impersonate proton-bridge (live-tested 2026-04-26 against `mail.proton.me`) — if Proton tightens the minimum (codes 5002/5003), bump the version in `internal/session/appversion.go` to whatever proton-bridge has tagged latest.

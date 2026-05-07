@@ -18,6 +18,8 @@ func TestRedactsSensitiveFields(t *testing.T) {
 		"refresh_token", "abc.def",
 		"totp", "123456",
 		"PassPhrase", "shh",
+		"api_key", "k-123",
+		"private_key", "armored",
 		"safe_field", "ok",
 	)
 
@@ -35,6 +37,8 @@ func TestRedactsSensitiveFields(t *testing.T) {
 		{"refresh_token", true},
 		{"totp", true},
 		{"PassPhrase", true},
+		{"api_key", true},
+		{"private_key", true},
 		{"safe_field", false},
 	}
 	for _, c := range cases {

@@ -27,4 +27,4 @@ Out of scope:
 - Credentials and refresh tokens live in the macOS Keychain only, under service `protonmail-mcp`. They are never written to disk by this binary.
 - Mutating tools are gated behind `PROTONMAIL_MCP_ENABLE_WRITES=1`. Read tools are always registered.
 - The server speaks MCP over stdio only — no network listener, no IPC socket.
-- Logs redact any field name containing `password`, `passphrase`, `token`, `secret`, or `totp`.
+- Logs redact any field name containing `password`, `passphrase`, `token`, `secret`, `totp`, or `key`.

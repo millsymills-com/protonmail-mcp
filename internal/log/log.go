@@ -16,6 +16,7 @@ var sensitiveSubstrings = []string{
 	"token",
 	"secret",
 	"totp",
+	"key",
 }
 
 // New returns a JSON slog logger that writes to w (use os.Stderr in production).
