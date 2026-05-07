@@ -28,11 +28,13 @@ func run() int {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	// Make Ctrl-C actually terminate the interactive subcommands even when
-	// blocked in a syscall (term.ReadPassword). For the long-running MCP
-	// server path, the goroutine still fires on shutdown but server.Run
-	// returns before the timer elapses, so this doesn't affect normal
-	// graceful exit.
+	// errgroup intentionally not used here (per GO-013): this is a single
+	// fire-and-forget signal-watcher whose only job is to call os.Exit on
+	// SIGINT/SIGTERM when the foreground subcommand is blocked in a
+	// syscall (term.ReadPassword). It is not fan-out work that needs error
+	// aggregation. For the long-running MCP server path the goroutine still
+	// fires on shutdown but server.Run returns before the timer elapses,
+	// so this doesn't affect normal graceful exit.
 	go func() {
 		<-ctx.Done()
 		time.Sleep(50 * time.Millisecond)
