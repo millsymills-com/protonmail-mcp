@@ -1,6 +1,6 @@
 module github.com/millsmillsymills/protonmail-mcp
 
-go 1.26.2
+go 1.26.3
 
 require (
 	github.com/ProtonMail/go-proton-api v0.4.1-0.20260424150947-6bf7f5a61eb8
