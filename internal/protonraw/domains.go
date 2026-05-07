@@ -1,6 +1,9 @@
 package protonraw
 
-import "context"
+import (
+	"context"
+	"fmt"
+)
 
 // CustomDomain mirrors the Proton API shape for a user-managed custom domain.
 // Source: WebClients/packages/shared/lib/interfaces/Domain.ts.
@@ -32,10 +35,10 @@ func ListCustomDomains(ctx context.Context, d Doer) ([]CustomDomain, error) {
 	}
 	resp, err := d.R().SetContext(ctx).Get("/core/v4/domains")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("list custom domains: %w", err)
 	}
 	if err := decode(resp, &out); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("list custom domains: %w", err)
 	}
 	return out.Domains, nil
 }
@@ -51,10 +54,10 @@ func GetCustomDomain(ctx context.Context, d Doer, id string) (CustomDomain, erro
 	}
 	resp, err := d.R().SetContext(ctx).Get("/core/v4/domains/" + id)
 	if err != nil {
-		return CustomDomain{}, err
+		return CustomDomain{}, fmt.Errorf("get custom domain %s: %w", id, err)
 	}
 	if err := decode(resp, &out); err != nil {
-		return CustomDomain{}, err
+		return CustomDomain{}, fmt.Errorf("get custom domain %s: %w", id, err)
 	}
 	return out.Domain, nil
 }
@@ -68,10 +71,10 @@ func AddCustomDomain(ctx context.Context, d Doer, domain string) (CustomDomain, 
 	}
 	resp, err := d.R().SetContext(ctx).SetBody(body).Post("/core/v4/domains")
 	if err != nil {
-		return CustomDomain{}, err
+		return CustomDomain{}, fmt.Errorf("add custom domain %s: %w", domain, err)
 	}
 	if err := decode(resp, &out); err != nil {
-		return CustomDomain{}, err
+		return CustomDomain{}, fmt.Errorf("add custom domain %s: %w", domain, err)
 	}
 	return out.Domain, nil
 }
@@ -87,10 +90,10 @@ func VerifyCustomDomain(ctx context.Context, d Doer, id string) (CustomDomain, e
 	}
 	resp, err := d.R().SetContext(ctx).Put("/core/v4/domains/" + id + "/verify")
 	if err != nil {
-		return CustomDomain{}, err
+		return CustomDomain{}, fmt.Errorf("verify custom domain %s: %w", id, err)
 	}
 	if err := decode(resp, &out); err != nil {
-		return CustomDomain{}, err
+		return CustomDomain{}, fmt.Errorf("verify custom domain %s: %w", id, err)
 	}
 	return out.Domain, nil
 }
@@ -103,7 +106,10 @@ func RemoveCustomDomain(ctx context.Context, d Doer, id string) error {
 	}
 	resp, err := d.R().SetContext(ctx).Delete("/core/v4/domains/" + id)
 	if err != nil {
-		return err
+		return fmt.Errorf("remove custom domain %s: %w", id, err)
 	}
-	return decode(resp, nil)
+	if err := decode(resp, nil); err != nil {
+		return fmt.Errorf("remove custom domain %s: %w", id, err)
+	}
+	return nil
 }

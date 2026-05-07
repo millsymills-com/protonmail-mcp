@@ -1,6 +1,9 @@
 package protonraw
 
-import "context"
+import (
+	"context"
+	"fmt"
+)
 
 // CreateAddressRequest is the shape POSTed to /core/v4/addresses/setup.
 // Source: WebClients/packages/shared/lib/api/addresses.ts: setupAddress
@@ -25,10 +28,10 @@ func CreateAddress(ctx context.Context, d Doer, req CreateAddressRequest) (Creat
 	}
 	resp, err := d.R().SetContext(ctx).SetBody(req).Post("/core/v4/addresses/setup")
 	if err != nil {
-		return CreatedAddress{}, err
+		return CreatedAddress{}, fmt.Errorf("create address %s@%s: %w", req.LocalPart, req.DomainID, err)
 	}
 	if err := decode(resp, &out); err != nil {
-		return CreatedAddress{}, err
+		return CreatedAddress{}, fmt.Errorf("create address %s@%s: %w", req.LocalPart, req.DomainID, err)
 	}
 	return out.Address, nil
 }

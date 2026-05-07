@@ -48,10 +48,10 @@ func ListDomainAddresses(ctx context.Context, d Doer, domainID string) ([]Domain
 	}
 	resp, err := d.R().SetContext(ctx).Get("/core/v4/domains/" + domainID + "/addresses")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("list domain addresses %s: %w", domainID, err)
 	}
 	if err := decode(resp, &out); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("list domain addresses %s: %w", domainID, err)
 	}
 	return out.Addresses, nil
 }
@@ -69,7 +69,10 @@ func UpdateCatchAll(ctx context.Context, d Doer, domainID string, addressID *str
 	body := map[string]any{"AddressID": addressID}
 	resp, err := d.R().SetContext(ctx).SetBody(body).Put("/core/v4/domains/" + domainID + "/catchall")
 	if err != nil {
-		return err
+		return fmt.Errorf("update catchall %s: %w", domainID, err)
 	}
-	return decode(resp, nil)
+	if err := decode(resp, nil); err != nil {
+		return fmt.Errorf("update catchall %s: %w", domainID, err)
+	}
+	return nil
 }
