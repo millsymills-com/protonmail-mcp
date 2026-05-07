@@ -4,9 +4,9 @@
 
 A Model Context Protocol (MCP) server for [Proton Mail](https://proton.me/mail), letting Claude Code (or any MCP client) manage addresses, custom domains, mail settings, and encryption keys.
 
-## Status: v1
+## Status
 
-23 tools total: 12 reads (always registered) + 11 writes (registered when `PROTONMAIL_MCP_ENABLE_WRITES=1`).
+v1. 23 tools total: 12 reads (always registered) + 11 writes (registered when `PROTONMAIL_MCP_ENABLE_WRITES=1`).
 
 | Capability | v1 | Notes |
 |---|---|---|
