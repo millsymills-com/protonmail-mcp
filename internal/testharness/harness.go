@@ -14,10 +14,20 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"net/http/httputil"
+	"net/url"
+	"runtime"
 	"strings"
 	"testing"
 
+	"github.com/ProtonMail/gluon/async"
+	proton "github.com/ProtonMail/go-proton-api"
 	"github.com/ProtonMail/go-proton-api/server"
+	"github.com/ProtonMail/gopenpgp/v2/crypto"
+	"github.com/bradenaw/juniper/stream"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/zalando/go-keyring"
 
@@ -26,15 +36,33 @@ import (
 	"github.com/millsmillsymills/protonmail-mcp/internal/tools"
 )
 
+// Option configures Boot behaviour.
+type Option func(*config)
+
+type config struct {
+	interceptor func(*http.Request) *http.Response
+}
+
+// WithInterceptor wraps the dev server's handler. If fn returns a non-nil
+// response, that response is served and the dev server is bypassed; otherwise
+// the call falls through.
+func WithInterceptor(fn func(*http.Request) *http.Response) Option {
+	return func(c *config) { c.interceptor = fn }
+}
+
 // Harness is a live test rig: dev server + session + MCP server/client over
 // an in-memory transport. Construct with Boot.
 type Harness struct {
 	t       *testing.T
 	srv     *server.Server
+	sess    *session.Session
 	mcp     *mcp.ClientSession
 	mcpSrv  *mcp.Server
 	closed  bool
 	cleanup []func()
+	userID  string
+	addrID  string
+	pass    string
 }
 
 // Boot creates a user with the supplied email + password on a freshly-spun
@@ -47,9 +75,16 @@ type Harness struct {
 //
 // keyring.MockInit() is called to switch go-keyring into in-memory mode so we
 // never touch the user's real OS keychain.
-func Boot(t *testing.T, email, password string) *Harness {
+//
+//nolint:revive // function-length: Boot with optional interceptor proxy setup is a single cohesive task
+func Boot(t *testing.T, email, password string, opts ...Option) *Harness {
 	t.Helper()
 	keyring.MockInit()
+
+	cfg := config{}
+	for _, opt := range opts {
+		opt(&cfg)
+	}
 
 	local, domain, ok := strings.Cut(email, "@")
 	if !ok || local == "" || domain == "" {
@@ -61,21 +96,38 @@ func Boot(t *testing.T, email, password string) *Harness {
 	// signed cert. The dev server happily serves over HTTP when WithTLS(false)
 	// is set, and the default proton.Manager transport handles plain http://.
 	devsrv := server.New(server.WithTLS(false), server.WithDomain(domain))
-	if _, _, err := devsrv.CreateUser(local, []byte(password)); err != nil {
+	userID, addrID, err := devsrv.CreateUser(local, []byte(password))
+	if err != nil {
 		devsrv.Close()
 		t.Fatalf("dev server CreateUser: %v", err)
 	}
 
-	apiURL := devsrv.GetHostURL()
+	var apiURL string
+	if cfg.interceptor != nil {
+		target, _ := url.Parse(devsrv.GetHostURL())
+		wrapper := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if resp := cfg.interceptor(r); resp != nil {
+				copyResponse(w, resp)
+				return
+			}
+			proxy := httputil.NewSingleHostReverseProxy(target)
+			proxy.ServeHTTP(w, r)
+		}))
+		t.Cleanup(wrapper.Close)
+		apiURL = wrapper.URL
+	} else {
+		apiURL = devsrv.GetHostURL()
+	}
+
 	kc := keychain.New()
 	sess := session.New(apiURL, kc)
 	// The dev server stores accounts by the bare username (no @domain). The
 	// resulting primary address is <username>@<domain>, but auth lookups go
 	// through the username only, mirroring proton.local's real-server SRP
 	// behavior.
-	if err := sess.Login(context.Background(), session.LoginInput{Username: local, Password: password}); err != nil {
+	if loginErr := sess.Login(context.Background(), session.LoginInput{Username: local, Password: password}); loginErr != nil {
 		devsrv.Close()
-		t.Fatalf("session.Login: %v", err)
+		t.Fatalf("session.Login: %v", loginErr)
 	}
 
 	mcpSrv := mcp.NewServer(&mcp.Implementation{Name: "protonmail-mcp-test", Version: "0.0.0"}, nil)
@@ -103,8 +155,12 @@ func Boot(t *testing.T, email, password string) *Harness {
 	h := &Harness{
 		t:      t,
 		srv:    devsrv,
+		sess:   sess,
 		mcp:    csess,
 		mcpSrv: mcpSrv,
+		userID: userID,
+		addrID: addrID,
+		pass:   password,
 		cleanup: []func(){
 			func() { _ = csess.Close() },
 			func() { _ = srvSession.Close() },
@@ -180,4 +236,104 @@ func toolErr(res *mcp.CallToolResult) error {
 		}
 	}
 	return errors.New("tool error (no detail)")
+}
+
+func copyResponse(w http.ResponseWriter, resp *http.Response) {
+	for k, vs := range resp.Header {
+		for _, v := range vs {
+			w.Header().Add(k, v)
+		}
+	}
+	w.WriteHeader(resp.StatusCode)
+	if resp.Body != nil {
+		defer func() { _ = resp.Body.Close() }()
+		_, _ = io.Copy(w, resp.Body)
+	}
+}
+
+// MCP returns the underlying MCP client session for tests that need to call
+// list/info methods directly.
+func (h *Harness) MCP() *mcp.ClientSession { return h.mcp }
+
+// SeedMessage injects a raw RFC822 message into the dev server's mailbox for
+// the harness's primary user. Returns the resulting message ID.
+func (h *Harness) SeedMessage(t *testing.T, raw []byte) string {
+	t.Helper()
+	ctx := context.Background()
+
+	client, err := h.sess.Client(ctx)
+	if err != nil {
+		t.Fatalf("seed message: get client: %v", err)
+	}
+
+	addrKR, err := h.unlockAddrKeyring(ctx, client)
+	if err != nil {
+		t.Fatalf("seed message: %v", err)
+	}
+
+	req := proton.ImportReq{
+		Metadata: proton.ImportMetadata{
+			AddressID: h.addrID,
+			Flags:     proton.MessageFlagReceived,
+			Unread:    true,
+		},
+		Message: raw,
+	}
+
+	str, err := client.ImportMessages(ctx, addrKR, runtime.NumCPU(), runtime.NumCPU(), req)
+	if err != nil {
+		t.Fatalf("seed message: import: %v", err)
+	}
+
+	results, err := stream.Collect(ctx, str)
+	if err != nil {
+		t.Fatalf("seed message: collect: %v", err)
+	}
+	if len(results) == 0 {
+		t.Fatal("seed message: no results returned")
+	}
+	if results[0].Code != proton.SuccessCode {
+		t.Fatalf("seed message: API error %d", results[0].Code)
+	}
+
+	return results[0].MessageID
+}
+
+// unlockAddrKeyring fetches the user+address keys and returns an unlocked
+// address-level KeyRing for h.addrID.
+func (h *Harness) unlockAddrKeyring(
+	ctx context.Context,
+	client *proton.Client,
+) (*crypto.KeyRing, error) {
+	user, err := client.GetUser(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("get user: %w", err)
+	}
+
+	addrs, err := client.GetAddresses(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("get addresses: %w", err)
+	}
+
+	salts, err := client.GetSalts(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("get salts: %w", err)
+	}
+
+	keyPass, err := salts.SaltForKey([]byte(h.pass), user.Keys.Primary().ID)
+	if err != nil {
+		return nil, fmt.Errorf("salt key: %w", err)
+	}
+
+	_, addrKRs, err := proton.Unlock(user, addrs, keyPass, async.NoopPanicHandler{})
+	if err != nil {
+		return nil, fmt.Errorf("unlock keys: %w", err)
+	}
+
+	addrKR, ok := addrKRs[h.addrID]
+	if !ok {
+		return nil, fmt.Errorf("no keyring for address %s", h.addrID)
+	}
+
+	return addrKR, nil
 }
