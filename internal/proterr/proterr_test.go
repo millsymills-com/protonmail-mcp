@@ -29,6 +29,10 @@ func TestMap(t *testing.T) {
 		{"wrapped-401", fmt.Errorf("401: %w", &proton.APIError{Status: http.StatusUnauthorized}), "proton/auth_required"},
 		{"net-error", &proton.NetError{Cause: errors.New("dial tcp: connection refused"), Message: "could not reach API"}, "proton/upstream"},
 		{"plain-network", errors.New("dial tcp: connection refused"), "proton/upstream"},
+		{"503", &proton.APIError{Status: http.StatusServiceUnavailable}, "proton/upstream"},
+		{"unknown-status", &proton.APIError{Status: 418}, "proton/upstream"},
+		//nolint:revive // line-length-limit: test signatures with go-sdk types exceed 100 chars; cannot be split readably
+		{"unknown-proton-code", &proton.APIError{Status: http.StatusBadRequest, Code: 999999}, "proton/validation"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
