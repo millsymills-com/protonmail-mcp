@@ -51,28 +51,34 @@ func TestLoadCredsMissing(t *testing.T) {
 	}
 }
 
-func TestSaveCredsClearsStaleTOTP(t *testing.T) {
+// TestSaveCredsTOTPLifecycle walks the same user through two sequential
+// SaveCreds calls (with TOTP, then without) and asserts post-load state
+// at each step. Verifies the one-shot-code path doesn't leave a stale
+// TOTP behind.
+func TestSaveCredsTOTPLifecycle(t *testing.T) {
 	keyring.MockInit()
 	kc := keychain.New()
 
-	// First login: TOTP is set.
-	if err := kc.SaveCreds(keychain.Creds{Username: "u", Password: "p", TOTPSecret: "JBSWY3DPEHPK3PXP"}); err != nil {
-		t.Fatalf("first SaveCreds: %v", err)
+	tests := []struct {
+		name     string
+		save     keychain.Creds
+		wantTOTP string
+	}{
+		{"first login sets TOTP", keychain.Creds{Username: "u", Password: "p", TOTPSecret: "JBSWY3DPEHPK3PXP"}, "JBSWY3DPEHPK3PXP"},
+		{"second login without TOTP clears it", keychain.Creds{Username: "u", Password: "p"}, ""},
 	}
-	got, err := kc.LoadCreds()
-	if err != nil || got.TOTPSecret != "JBSWY3DPEHPK3PXP" {
-		t.Fatalf("first LoadCreds: got=%+v err=%v", got, err)
-	}
-
-	// Second login: same user, TOTP NOT supplied (one-shot code path).
-	if e := kc.SaveCreds(keychain.Creds{Username: "u", Password: "p"}); e != nil {
-		t.Fatalf("second SaveCreds: %v", e)
-	}
-	got, err = kc.LoadCreds()
-	if err != nil {
-		t.Fatalf("second LoadCreds: %v", err)
-	}
-	if got.TOTPSecret != "" {
-		t.Fatalf("stale TOTP survived second login: got=%q", got.TOTPSecret)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := kc.SaveCreds(tc.save); err != nil {
+				t.Fatalf("SaveCreds: %v", err)
+			}
+			got, err := kc.LoadCreds()
+			if err != nil {
+				t.Fatalf("LoadCreds: %v", err)
+			}
+			if got.TOTPSecret != tc.wantTOTP {
+				t.Fatalf("TOTPSecret: got %q want %q", got.TOTPSecret, tc.wantTOTP)
+			}
+		})
 	}
 }

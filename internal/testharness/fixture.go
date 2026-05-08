@@ -3,6 +3,7 @@ package testharness
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -31,11 +32,11 @@ func LoadFixtures(paths ...string) ([]Fixture, error) {
 		//nolint:gosec // G304: paths are caller-supplied test fixture files, not user input
 		b, err := os.ReadFile(p)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("read fixture %s: %w", p, err)
 		}
 		var f Fixture
 		if err := json.Unmarshal(b, &f); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("parse fixture %s: %w", p, err)
 		}
 		out = append(out, f)
 	}
