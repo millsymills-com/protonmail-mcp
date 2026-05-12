@@ -26,9 +26,11 @@ fork. Do not remove it.
 
 ## Standards
 
-This repo is graded against the canonical MCP standards in
-[`consistency-check/docs/standards/`](https://github.com/millsmillsymills/consistency-check/tree/main/docs/standards).
-Re-run the audit before opening a PR:
+This repo is graded against the canonical MCP standards under
+`consistency-check/docs/standards/`. The audit tool lives in the
+maintainer's local workspace (not currently published), so external
+contributors don't need to run it — the maintainer re-runs it on PRs
+when needed:
 
 ```sh
 cd ~/Desktop/Projects/consistency-check
