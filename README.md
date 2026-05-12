@@ -29,7 +29,7 @@ Requires Go 1.26+ (the toolchain is auto-bumped by `go-proton-api` master).
 The Go module path is `github.com/millsmillsymills/protonmail-mcp`. Build from a clone:
 
 ```
-git clone https://github.com/millsmillsymills/protonmail-mcp.git
+git clone https://github.com/millsymills-com/protonmail-mcp.git
 cd protonmail-mcp
 go build -o ./protonmail-mcp ./cmd/protonmail-mcp
 ```

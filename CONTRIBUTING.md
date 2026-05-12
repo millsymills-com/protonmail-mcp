@@ -7,7 +7,7 @@ Thanks for taking the time to contribute. This repo follows a simple workflow.
 - Bugs and feature requests: open a GitHub issue with reproduction steps,
   expected behavior, observed behavior, and version/commit.
 - Security vulnerabilities: do **not** file a public issue. Use GitHub's
-  [private vulnerability reporting](https://github.com/millsmillsymills/protonmail-mcp/security/advisories/new).
+  [private vulnerability reporting](https://github.com/millsymills-com/protonmail-mcp/security/advisories/new).
   See [SECURITY.md](SECURITY.md).
 
 ## Development setup
@@ -15,7 +15,7 @@ Thanks for taking the time to contribute. This repo follows a simple workflow.
 Requires Go 1.26+ (the toolchain is auto-bumped by `go-proton-api` master).
 
 ```sh
-git clone https://github.com/millsmillsymills/protonmail-mcp.git
+git clone https://github.com/millsymills-com/protonmail-mcp.git
 cd protonmail-mcp
 go build ./...
 go test ./... -race

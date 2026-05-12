@@ -19,7 +19,7 @@ Project layout follows standard Go conventions: `cmd/protonmail-mcp/` for the en
 
 ### Issue tracker
 
-GitHub Issues at `millsmillsymills/protonmail-mcp`. See `docs/agents/issue-tracker.md`.
+GitHub Issues at `millsymills-com/protonmail-mcp`. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 

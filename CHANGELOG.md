@@ -31,5 +31,5 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   GitHub Actions.
 - 8-bit ProtonMail logo and favicon assets.
 
-[Unreleased]: https://github.com/millsmillsymills/protonmail-mcp/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/millsmillsymills/protonmail-mcp/releases/tag/v1.0.0
+[Unreleased]: https://github.com/millsymills-com/protonmail-mcp/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/millsymills-com/protonmail-mcp/releases/tag/v1.0.0

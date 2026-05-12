@@ -2,7 +2,7 @@
 
 ## Reporting a vulnerability
 
-Please report security issues privately via GitHub's [private vulnerability reporting](https://github.com/millsmillsymills/protonmail-mcp/security/advisories/new) for this repository.
+Please report security issues privately via GitHub's [private vulnerability reporting](https://github.com/millsymills-com/protonmail-mcp/security/advisories/new) for this repository.
 
 Do not file public issues for vulnerabilities.
 

@@ -1,3 +1,8 @@
 # Default ownership: every change requires review by the listed owners.
 # See https://docs.github.com/articles/about-code-owners
+#
+# @millsmillsymills is the maintainer's user handle, NOT the (now-renamed)
+# org. The org rename (millsmillsymills -> millsymills-com) does not affect
+# this handle. Do not "fix" it to @millsymills-com; CODEOWNERS would silently
+# fail to resolve.
 * @millsmillsymills
