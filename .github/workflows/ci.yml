@@ -18,6 +18,8 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+      - name: mod verify
+        run: go mod verify
       - name: gofmt
         run: |
           out=$(git ls-files -z '*.go' | xargs -0 gofmt -l)
