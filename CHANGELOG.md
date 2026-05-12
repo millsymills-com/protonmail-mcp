@@ -43,6 +43,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [1.0.0] - 2026-05-05
 
+> No git tag or GitHub release has been cut for `v1.0.0` yet. This block
+> records the contents of the v1 surface as it was at the time the changelog
+> was first introduced (PR #32, 2026-05-05). A future maintainer can either
+> retroactively tag the appropriate commit or roll the contents below into a
+> later release when one is cut.
+
 ### Added
 - Address tools (list, get, create, set status, delete, update display
   name + signature) backed by `go-proton-api` and the internal `protonraw`
@@ -63,5 +69,5 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   GitHub Actions.
 - 8-bit ProtonMail logo and favicon assets.
 
-[Unreleased]: https://github.com/millsymills-com/protonmail-mcp/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/millsymills-com/protonmail-mcp/releases/tag/v1.0.0
+[Unreleased]: https://github.com/millsymills-com/protonmail-mcp/commits/main
+
