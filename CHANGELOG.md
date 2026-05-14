@@ -19,6 +19,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - CI: `gofmt` enforcement step (GO-005) (#36).
 - GitHub Pro baseline — branch protections and required-check configuration
   (#46).
+- Cassette-based integration tests against real Proton API responses
+  (replayed offline in CI). Recordings live under
+  `testdata/cassettes/`; refresh with `make record SCENARIO=<name>`.
+- `make coverage-check` enforces ≥90% weighted aggregate statement
+  coverage and a ≥75% per-package floor across included packages.
+- `cmd/record-cassettes/` — maintainer-only recording tool, gated by
+  `//go:build recording`.
+- `cmd/testvcr-lint/` — scrub-leak scanner for committed cassettes,
+  wired into `prek` via `.pre-commit-config.yaml`.
 
 ### Changed
 - Go toolchain directive bumped 1.26.2 -> 1.26.3 (#41).
@@ -27,6 +36,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `cmd/`: documented the bare-goroutine vs `errgroup` choice (GO-013) (#39).
 - GitHub URLs across docs updated after `millsmillsymills` -> `millsymills-com`
   org rename (#54).
+- `session.New` now accepts `session.WithTransport(http.RoundTripper)`
+  to inject a transport shared between `proton.Manager` and the inner
+  resty client.
+- `testharness.Boot` renamed to `testharness.BootDevServer`. The new
+  `testharness.BootWithCassette` replays cassettes against the same
+  in-memory MCP transport.
 
 ### Fixed
 - `proterr`: expose `ErrToMCP` alias for the canonical mapping name (PROTO-010)

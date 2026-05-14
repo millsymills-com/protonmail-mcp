@@ -1,5 +1,7 @@
 # Binaries
 /protonmail-mcp
+/record-cassettes
+/testvcr-lint
 /dist/
 
 # IDE
@@ -21,3 +23,9 @@ coverage.txt
 # Worktrees
 .worktrees/
 *.fuzz-corpus.local/
+
+# Recording
+.env.record
+cov.out
+cov.out.func
+cov.html

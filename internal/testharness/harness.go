@@ -36,7 +36,7 @@ import (
 	"github.com/millsmillsymills/protonmail-mcp/internal/tools"
 )
 
-// Option configures Boot behaviour.
+// Option configures BootDevServer behaviour.
 type Option func(*config)
 
 type config struct {
@@ -51,7 +51,7 @@ func WithInterceptor(fn func(*http.Request) *http.Response) Option {
 }
 
 // Harness is a live test rig: dev server + session + MCP server/client over
-// an in-memory transport. Construct with Boot.
+// an in-memory transport. Construct with BootDevServer or BootWithCassette.
 type Harness struct {
 	t       *testing.T
 	srv     *server.Server
@@ -65,7 +65,7 @@ type Harness struct {
 	pass    string
 }
 
-// Boot creates a user with the supplied email + password on a freshly-spun
+// BootDevServer creates a user with the supplied email + password on a freshly-spun
 // dev server, logs the session manager in against it, registers tools, and
 // connects an in-memory MCP client to the server.
 //
@@ -76,8 +76,8 @@ type Harness struct {
 // keyring.MockInit() is called to switch go-keyring into in-memory mode so we
 // never touch the user's real OS keychain.
 //
-//nolint:revive // function-length: Boot with optional interceptor proxy setup is a single cohesive task
-func Boot(t *testing.T, email, password string, opts ...Option) *Harness {
+//nolint:revive // function-length: BootDevServer with optional interceptor proxy setup is a single cohesive task
+func BootDevServer(t *testing.T, email, password string, opts ...Option) *Harness {
 	t.Helper()
 	keyring.MockInit()
 
@@ -133,42 +133,53 @@ func Boot(t *testing.T, email, password string, opts ...Option) *Harness {
 	mcpSrv := mcp.NewServer(&mcp.Implementation{Name: "protonmail-mcp-test", Version: "0.0.0"}, nil)
 	tools.Register(mcpSrv, tools.Deps{Session: sess})
 
+	h := &Harness{
+		t:      t,
+		srv:    devsrv,
+		sess:   sess,
+		mcpSrv: mcpSrv,
+		userID: userID,
+		addrID: addrID,
+		pass:   password,
+		cleanup: []func(){
+			func() { devsrv.Close() },
+		},
+	}
+	if err := h.connectInMemoryClient(); err != nil {
+		devsrv.Close()
+		t.Fatalf("connect mcp client: %v", err)
+	}
+	t.Cleanup(h.Close)
+	return h
+}
+
+// connectInMemoryClient wires an in-memory MCP client to h.mcpSrv, populating
+// h.mcp and registering close callbacks in h.cleanup. h.mcpSrv must be set
+// before calling.
+func (h *Harness) connectInMemoryClient() error {
 	clientT, serverT := mcp.NewInMemoryTransports()
 
 	// Connect the server side BEFORE the client — the in-memory transports
 	// require this ordering because Client.Connect runs the MCP initialization
 	// handshake immediately.
-	srvSession, err := mcpSrv.Connect(context.Background(), serverT, nil)
+	srvSession, err := h.mcpSrv.Connect(context.Background(), serverT, nil)
 	if err != nil {
-		devsrv.Close()
-		t.Fatalf("mcp server connect: %v", err)
+		return fmt.Errorf("mcp server connect: %w", err)
 	}
 
 	client := mcp.NewClient(&mcp.Implementation{Name: "protonmail-mcp-test-client", Version: "0.0.0"}, nil)
 	csess, err := client.Connect(context.Background(), clientT, nil)
 	if err != nil {
 		_ = srvSession.Close()
-		devsrv.Close()
-		t.Fatalf("mcp client connect: %v", err)
+		return fmt.Errorf("mcp client connect: %w", err)
 	}
 
-	h := &Harness{
-		t:      t,
-		srv:    devsrv,
-		sess:   sess,
-		mcp:    csess,
-		mcpSrv: mcpSrv,
-		userID: userID,
-		addrID: addrID,
-		pass:   password,
-		cleanup: []func(){
-			func() { _ = csess.Close() },
-			func() { _ = srvSession.Close() },
-			func() { devsrv.Close() },
-		},
-	}
-	t.Cleanup(h.Close)
-	return h
+	h.mcp = csess
+	h.cleanup = append(h.cleanup,
+		func() { _ = csess.Close() },
+		func() { _ = srvSession.Close() },
+	)
+	return nil
 }
 
 // Close releases the MCP sessions and dev server. Safe to call multiple times.

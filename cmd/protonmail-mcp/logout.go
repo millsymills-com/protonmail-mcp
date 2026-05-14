@@ -3,21 +3,21 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
+	"io"
+	"net/http"
 
 	"github.com/millsmillsymills/protonmail-mcp/internal/keychain"
 	"github.com/millsmillsymills/protonmail-mcp/internal/session"
 )
 
-func runLogout(_ context.Context) error {
-	apiURL := os.Getenv("PROTONMAIL_MCP_API_URL")
+func runLogout(_ context.Context, apiURL string, transport http.RoundTripper, out io.Writer) error {
 	if apiURL == "" {
 		apiURL = "https://mail.proton.me/api"
 	}
-	sess := session.New(apiURL, keychain.New())
+	sess := session.New(apiURL, keychain.New(), session.WithTransport(transport))
 	if err := sess.Logout(); err != nil {
 		return err
 	}
-	fmt.Println("Logged out. Keychain cleared.")
+	_, _ = fmt.Fprintln(out, "Logged out. Keychain cleared.")
 	return nil
 }

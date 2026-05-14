@@ -92,6 +92,15 @@ func errToMCP(err error) *Error {
 		}
 	}
 
+	// Keychain miss: no stored session — user must log in first.
+	if errors.Is(err, ErrNoSession) {
+		return &Error{
+			Code:    "proton/auth_required",
+			Message: "No session — run `protonmail-mcp login`.",
+			Hint:    "Run `protonmail-mcp login` interactively, then retry.",
+		}
+	}
+
 	// Anything else is treated as upstream/transport.
 	return &Error{
 		Code:    "proton/upstream",
@@ -147,6 +156,8 @@ func mapStatus(status int, headers http.Header) *Error {
 			Code:    "proton/plan_required",
 			Message: "This feature is not available on your Proton plan.",
 		}
+	case http.StatusForbidden:
+		return &Error{Code: "proton/permission_denied", Message: "Permission denied."}
 	case http.StatusNotFound:
 		return &Error{Code: "proton/not_found", Message: "Resource not found."}
 	case http.StatusConflict:

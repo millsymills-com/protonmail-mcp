@@ -13,7 +13,7 @@ import (
 // TestReadToolsRoundTrip exercises every read-only tool against the in-process
 // go-proton-api dev server through the in-memory MCP transport. No network.
 func TestReadToolsRoundTrip(t *testing.T) {
-	h := testharness.Boot(t, "user@example.test", "hunter2")
+	h := testharness.BootDevServer(t, "user@example.test", "hunter2")
 	defer h.Close()
 
 	tests := []struct {
@@ -47,7 +47,7 @@ func TestReadToolsRoundTrip(t *testing.T) {
 // transport-level failure here would indicate a wiring bug; a structured
 // proton/not_found IsError result confirms the handler is wired.
 func TestGetMessageWiring(t *testing.T) {
-	h := testharness.Boot(t, "user@example.test", "hunter2")
+	h := testharness.BootDevServer(t, "user@example.test", "hunter2")
 	defer h.Close()
 
 	if _, err := h.Call(context.Background(), "proton_get_message", map[string]any{"id": "nonexistent"}); err == nil {

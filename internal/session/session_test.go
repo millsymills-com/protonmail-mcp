@@ -4,10 +4,12 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/millsmillsymills/protonmail-mcp/internal/keychain"
 	"github.com/millsmillsymills/protonmail-mcp/internal/session"
+	"github.com/millsmillsymills/protonmail-mcp/internal/testvcr"
 	"github.com/zalando/go-keyring"
 )
 
@@ -149,26 +151,6 @@ func TestRotatedTokenPersistedToKeychain(t *testing.T) {
 	}
 }
 
-// TestColdStartCapturesRotatedAuth verifies that when go-proton-api rotates
-// the refresh token during the bootstrap refresh, the new value is written to
-// the keychain. Uses NewForTesting to bypass the actual SRP dance — the bug
-// being verified is that any non-empty refreshed Auth is persisted.
-//
-// We can't drive NewClientWithRefresh against an httptest.Server without
-// significant resty/middleware setup, so this test exercises the simpler
-// invariant: after OnAuthRotated fires (which is what Client() now triggers
-// internally on a real refresh), keychain has the new tokens. The test for
-// that invariant already exists in TestRotatedTokenPersistedToKeychain — this
-// test is a directed regression for the cold-start path that was previously
-// dropping the value.
-func TestColdStartCapturesRotatedAuth(t *testing.T) {
-	// This is a regression marker, not a behavioral test. The fix is to capture
-	// the second return of NewClientWithRefresh; live integration is covered by
-	// the manual run-against-real-Proton step. Asserting via mocks would require
-	// stubbing Manager, which is out of scope for v1.
-	t.Skip("regression marker; covered by manual real-Proton login flow")
-}
-
 func TestTOTPRoundsToSixDigits(t *testing.T) {
 	// RFC 6238 test seed "12345678901234567890" base32 = GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ.
 	code, err := session.GenerateTOTPForTest("GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ")
@@ -177,5 +159,77 @@ func TestTOTPRoundsToSixDigits(t *testing.T) {
 	}
 	if len(code) != 6 {
 		t.Fatalf("want 6 digits, got %q", code)
+	}
+}
+
+func TestTokenRotationOnExpiredAccess(t *testing.T) {
+	keyring.MockInit()
+	kc := keychain.New()
+	if err := kc.SaveSession(keychain.Session{
+		UID:          "REDACTED_UID_1",
+		AccessToken:  "REDACTED_ACCESSTOKEN_1",
+		RefreshToken: "REDACTED_REFRESHTOKEN_1",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	rt := testvcr.New(t, "token_rotation")
+	sess := session.New("https://mail.proton.me/api", kc, session.WithTransport(rt))
+
+	c, err := sess.Client(context.Background())
+	if err != nil {
+		t.Fatalf("client: %v", err)
+	}
+	u, err := c.GetUser(context.Background())
+	if err != nil {
+		t.Fatalf("get user after rotation: %v", err)
+	}
+	if u.Email != "user@example.test" {
+		t.Fatalf("email = %v", u.Email)
+	}
+}
+
+func TestLogoutInvalidatesSession(t *testing.T) {
+	keyring.MockInit()
+	kc := keychain.New()
+	if err := kc.SaveSession(keychain.Session{
+		UID:          "REDACTED_UID_1",
+		AccessToken:  "REDACTED_ACCESSTOKEN_1",
+		RefreshToken: "REDACTED_REFRESHTOKEN_1",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	rt := testvcr.New(t, "logout_invalidates")
+	sess := session.New("https://mail.proton.me/api", kc, session.WithTransport(rt))
+	if err := sess.Logout(); err != nil {
+		t.Fatalf("logout: %v", err)
+	}
+	if _, err := kc.LoadSession(); err == nil {
+		t.Fatal("session still present after logout")
+	}
+}
+
+func TestRefreshRevoked(t *testing.T) {
+	keyring.MockInit()
+	kc := keychain.New()
+	if err := kc.SaveSession(keychain.Session{
+		UID:          "REDACTED_UID_1",
+		AccessToken:  "REDACTED_ACCESSTOKEN_1",
+		RefreshToken: "REDACTED_REFRESHTOKEN_1",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	rt := testvcr.New(t, "refresh_revoked")
+	sess := session.New("https://mail.proton.me/api", kc, session.WithTransport(rt))
+
+	c, err := sess.Client(context.Background())
+	if err != nil {
+		// Client() short-circuits when the cold-start refresh is rejected.
+		if !strings.Contains(err.Error(), "refresh") {
+			t.Fatalf("error = %v, want refresh error", err)
+		}
+		return
+	}
+	if _, err := c.GetUser(context.Background()); err == nil {
+		t.Fatal("expected error after revoked refresh token")
 	}
 }

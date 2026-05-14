@@ -1,0 +1,22 @@
+---
+version: 2
+interactions:
+  - id: 0
+    request:
+      method: GET
+      url: https://mail.proton.me/api/tests/ping
+      body: ""
+      headers: {}
+      proto: HTTP/1.1
+      proto_major: 1
+      proto_minor: 1
+    response:
+      code: 200
+      status: 200 OK
+      proto: HTTP/1.1
+      proto_major: 1
+      proto_minor: 1
+      body: '{"Code":1000}'
+      headers:
+        Content-Type:
+          - application/json

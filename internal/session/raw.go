@@ -1,6 +1,8 @@
 package session
 
 import (
+	"context"
+	"net/http"
 	"sync"
 
 	"github.com/go-resty/resty/v2"
@@ -21,12 +23,19 @@ type rawClient struct {
 	uid  string
 }
 
-func newRawClient(baseURL string) *rawClient {
+func newRawClient(baseURL string, transport http.RoundTripper) *rawClient {
 	rc := resty.New().
 		SetBaseURL(baseURL).
 		SetHeader("Accept", "application/vnd.protonmail.v1+json").
 		SetHeader("x-pm-appversion", appVersionHeader())
+	if transport != nil {
+		rc.SetTransport(transport)
+	}
 	return &rawClient{rc: rc}
+}
+
+func (r *rawClient) Get(ctx context.Context, path string) (*resty.Response, error) {
+	return r.rc.R().SetContext(ctx).Get(path)
 }
 
 func (r *rawClient) setAuth(token, uid string) {

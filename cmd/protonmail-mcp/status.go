@@ -3,34 +3,29 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
+	"io"
+	"net/http"
 
 	"github.com/millsmillsymills/protonmail-mcp/internal/keychain"
 	"github.com/millsmillsymills/protonmail-mcp/internal/session"
 )
 
-func runStatus(ctx context.Context) error {
-	apiURL := os.Getenv("PROTONMAIL_MCP_API_URL")
+func runStatus(
+	ctx context.Context, apiURL string, transport http.RoundTripper, out io.Writer,
+) error {
 	if apiURL == "" {
 		apiURL = "https://mail.proton.me/api"
 	}
-	kc := keychain.New()
-	if _, err := kc.LoadCreds(); err != nil {
-		fmt.Println("Not logged in. Run `protonmail-mcp login`.")
-		return nil
-	}
-	sess := session.New(apiURL, kc)
+	sess := session.New(apiURL, keychain.New(), session.WithTransport(transport))
 	c, err := sess.Client(ctx)
 	if err != nil {
-		fmt.Println("Logged in (creds present), but session refresh failed:", err)
+		_, _ = fmt.Fprintln(out, "not logged in")
 		return nil
 	}
 	u, err := c.GetUser(ctx)
 	if err != nil {
-		fmt.Println("Logged in, but GetUser failed:", err)
-		return nil
+		return err
 	}
-	fmt.Printf("Logged in as %s\n", u.Email)
-	fmt.Printf("Used: %d / %d bytes\n", u.UsedSpace, u.MaxSpace)
+	_, _ = fmt.Fprintf(out, "%s — %d / %d bytes\n", u.Email, u.UsedSpace, u.MaxSpace)
 	return nil
 }

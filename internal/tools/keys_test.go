@@ -2,12 +2,51 @@ package tools_test
 
 import (
 	"context"
+	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/ProtonMail/gopenpgp/v2/crypto"
 
 	"github.com/millsmillsymills/protonmail-mcp/internal/testharness"
 )
+
+func TestListAddressKeysHappyCassette(t *testing.T) {
+	h := testharness.BootWithCassette(t, "list_address_keys_happy")
+	defer h.Close()
+	ctx := context.Background()
+
+	addrsOut, err := h.Call(ctx, "proton_list_addresses", map[string]any{})
+	if err != nil {
+		t.Fatalf("list_addresses: %v", err)
+	}
+	addrs, ok := addrsOut["addresses"].([]any)
+	if !ok || len(addrs) == 0 {
+		t.Fatalf("expected at least one address, got %#v", addrsOut)
+	}
+	first, ok := addrs[0].(map[string]any)
+	if !ok {
+		t.Fatalf("address[0] not an object: %#v", addrs[0])
+	}
+	id, ok := first["id"].(string)
+	if !ok || id == "" {
+		t.Fatalf("address[0].id missing or empty: %#v", first)
+	}
+
+	out, err := h.Call(ctx, "proton_list_address_keys", map[string]any{"address_id": id})
+	if err != nil {
+		t.Fatalf("list_address_keys: %v", err)
+	}
+	if _, ok := out["keys"]; !ok {
+		t.Fatalf("envelope missing %q", "keys")
+	}
+
+	// Cassette response must not contain private key material.
+	b, _ := json.Marshal(out)
+	if strings.Contains(string(b), "BEGIN PGP PRIVATE KEY BLOCK") {
+		t.Fatal("response contains private key material")
+	}
+}
 
 // TestListAddressKeys_HappyPath_GopenpgpRegression locks the fork->upstream
 // swap (gopenpgp/v2 v2.10.0-proton -> v2.10.0, go-crypto v1.4.1-proton ->
@@ -23,7 +62,7 @@ import (
 // armored output round-trips through crypto.NewKeyFromArmored to the same
 // fingerprint to catch armoring-format regressions.
 func TestListAddressKeys_HappyPath_GopenpgpRegression(t *testing.T) {
-	h := testharness.Boot(t, "user@example.test", "hunter2")
+	h := testharness.BootDevServer(t, "user@example.test", "hunter2")
 	ctx := context.Background()
 
 	addrsOut, err := h.Call(ctx, "proton_list_addresses", map[string]any{})

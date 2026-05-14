@@ -5,9 +5,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"strings"
-	"syscall"
 
 	"golang.org/x/term"
 
@@ -16,31 +17,36 @@ import (
 	"github.com/millsmillsymills/protonmail-mcp/internal/session"
 )
 
-func runLogin(ctx context.Context) error {
-	apiURL := os.Getenv("PROTONMAIL_MCP_API_URL")
+func runLogin(
+	ctx context.Context,
+	apiURL string,
+	transport http.RoundTripper,
+	stdin io.Reader,
+	stdout, stderr io.Writer,
+) error {
 	if apiURL == "" {
 		apiURL = "https://mail.proton.me/api"
 	}
-	sess := session.New(apiURL, keychain.New())
+	sess := session.New(apiURL, keychain.New(), session.WithTransport(transport))
 
-	username, err := prompt("Proton email: ")
+	username, err := promptReader(stdout, stdin, "Proton email: ")
 	if err != nil {
 		return err
 	}
-	password, err := promptHidden("Password: ")
+	password, err := readPassword(stdout, stdin)
 	if err != nil {
 		return err
 	}
 
 	in := session.LoginInput{Username: username, Password: password}
 
-	// First attempt — no 2FA. If it fails with "2FA required", prompt and retry.
 	err = sess.Login(ctx, in)
 	if err != nil && strings.Contains(err.Error(), "2FA required") {
-		fmt.Println()
-		fmt.Println("2FA is enabled on this account.")
-		fmt.Println("Paste an otpauth:// URI (preferred — enables silent refresh) OR a 6-digit code.")
-		v, err2 := prompt("> ")
+		_, _ = fmt.Fprintln(stdout)
+		_, _ = fmt.Fprintln(stdout, "2FA is enabled on this account.")
+		_, _ = fmt.Fprintln(stdout,
+			"Paste an otpauth:// URI (preferred — enables silent refresh) OR a 6-digit code.")
+		v, err2 := promptReader(stdout, stdin, "> ")
 		if err2 != nil {
 			return err2
 		}
@@ -48,48 +54,55 @@ func runLogin(ctx context.Context) error {
 			in.TOTPSecret = v
 		} else if isAllDigits(v) && len(v) == 6 {
 			in.TOTPCode = v
-			fmt.Println("WARNING: a one-shot code was provided. Future automatic refreshes will fail; you'll need to log in again when the session expires.")
+			_, _ = fmt.Fprintln(stdout,
+				"WARNING: a one-shot code was provided. Future automatic refreshes will fail;"+
+					" you'll need to log in again when the session expires.")
 		} else {
 			return errors.New("input is neither an otpauth:// URI nor a 6-digit code")
 		}
 		err = sess.Login(ctx, in)
 	}
 	if err != nil {
-		// For login-time errors, only the CAPTCHA mapping carries useful info
-		// (verification URL/token). Other proterr classifications were authored
-		// for the always-on use path and produce confusing "session expired"
-		// hints during a fresh login. Surface the underlying error verbatim.
 		if pe := proterr.Map(err); pe != nil && pe.Code == "proton/captcha" {
 			return fmt.Errorf("%s: %s\n%s", pe.Code, pe.Message, pe.Hint)
 		}
 		return err
 	}
 
-	fmt.Println("Logged in. You can now run `protonmail-mcp status` to verify.")
+	_, _ = fmt.Fprintln(stdout, "Logged in. You can now run `protonmail-mcp status` to verify.")
 	return nil
 }
 
-// stdinReader is shared across prompt() calls so type-ahead survives
-// multiple sequential reads (e.g. email then a 2FA value pasted together).
-var stdinReader = bufio.NewReader(os.Stdin)
-
-func prompt(label string) (string, error) {
-	fmt.Print(label)
-	line, err := stdinReader.ReadString('\n')
-	if err != nil {
-		return "", err
+func promptReader(out io.Writer, in io.Reader, label string) (string, error) {
+	_, _ = fmt.Fprint(out, label)
+	s := bufio.NewScanner(in)
+	if !s.Scan() {
+		if err := s.Err(); err != nil {
+			return "", err
+		}
+		return "", errors.New("unexpected EOF reading input")
 	}
-	return strings.TrimSpace(line), nil
+	return strings.TrimSpace(s.Text()), nil
 }
 
-func promptHidden(label string) (string, error) {
-	fmt.Print(label)
-	b, err := term.ReadPassword(int(syscall.Stdin))
-	fmt.Println()
-	if err != nil {
-		return "", err
+func readPassword(out io.Writer, stdin io.Reader) (string, error) {
+	_, _ = fmt.Fprint(out, "Password: ")
+	if f, ok := stdin.(*os.File); ok && term.IsTerminal(int(f.Fd())) {
+		b, err := term.ReadPassword(int(f.Fd()))
+		_, _ = fmt.Fprintln(out)
+		if err != nil {
+			return "", err
+		}
+		return string(b), nil
 	}
-	return string(b), nil
+	s := bufio.NewScanner(stdin)
+	if !s.Scan() {
+		if err := s.Err(); err != nil {
+			return "", err
+		}
+		return "", errors.New("unexpected EOF reading password")
+	}
+	return s.Text(), nil
 }
 
 func isAllDigits(s string) bool {

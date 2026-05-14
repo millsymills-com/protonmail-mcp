@@ -60,6 +60,46 @@ func stripPrefix(b []byte) []byte {
 	return bytes.TrimSpace(b)
 }
 
+func TestWithAttrsRedacts(t *testing.T) {
+	var buf bytes.Buffer
+	logger := mcplog.New(slog.LevelDebug, &buf)
+	child := logger.With("access_token", "leak", "user", "andy")
+	child.Info("login")
+
+	var rec map[string]any
+	if err := json.Unmarshal(stripPrefix(buf.Bytes()), &rec); err != nil {
+		t.Fatalf("not valid JSON: %v\noutput: %s", err, buf.String())
+	}
+	if got, _ := rec["access_token"].(string); got != "<redacted>" {
+		t.Errorf("access_token: want <redacted>, got %q", got)
+	}
+	if got, _ := rec["user"].(string); got != "andy" {
+		t.Errorf("user: want \"andy\", got %q", got)
+	}
+}
+
+func TestWithGroupRedacts(t *testing.T) {
+	var buf bytes.Buffer
+	logger := mcplog.New(slog.LevelDebug, &buf)
+	child := logger.WithGroup("auth")
+	child.Info("login", "refresh_token", "leak", "user", "andy")
+
+	var rec map[string]any
+	if err := json.Unmarshal(stripPrefix(buf.Bytes()), &rec); err != nil {
+		t.Fatalf("not valid JSON: %v\noutput: %s", err, buf.String())
+	}
+	auth, ok := rec["auth"].(map[string]any)
+	if !ok {
+		t.Fatalf("auth group missing: %#v", rec)
+	}
+	if got, _ := auth["refresh_token"].(string); got != "<redacted>" {
+		t.Errorf("auth.refresh_token: want <redacted>, got %q", got)
+	}
+	if got, _ := auth["user"].(string); got != "andy" {
+		t.Errorf("auth.user: want \"andy\", got %q", got)
+	}
+}
+
 func TestRedactsNestedGroups(t *testing.T) {
 	var buf bytes.Buffer
 	logger := mcplog.New(slog.LevelDebug, &buf)

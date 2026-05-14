@@ -21,6 +21,7 @@ func TestMap(t *testing.T) {
 		{"nil", nil, ""},
 		{"401", &proton.APIError{Status: http.StatusUnauthorized}, "proton/auth_required"},
 		{"402", &proton.APIError{Status: http.StatusPaymentRequired}, "proton/plan_required"},
+		{"403", &proton.APIError{Status: http.StatusForbidden}, "proton/permission_denied"},
 		{"404", &proton.APIError{Status: http.StatusNotFound}, "proton/not_found"},
 		{"409", &proton.APIError{Status: http.StatusConflict}, "proton/conflict"},
 		{"422", &proton.APIError{Status: http.StatusUnprocessableEntity}, "proton/validation"},
@@ -29,6 +30,7 @@ func TestMap(t *testing.T) {
 		{"wrapped-401", fmt.Errorf("401: %w", &proton.APIError{Status: http.StatusUnauthorized}), "proton/auth_required"},
 		{"net-error", &proton.NetError{Cause: errors.New("dial tcp: connection refused"), Message: "could not reach API"}, "proton/upstream"},
 		{"plain-network", errors.New("dial tcp: connection refused"), "proton/upstream"},
+		{"no-session", fmt.Errorf("%w — run login", proterr.ErrNoSession), "proton/auth_required"},
 		{"503", &proton.APIError{Status: http.StatusServiceUnavailable}, "proton/upstream"},
 		{"unknown-status", &proton.APIError{Status: 418}, "proton/upstream"},
 		//nolint:revive // line-length-limit: test signatures with go-sdk types exceed 100 chars; cannot be split readably
@@ -105,6 +107,17 @@ func TestHVErrorIncludesToken(t *testing.T) {
 	}
 	if !strings.Contains(got.Hint, "captcha") {
 		t.Errorf("hint missing methods: %q", got.Hint)
+	}
+}
+
+func TestHTTPErrorString(t *testing.T) {
+	withBody := &proterr.HTTPError{Status: http.StatusBadGateway, Body: "service down"}
+	if got := withBody.Error(); got != "Bad Gateway: service down" {
+		t.Fatalf("unexpected: %q", got)
+	}
+	noBody := &proterr.HTTPError{Status: http.StatusBadGateway}
+	if got := noBody.Error(); got != "Bad Gateway" {
+		t.Fatalf("unexpected: %q", got)
 	}
 }
 

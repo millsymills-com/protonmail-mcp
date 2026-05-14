@@ -1,6 +1,8 @@
 package keychain_test
 
 import (
+	"errors"
+	"strings"
 	"testing"
 
 	"github.com/millsmillsymills/protonmail-mcp/internal/keychain"
@@ -11,7 +13,9 @@ func TestRoundTrip(t *testing.T) {
 	keyring.MockInit()
 	kc := keychain.New()
 
-	creds := keychain.Creds{Username: "andy@example.com", Password: "hunter2", TOTPSecret: "JBSWY3DPEHPK3PXP"}
+	creds := keychain.Creds{
+		Username: "andy@example.com", Password: "hunter2", TOTPSecret: "JBSWY3DPEHPK3PXP",
+	}
 	if err := kc.SaveCreds(creds); err != nil {
 		t.Fatalf("SaveCreds: %v", err)
 	}
@@ -51,6 +55,42 @@ func TestLoadCredsMissing(t *testing.T) {
 	}
 }
 
+func TestSaveCredsError(t *testing.T) {
+	keyring.MockInitWithError(errors.New("backend unavailable"))
+	kc := keychain.New()
+	err := kc.SaveCreds(keychain.Creds{Username: "u", Password: "p"})
+	if err == nil || !strings.Contains(err.Error(), "save username") {
+		t.Fatalf("want save-username error, got %v", err)
+	}
+}
+
+func TestSaveSessionError(t *testing.T) {
+	keyring.MockInitWithError(errors.New("backend unavailable"))
+	kc := keychain.New()
+	err := kc.SaveSession(keychain.Session{UID: "u", AccessToken: "a", RefreshToken: "r"})
+	if err == nil || !strings.Contains(err.Error(), "save uid") {
+		t.Fatalf("want save-uid error, got %v", err)
+	}
+}
+
+func TestLoadSessionError(t *testing.T) {
+	keyring.MockInitWithError(errors.New("backend unavailable"))
+	kc := keychain.New()
+	_, err := kc.LoadSession()
+	if err == nil || !strings.Contains(err.Error(), "load uid") {
+		t.Fatalf("want load-uid error, got %v", err)
+	}
+}
+
+func TestClearError(t *testing.T) {
+	keyring.MockInitWithError(errors.New("backend unavailable"))
+	kc := keychain.New()
+	err := kc.Clear()
+	if err == nil || !strings.Contains(err.Error(), "delete") {
+		t.Fatalf("want delete error, got %v", err)
+	}
+}
+
 // TestSaveCredsTOTPLifecycle walks the same user through two sequential
 // SaveCreds calls (with TOTP, then without) and asserts post-load state
 // at each step. Verifies the one-shot-code path doesn't leave a stale
@@ -64,7 +104,11 @@ func TestSaveCredsTOTPLifecycle(t *testing.T) {
 		save     keychain.Creds
 		wantTOTP string
 	}{
-		{"first login sets TOTP", keychain.Creds{Username: "u", Password: "p", TOTPSecret: "JBSWY3DPEHPK3PXP"}, "JBSWY3DPEHPK3PXP"},
+		{
+			"first login sets TOTP",
+			keychain.Creds{Username: "u", Password: "p", TOTPSecret: "JBSWY3DPEHPK3PXP"},
+			"JBSWY3DPEHPK3PXP",
+		},
 		{"second login without TOTP clears it", keychain.Creds{Username: "u", Password: "p"}, ""},
 	}
 	for _, tc := range tests {
