@@ -52,6 +52,9 @@ func New(t *testing.T, name string) http.RoundTripper {
 	path := resolvePath(t, name)
 	if Mode() == ModeReplay {
 		if _, err := os.Stat(path + ".yaml"); errors.Is(err, fs.ErrNotExist) {
+			if requireCassettesPresent() {
+				t.Fatalf("testvcr: cassette not recorded (%s.yaml); record it or unset CI_REQUIRE_CASSETTES", path)
+			}
 			t.Skipf("testvcr: cassette not recorded yet (%s.yaml)", path)
 			return nil
 		}
@@ -167,12 +170,35 @@ func guardRecordInCI() error {
 	if Mode() != ModeRecord {
 		return nil
 	}
-	for _, k := range []string{"CI", "GITHUB_ACTIONS", "BUILDKITE", "CIRCLECI"} {
-		if v := os.Getenv(k); v != "" && v != "false" && v != "0" {
+	for _, k := range ciEnvKeys {
+		if envTruthy(k) {
 			return &CIRecordError{Env: k}
 		}
 	}
 	return nil
+}
+
+var ciEnvKeys = []string{"CI", "GITHUB_ACTIONS", "BUILDKITE", "CIRCLECI"}
+
+// requireCassettesPresent reports whether a missing cassette should be fatal
+// instead of skipped. Triggered explicitly via CI_REQUIRE_CASSETTES=1.
+//
+// The flag stays opt-in (rather than auto-firing on CI env vars) so this
+// guard can land before the cassette recording phase completes. Once
+// cassettes exist on main, CI workflows should set CI_REQUIRE_CASSETTES=1
+// on their test steps to stop a silently-deleted cassette becoming a green
+// skip.
+func requireCassettesPresent() bool {
+	return envTruthy("CI_REQUIRE_CASSETTES")
+}
+
+// envTruthy reports whether an env var is set to anything other than the empty
+// string, "0", or lowercase "false". Comparison is case-sensitive: "False" and
+// "FALSE" count as truthy. The narrow falsy set matches the existing
+// guardRecordInCI convention so the two CI-related env probes share semantics.
+func envTruthy(key string) bool {
+	v := os.Getenv(key)
+	return v != "" && v != "false" && v != "0"
 }
 
 // CIRecordError is returned when VCR_MODE=record is set in a CI environment.

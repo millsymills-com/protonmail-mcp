@@ -2,7 +2,9 @@ package testvcr_test
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/millsmillsymills/protonmail-mcp/internal/testvcr"
@@ -40,6 +42,7 @@ func TestNewSkipsWhenCassetteMissing(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("VCR_TESTDATA_OVERRIDE", dir)
 	t.Setenv("VCR_MODE", "replay")
+	t.Setenv("CI_REQUIRE_CASSETTES", "")
 
 	var ran bool
 	var skipped bool
@@ -53,6 +56,32 @@ func TestNewSkipsWhenCassetteMissing(t *testing.T) {
 	}
 	if !skipped {
 		t.Fatal("expected subtest to be marked skipped")
+	}
+}
+
+// TestNewFatalsWhenCassetteMissingAndRequired pins the end-to-end behaviour of
+// testvcr.New: with CI_REQUIRE_CASSETTES=1 and no cassette on disk, the call
+// must terminate the test with a fatal error rather than skipping. Because
+// t.Fatalf inside a subtest still marks the parent test as failed, we verify
+// the fatal path by re-executing the test binary as a child process and
+// asserting on its non-zero exit + stderr message.
+func TestNewFatalsWhenCassetteMissingAndRequired(t *testing.T) {
+	if dir := os.Getenv("TESTVCR_FATAL_DIR"); dir != "" {
+		t.Setenv("VCR_TESTDATA_OVERRIDE", dir)
+		t.Setenv("VCR_MODE", "replay")
+		t.Setenv("CI_REQUIRE_CASSETTES", "1")
+		_ = testvcr.New(t, "does_not_exist")
+		return
+	}
+	dir := t.TempDir()
+	cmd := exec.Command(os.Args[0], "-test.run=^TestNewFatalsWhenCassetteMissingAndRequired$", "-test.v")
+	cmd.Env = append(os.Environ(), "TESTVCR_FATAL_DIR="+dir)
+	out, err := cmd.CombinedOutput()
+	if err == nil {
+		t.Fatalf("child process expected to fail, got success. Output:\n%s", out)
+	}
+	if !strings.Contains(string(out), "testvcr: cassette not recorded") {
+		t.Fatalf("expected fatal message in output, got:\n%s", out)
 	}
 }
 
