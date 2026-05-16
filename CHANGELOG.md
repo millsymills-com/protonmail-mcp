@@ -21,13 +21,18 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   (#46).
 - Cassette-based integration tests against real Proton API responses
   (replayed offline in CI). Recordings live under
-  `testdata/cassettes/`; refresh with `make record SCENARIO=<name>`.
+  `testdata/cassettes/`; refresh with `make record SCENARIO=<name>` (#62).
 - `make coverage-check` enforces ≥90% weighted aggregate statement
-  coverage and a ≥75% per-package floor across included packages.
+  coverage and a ≥75% per-package floor across included packages (#62).
 - `cmd/record-cassettes/` — maintainer-only recording tool, gated by
-  `//go:build recording`.
+  `//go:build recording` (#62).
 - `cmd/testvcr-lint/` — scrub-leak scanner for committed cassettes,
-  wired into `prek` via `.pre-commit-config.yaml`.
+  wired into `prek` via `.pre-commit-config.yaml` (#62).
+- `CI_REQUIRE_CASSETTES=1` env switch flips `testvcr.New` from
+  skip-on-missing to fatal failure for opt-in CI enforcement (#66).
+- `internal/testvcr`: package-doc + inline comments covering the
+  `resolveStackDepth` budget, `opaqueIDSegment` tolerance contract,
+  and the shared-cassette pattern used by paired tests (#67).
 
 ### Changed
 - Go toolchain directive bumped 1.26.2 -> 1.26.3 (#41).
@@ -38,10 +43,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   org rename (#54).
 - `session.New` now accepts `session.WithTransport(http.RoundTripper)`
   to inject a transport shared between `proton.Manager` and the inner
-  resty client.
+  resty client (#62).
 - `testharness.Boot` renamed to `testharness.BootDevServer`. The new
   `testharness.BootWithCassette` replays cassettes against the same
-  in-memory MCP transport.
+  in-memory MCP transport (#62).
+- `cmd/testvcr-lint/` auto-discovers `testdata/cassettes/` roots from
+  the working tree (pruning `.git`, `vendor`, `node_modules`); replaces
+  the prior hardcoded root list (#66).
 
 ### Fixed
 - `proterr`: expose `ErrToMCP` alias for the canonical mapping name (PROTO-010)
