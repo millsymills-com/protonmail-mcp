@@ -13,6 +13,18 @@ import (
 	"gopkg.in/dnaeon/go-vcr.v4/pkg/cassette"
 )
 
+// opaqueIDSegment matches any path segment that looks like a Proton opaque ID:
+// 8+ characters from [A-Za-z0-9_-]. When this matches on both sides of a path
+// comparison, the two segments are treated as interchangeable so a replay with
+// a different ID still hits its recorded interaction.
+//
+// Tolerance assumption: pathsMatch tries byte-equal comparison first and only
+// consults this regex on mismatched segments, so static API path segments
+// whose length happens to be >=8 are unaffected as long as they stay
+// byte-equal on both request and cassette. A future static segment that
+// differs by case or spelling between the two and is also alphanumeric/
+// underscore/hyphen-only would be silently tolerated — keep constant API
+// path strings in sync.
 var opaqueIDSegment = regexp.MustCompile(`^[A-Za-z0-9_\-]{8,}$`)
 
 // BodyAwareMatcher matches an incoming request against a recorded interaction.

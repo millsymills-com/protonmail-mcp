@@ -1,5 +1,10 @@
 // Package testvcr provides a thin wrapper around gopkg.in/dnaeon/go-vcr.v4 for
 // recording and replaying HTTP exchanges in tests against a real Proton API.
+//
+// The cassette path for a test is derived by walking up to resolveStackDepth
+// frames and picking the first source file outside this package and
+// internal/testharness. Tests that wrap testvcr.New behind deeper helpers
+// should keep the helper chain shorter than resolveStackDepth.
 package testvcr
 
 import (
@@ -116,6 +121,12 @@ func NewAtPath(path string, mode RecorderMode) (http.RoundTripper, func() error,
 	return r.GetDefaultClient().Transport, stop, nil
 }
 
+// resolveStackDepth bounds the runtime.Caller walk used to locate the test
+// source that owns the cassette. 16 frames is deep enough to escape testing.T
+// wrappers plus any combination of intermediate helpers (testharness.Boot*,
+// resty middleware, retry shims) without paying for an unbounded scan.
+const resolveStackDepth = 16
+
 func resolvePath(t *testing.T, name string) string {
 	t.Helper()
 	if override := os.Getenv("VCR_TESTDATA_OVERRIDE"); override != "" {
@@ -124,7 +135,7 @@ func resolvePath(t *testing.T, name string) string {
 	// Walk the stack and pick the first frame outside testvcr/testharness
 	// source files. _test.go files in those packages stay eligible so their
 	// own cassette tests resolve under their package's testdata/.
-	for i := 1; i < 16; i++ {
+	for i := 1; i < resolveStackDepth; i++ {
 		_, file, _, ok := runtime.Caller(i)
 		if !ok {
 			break
