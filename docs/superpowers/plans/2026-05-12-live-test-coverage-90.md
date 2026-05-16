@@ -1,5 +1,9 @@
 # Live-Data Cassette Tests + 90% Coverage Implementation Plan
 
+Status: shipped (as-built record). Original date 2026-05-12; banner added 2026-05-16.
+
+> **As-built note.** This plan was authored on 2026-05-12 and shipped via PRs #62 / #66 / #67 / #69 / #70. The text below is preserved as the design-time record and remains forward-looking in voice ("Create", "Modify"); consult `git log` and the corrected spec at `docs/superpowers/specs/2026-05-12-live-test-coverage-90-design.md` for what actually landed. Phase 1 scaffolded 35 recording scenarios — the recording pass itself plus tasks T43 (retire `integration_test.go`) and T45 (CI coverage gate) are tracked in #63.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Replace dev-server-backed behaviour tests with replays of real Proton API responses (go-vcr/v4 cassettes), refactor the CLI entrypoint and server boot to be unit-testable, and gate CI on ≥90% weighted aggregate statement coverage with a ≥75% per-package floor.
@@ -29,11 +33,15 @@
 - `cmd/record-cassettes/main.go` — dispatcher behind `//go:build recording`.
 - `cmd/record-cassettes/scenarios/read_tools.go` — read-tool capture scenario.
 - `cmd/record-cassettes/scenarios/write_addresses.go` — write address-lifecycle capture.
+- `cmd/record-cassettes/scenarios/write_settings.go` — write-settings capture (`update_mail_settings_signature`, `update_core_settings_flags`).
 - `cmd/record-cassettes/scenarios/custom_domain_lifecycle.go` — domain add/verify/remove capture.
 - `cmd/record-cassettes/scenarios/token_rotation.go` — refresh-401-retry capture.
+- `cmd/record-cassettes/scenarios/refresh_revoked.go` — refresh-with-revoked-token capture.
+- `cmd/record-cassettes/scenarios/logout_invalidates.go` — logout-clears-server-side capture.
 - `cmd/record-cassettes/scenarios/error_envelopes.go` — captures of each `proton/*` error code.
 - `cmd/record-cassettes/scenarios/cli_flows.go` — login/logout/status capture.
 - `cmd/record-cassettes/scenarios/server_boot.go` — boot + first dispatch capture.
+- `cmd/record-cassettes/scenarios/auth.go` — shared login/logout/keychain helpers used by recording scenarios (not a scenario itself).
 - `testdata/cassettes/<pkg>/<scenario>.yaml` — ~48 cassette files committed under their owning package's `testdata/`.
 - `.env.record.example` — template for `RECORD_EMAIL`, `RECORD_PASSWORD`, `RECORD_TOTP_SECRET`, `RECORD_DOMAIN`.
 - `.pre-commit-config.yaml` — prek hook running `make verify-cassettes`.
@@ -83,25 +91,13 @@ go get gopkg.in/dnaeon/go-vcr.v4@latest
 go mod tidy
 ```
 
-- [ ] **Step 2: Verify import resolves**
-
-Create a throwaway file `/tmp/vcrcheck/main.go` then:
+- [ ] **Step 2: Verify the module is resolvable**
 
 ```bash
-cat > /tmp/vcrcheck/main.go <<'EOF'
-package main
-
-import (
-    _ "gopkg.in/dnaeon/go-vcr.v4/pkg/recorder"
-    "fmt"
-)
-
-func main() { fmt.Println("ok") }
-EOF
-cd /tmp/vcrcheck && go mod init vcrcheck && go mod edit -replace=gopkg.in/dnaeon/go-vcr.v4=gopkg.in/dnaeon/go-vcr.v4@latest && go mod tidy && go run .
+go list -m gopkg.in/dnaeon/go-vcr.v4
 ```
 
-Expected: prints `ok`. If the import path differs (`pkg/recorder` vs another), update the spec + plan inline before continuing.
+Expected: prints the module path and version. The package's exported names (`pkg/recorder` package, `New` / `Mode` symbols, `Hook` shape) are exercised end-to-end when Task 3 lands the first consumer (`internal/testvcr/recorder.go`); if any differ from the spec's assumed shape, update the spec + plan inline before continuing.
 
 - [ ] **Step 3: Commit**
 
