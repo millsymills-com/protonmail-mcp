@@ -50,6 +50,12 @@ var ErrSessionInconsistent = errors.New(
 	"session state inconsistent (prior login rollback failed to clear keychain); " +
 		"run `protonmail-mcp logout` then `protonmail-mcp login`")
 
+// ErrTOTPRequired is returned from Login when the account has 2FA enabled but
+// the LoginInput supplied no TOTP code or secret. Callers should use
+// errors.Is(err, ErrTOTPRequired) to branch into a 2FA-prompt flow rather
+// than matching the error string.
+var ErrTOTPRequired = errors.New("2FA required but no TOTP provided")
+
 type Option func(*config)
 
 type config struct {
@@ -234,7 +240,7 @@ func (s *Session) Login(ctx context.Context, in LoginInput) error {
 		}
 		if code == "" {
 			c.Close()
-			return errors.New("2FA required but no TOTP provided")
+			return ErrTOTPRequired
 		}
 		if err := c.Auth2FA(ctx, proton.Auth2FAReq{TwoFactorCode: code}); err != nil {
 			c.Close()
