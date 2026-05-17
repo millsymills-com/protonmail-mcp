@@ -42,7 +42,7 @@ func runLogin(
 	in := session.LoginInput{Username: username, Password: password}
 
 	err = sess.Login(ctx, in)
-	if err != nil && strings.Contains(err.Error(), "2FA required") {
+	if err != nil && errors.Is(err, session.ErrTOTPRequired) {
 		_, _ = fmt.Fprintln(stdout)
 		_, _ = fmt.Fprintln(stdout, "2FA is enabled on this account.")
 		_, _ = fmt.Fprintln(stdout,
