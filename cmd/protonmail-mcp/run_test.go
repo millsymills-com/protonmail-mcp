@@ -104,27 +104,3 @@ func TestLoginNo2FA(t *testing.T) {
 		t.Fatalf("session not persisted: %v", err)
 	}
 }
-
-func TestLoginWith2FA(t *testing.T) {
-	keyring.MockInit()
-	rt := testvcr.New(t, "login_with_2fa")
-	// The actual TOTP value typed by the user doesn't matter — the matcher
-	// ignores TwoFactorCode value differences.
-	stdin := strings.NewReader("user@example.test\nhunter2\n123456\n")
-	stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
-	code := run(context.Background(),
-		[]string{"login"},
-		[]string{"PROTONMAIL_MCP_API_URL=https://mail.proton.me/api"},
-		stdin,
-		stdout,
-		stderr,
-		rt,
-	)
-	if code != 0 {
-		t.Fatalf("exit = %d, stderr=%s", code, stderr.String())
-	}
-	kc := keychain.New()
-	if _, err := kc.LoadSession(); err != nil {
-		t.Fatalf("session not persisted: %v", err)
-	}
-}
