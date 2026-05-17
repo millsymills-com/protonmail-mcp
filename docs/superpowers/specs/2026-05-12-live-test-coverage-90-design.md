@@ -171,7 +171,7 @@ One cassette per case, asserting the structured-output envelope:
 
 ### Refresh drift
 
-- `make verify-cassettes` warns when `recorded_at` is older than 90 days or `go_proton_api_version` mismatches `go.mod`. Warn-only by default. (A `STRICT=1` upgrade-to-error mode was specified but is not yet implemented in `cmd/testvcr-lint`; tracked in residual spec drift, see followup issue.)
+- `make verify-cassettes` warns when `recorded_at` is older than 90 days or `go_proton_api_version` mismatches `go.mod`. Warn-only by default; set `STRICT=1` in the env to promote those soft findings to a non-zero exit so CI gates or pre-release runs can require a fully fresh cassette tree. Implemented in `cmd/testvcr-lint/main.go` (`classifyExitCode`).
 
 ## Testing strategy
 
