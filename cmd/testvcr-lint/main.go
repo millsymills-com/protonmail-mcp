@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -34,20 +35,36 @@ func main() {
 		return
 	}
 	findings := testvcr.Scan(roots...)
-	if len(findings) == 0 {
-		return
+	if classifyExitCode(findings, os.Getenv("STRICT") == "1", os.Stderr) != 0 {
+		os.Exit(1)
 	}
-	strict := os.Getenv("STRICT") == "1"
+}
+
+// classifyExitCode prints findings to out and returns the process exit code:
+//   - 0 when there are no findings, or when only soft-rule findings exist and
+//     strict is false;
+//   - 1 when any hard-rule finding is present, or when strict=true and any
+//     finding (hard or soft) is present.
+//
+// Soft rules (currently `stale-cassette` and `version-drift`) are advisory
+// because they depend on time/version drift rather than secrets leaking into
+// cassettes. STRICT=1 promotes them to errors so CI gates and pre-release
+// runs can require a fully fresh cassette tree.
+func classifyExitCode(findings []testvcr.Finding, strict bool, out io.Writer) int {
+	if len(findings) == 0 {
+		return 0
+	}
 	hardErr := false
 	for _, f := range findings {
-		fmt.Fprintf(os.Stderr, "%s:%d [%s] %s\n", f.Path, f.Line, f.Rule, f.Hit)
+		_, _ = fmt.Fprintf(out, "%s:%d [%s] %s\n", f.Path, f.Line, f.Rule, f.Hit)
 		if !softRules[f.Rule] {
 			hardErr = true
 		}
 	}
 	if hardErr || strict {
-		os.Exit(1)
+		return 1
 	}
+	return 0
 }
 
 // findCassetteRoots walks base looking for any directory whose path ends in

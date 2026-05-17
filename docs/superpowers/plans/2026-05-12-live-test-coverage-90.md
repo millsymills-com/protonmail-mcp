@@ -1543,7 +1543,7 @@ func recordWhoamiHappy(ctx context.Context) error {
 	}
 	defer logoutAndClear(ctx, kc)
 
-	sess := session.New(os.Getenv("PROTONMAIL_MCP_API_URL_OVERRIDE_OR_DEFAULT"), kc, session.WithTransport(rt))
+	sess := session.New(os.Getenv("PROTONMAIL_MCP_API_URL"), kc, session.WithTransport(rt))
 	c, err := sess.Client(ctx)
 	if err != nil {
 		return err
