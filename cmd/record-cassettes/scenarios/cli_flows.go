@@ -18,10 +18,7 @@ const cliCassetteDir = "cmd/protonmail-mcp/testdata/cassettes"
 func init() {
 	Register("status_logged_in", recordStatusLoggedIn)
 	Register("login_no_2fa", func(ctx context.Context) error {
-		return recordLogin(ctx, "login_no_2fa", cliCassetteDir, false)
-	})
-	Register("login_with_2fa", func(ctx context.Context) error {
-		return recordLogin(ctx, "login_with_2fa", cliCassetteDir, true)
+		return recordLogin(ctx, "login_no_2fa", cliCassetteDir)
 	})
 }
 
@@ -56,7 +53,7 @@ func recordStatusLoggedIn(ctx context.Context) (retErr error) {
 	return err
 }
 
-func recordLogin(ctx context.Context, scenario, cassetteDir string, twoFA bool) (retErr error) {
+func recordLogin(ctx context.Context, scenario, cassetteDir string) (retErr error) {
 	target := filepath.Join(cassetteDir, scenario)
 	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 		return err
@@ -73,26 +70,21 @@ func recordLogin(ctx context.Context, scenario, cassetteDir string, twoFA bool) 
 
 	email := os.Getenv("RECORD_EMAIL")
 	password := os.Getenv("RECORD_PASSWORD")
-	totpSecret := os.Getenv("RECORD_TOTP_SECRET")
 	if email == "" || password == "" {
 		return fmt.Errorf("RECORD_EMAIL or RECORD_PASSWORD unset")
 	}
-	if twoFA && totpSecret == "" {
-		return fmt.Errorf("login_with_2fa: RECORD_TOTP_SECRET unset")
-	}
-	if !twoFA && totpSecret != "" {
+	if os.Getenv("RECORD_TOTP_SECRET") != "" {
 		return fmt.Errorf(
 			"login_no_2fa: RECORD_TOTP_SECRET is set but this scenario expects 2FA OFF; " +
-				"either clear the env var temporarily or use login_with_2fa instead",
+				"clear the env var to record against a non-2FA account",
 		)
 	}
 
 	kc := keychain.New()
 	sess := session.New(defaultAPIURL(), kc, session.WithTransport(rt))
 	in := session.LoginInput{
-		Username:   email,
-		Password:   password,
-		TOTPSecret: totpSecret,
+		Username: email,
+		Password: password,
 	}
 	if err := sess.Login(ctx, in); err != nil {
 		return err

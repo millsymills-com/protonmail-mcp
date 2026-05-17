@@ -2,7 +2,7 @@
 
 Status: shipped (as-built record). Original date 2026-05-12; banner added 2026-05-16.
 
-> **As-built note.** This plan was authored on 2026-05-12 and shipped via PRs #62 / #66 / #67 / #69 / #70. The text below is preserved as the design-time record and remains forward-looking in voice ("Create", "Modify"); consult `git log` and the corrected spec at `docs/superpowers/specs/2026-05-12-live-test-coverage-90-design.md` for what actually landed. Phase 1 scaffolded 35 recording scenarios — the recording pass itself plus tasks T43 (retire `integration_test.go`) and T45 (CI coverage gate) are tracked in #63.
+> **As-built note.** This plan was authored on 2026-05-12 and shipped via PRs #62 / #66 / #67 / #69 / #70. The text below is preserved as the design-time record and remains forward-looking in voice ("Create", "Modify"); consult `git log` and the corrected spec at `docs/superpowers/specs/2026-05-12-live-test-coverage-90-design.md` for what actually landed. Phase 1 scaffolded 34 recording scenarios — the recording pass itself plus tasks T43 (retire `integration_test.go`) and T45 (CI coverage gate) are tracked in #63. Task 23 (`login_with_2fa`) is deferred — the recording context for #63 isn't 2FA-enabled; restore the scenario when recording against a 2FA-enabled context.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -2639,7 +2639,9 @@ git commit -m "test(cmd): cassette-backed login flow without 2FA"
 
 ---
 
-### Task 23: CLI test — `protonmail-mcp login` with 2FA
+### Task 23: CLI test — `protonmail-mcp login` with 2FA *(deferred)*
+
+> **Deferred 2026-05-17.** The recording context for #63 isn't 2FA-enabled, so this scenario cannot be recorded in the current pass. The `TestLoginWith2FA` test and `login_with_2fa` recorder registration have been removed; the matcher/scrub/lint support for `TwoFactorCode` is retained for when this is re-enabled. Restore the test + recorder registration when a 2FA-enabled recording context is available.
 
 Same shape as Task 22 but the scenario uses `RECORD_TOTP_SECRET` and the test stdin includes the TOTP code prompt. Since TOTP codes rotate every 30 seconds, the matcher must treat the TOTP field as opaque — extend the scrub pipeline to scrub `TwoFactorCode` and add it to `srpIgnoredKeys` in `matcher.go`.
 
