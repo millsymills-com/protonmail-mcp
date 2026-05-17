@@ -34,7 +34,21 @@ type Session struct {
 	raw     *rawClient
 	kc      keychainStore
 	current keychain.Session
+	// poisoned indicates the in-process Session and the keychain are known
+	// to be in inconsistent states because a Login persist rollback's Clear
+	// itself failed. Subsequent operations that would otherwise read from
+	// the keychain (e.g. cold-start refresh in Client) short-circuit until
+	// the user re-runs Logout (which retries Clear) or Login (which writes
+	// fresh state).
+	poisoned bool
 }
+
+// ErrSessionInconsistent is returned when a prior Login persist rollback
+// failed to clear the keychain, so the in-memory and on-disk state diverge.
+// The hint is to invoke Logout (which retries Clear) and Login again.
+var ErrSessionInconsistent = errors.New(
+	"session state inconsistent (prior login rollback failed to clear keychain); " +
+		"run `protonmail-mcp logout` then `protonmail-mcp login`")
 
 type Option func(*config)
 
@@ -101,12 +115,23 @@ func (s *Session) Client(ctx context.Context) (*proton.Client, error) {
 	if s.client != nil {
 		return s.client, nil
 	}
+	if s.poisoned {
+		return nil, ErrSessionInconsistent
+	}
 	sess, err := s.kc.LoadSession()
 	if err != nil {
 		return nil, fmt.Errorf("%w — run `protonmail-mcp login`", proterr.ErrNoSession)
 	}
 	c, refreshed, err := s.mgr.NewClientWithRefresh(ctx, sess.UID, sess.RefreshToken)
 	if err != nil {
+		// If Proton rejected the stored refresh token (typical after server-
+		// side session invalidation, e.g. another login closed it), proterr
+		// will surface a proton/auth_required Error pointing the user at
+		// `protonmail-mcp login`. Forward it so the user sees a stable code +
+		// hint instead of "refresh session: <opaque proton api error>".
+		if pe := proterr.Map(err); pe != nil && pe.Code == "proton/auth_required" {
+			return nil, pe
+		}
 		return nil, fmt.Errorf("refresh session: %w", err)
 	}
 	c.AddAuthHandler(func(a proton.Auth) {
@@ -174,7 +199,13 @@ func (s *Session) Logout() error {
 	}
 	s.current = keychain.Session{}
 	s.raw.setAuth("", "")
-	return s.kc.Clear()
+	if err := s.kc.Clear(); err != nil {
+		// Leave poisoned flag set if it was set — Clear failed again, so
+		// state is still inconsistent.
+		return err
+	}
+	s.poisoned = false
+	return nil
 }
 
 type LoginInput struct {
@@ -224,7 +255,7 @@ func (s *Session) Login(ctx context.Context, in LoginInput) error {
 		AccessToken:  auth.AccessToken,
 		RefreshToken: auth.RefreshToken,
 	}
-	if err := persistLoginState(s.kc, keychain.Creds{
+	if err := s.persistLoginState(keychain.Creds{
 		Username:   in.Username,
 		Password:   in.Password,
 		TOTPSecret: in.TOTPSecret,
@@ -243,29 +274,35 @@ func (s *Session) Login(ctx context.Context, in LoginInput) error {
 // keychain. On any failure between starting and finishing those two writes,
 // it rolls back via kc.Clear() so the keychain does not end up holding a
 // password without a matching session (or vice versa). The original cause is
-// preserved; a rollback failure is folded in via errors.Join.
+// preserved; a rollback failure is folded in via errors.Join, and the
+// Session is marked poisoned so subsequent in-process operations short-
+// circuit with ErrSessionInconsistent instead of acting on stale keychain
+// state.
+//
+// Caller must hold s.mu.Lock(); this method writes s.poisoned.
 //
 // Trade-off: rollback clears to the *empty* state, not to whatever was
 // present before Login was invoked. Re-logging in over a prior successful
 // login with bad new credentials will leave the keychain empty rather than
 // restored to the prior state. Snapshotting the prior state is out of scope.
-func persistLoginState(kc keychainStore, creds keychain.Creds, sess keychain.Session) error {
-	if err := kc.SaveCreds(creds); err != nil {
-		return rollbackLoginPersist(kc, "save creds", err)
+func (s *Session) persistLoginState(creds keychain.Creds, sess keychain.Session) error {
+	if err := s.kc.SaveCreds(creds); err != nil {
+		return s.rollbackLoginPersist("save creds", err)
 	}
-	if err := kc.SaveSession(sess); err != nil {
-		return rollbackLoginPersist(kc, "save session", err)
+	if err := s.kc.SaveSession(sess); err != nil {
+		return s.rollbackLoginPersist("save session", err)
 	}
 	return nil
 }
 
-func rollbackLoginPersist(kc keychainStore, op string, cause error) error {
+func (s *Session) rollbackLoginPersist(op string, cause error) error {
 	primary := fmt.Errorf("%s: %w", op, cause)
-	if rerr := kc.Clear(); rerr != nil {
+	if rerr := s.kc.Clear(); rerr != nil {
 		// Clear failed — keychain may hold partial state that can't be
-		// reconciled here. Surface a recovery hint so the user knows to
-		// invoke `protonmail-mcp logout` (which re-tries Clear) before
-		// the next login attempt.
+		// reconciled here. Mark the Session poisoned so Client/Raw fail
+		// loud with ErrSessionInconsistent, and surface a recovery hint
+		// pointing the user at Logout (which re-tries Clear).
+		s.poisoned = true
 		return errors.Join(primary, fmt.Errorf(
 			"login rollback: %w (keychain may be inconsistent; run `protonmail-mcp logout` to clear)",
 			rerr))
