@@ -26,6 +26,7 @@ coverage.txt
 *.fuzz-corpus.local/
 
 # Recording
+.env
 .env.record
 cov.out
 cov.out.func
