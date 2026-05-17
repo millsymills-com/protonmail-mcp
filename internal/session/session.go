@@ -17,12 +17,22 @@ import (
 	"github.com/millsmillsymills/protonmail-mcp/internal/proterr"
 )
 
+// keychainStore is the minimal persistence surface Session needs.
+// *keychain.Keychain satisfies it; tests inject failure-injecting wrappers.
+type keychainStore interface {
+	SaveCreds(keychain.Creds) error
+	LoadCreds() (keychain.Creds, error)
+	SaveSession(keychain.Session) error
+	LoadSession() (keychain.Session, error)
+	Clear() error
+}
+
 type Session struct {
 	mu      sync.RWMutex
 	mgr     *proton.Manager
 	client  *proton.Client
 	raw     *rawClient
-	kc      *keychain.Keychain
+	kc      keychainStore
 	current keychain.Session
 }
 
@@ -37,7 +47,7 @@ func WithTransport(rt http.RoundTripper) Option {
 	return func(c *config) { c.transport = rt }
 }
 
-func New(apiURL string, kc *keychain.Keychain, opts ...Option) *Session {
+func New(apiURL string, kc keychainStore, opts ...Option) *Session {
 	var cfg config
 	for _, o := range opts {
 		o(&cfg)
@@ -214,21 +224,51 @@ func (s *Session) Login(ctx context.Context, in LoginInput) error {
 		AccessToken:  auth.AccessToken,
 		RefreshToken: auth.RefreshToken,
 	}
-	if err := s.kc.SaveCreds(keychain.Creds{
+	if err := persistLoginState(s.kc, keychain.Creds{
 		Username:   in.Username,
 		Password:   in.Password,
 		TOTPSecret: in.TOTPSecret,
-	}); err != nil {
+	}, next); err != nil {
 		c.Close()
-		return fmt.Errorf("save creds: %w", err)
-	}
-	if err := s.kc.SaveSession(next); err != nil {
-		c.Close()
-		return fmt.Errorf("save session: %w", err)
+		return err
 	}
 
 	s.client = c
 	s.current = next
 	s.raw.setAuth(next.AccessToken, next.UID)
 	return nil
+}
+
+// persistLoginState writes credentials and the post-auth session to the
+// keychain. On any failure between starting and finishing those two writes,
+// it rolls back via kc.Clear() so the keychain does not end up holding a
+// password without a matching session (or vice versa). The original cause is
+// preserved; a rollback failure is folded in via errors.Join.
+//
+// Trade-off: rollback clears to the *empty* state, not to whatever was
+// present before Login was invoked. Re-logging in over a prior successful
+// login with bad new credentials will leave the keychain empty rather than
+// restored to the prior state. Snapshotting the prior state is out of scope.
+func persistLoginState(kc keychainStore, creds keychain.Creds, sess keychain.Session) error {
+	if err := kc.SaveCreds(creds); err != nil {
+		return rollbackLoginPersist(kc, "save creds", err)
+	}
+	if err := kc.SaveSession(sess); err != nil {
+		return rollbackLoginPersist(kc, "save session", err)
+	}
+	return nil
+}
+
+func rollbackLoginPersist(kc keychainStore, op string, cause error) error {
+	primary := fmt.Errorf("%s: %w", op, cause)
+	if rerr := kc.Clear(); rerr != nil {
+		// Clear failed — keychain may hold partial state that can't be
+		// reconciled here. Surface a recovery hint so the user knows to
+		// invoke `protonmail-mcp logout` (which re-tries Clear) before
+		// the next login attempt.
+		return errors.Join(primary, fmt.Errorf(
+			"login rollback: %w (keychain may be inconsistent; run `protonmail-mcp logout` to clear)",
+			rerr))
+	}
+	return primary
 }
