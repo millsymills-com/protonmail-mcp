@@ -22,6 +22,7 @@ coverage.txt
 
 # Worktrees
 .worktrees/
+.claire/
 *.fuzz-corpus.local/
 
 # Recording
