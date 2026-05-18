@@ -1,0 +1,184 @@
+---
+version: 2
+interactions:
+    - id: 0
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 319
+        host: mail.proton.me
+        body: '{"GrantType":"refresh_token","RedirectURI":"https://protonmail.ch","RefreshToken":"REDACTED_REFRESHTOKEN_1","ResponseType":"token","State":"�6�%��\u000b�v���[��brɥ���#1\u001c\u0012�uY\u0005a\u0002","UID":"REDACTED_UID_1"}'
+        headers:
+            Content-Type:
+                - application/json
+            User-Agent:
+                - go-resty/2.10.0 (https://github.com/go-resty/resty)
+            X-Pm-Appversion:
+                - macos-bridge@3.24.1
+        url: https://mail.proton.me/api/auth/v4/refresh
+        method: POST
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: -1
+        uncompressed: true
+        body: '{"AccessToken":"REDACTED_ACCESSTOKEN_1","Code":1000,"ExpiresIn":86399,"LocalID":0,"RefreshCounter":9,"RefreshToken":"REDACTED_REFRESHTOKEN_1","Scope":"full self parent user loggedin paid nondelinquent mail verified settings","Scopes":["full","self","parent","user","loggedin","paid","nondelinquent","mail","verified","settings"],"TokenType":"Bearer","UID":"REDACTED_UID_2","Uid":"REDACTED_UID_1"}'
+        headers:
+            Access:
+                - application/vnd.protonmail.api+json;apiversion=4
+            Cache-Control:
+                - max-age=0, must-revalidate, no-cache, no-store, private
+            Content-Security-Policy:
+                - 'default-src ''self''; media-src ''self'' blob:; connect-src ''self'' blob: https://proton.me https://*.proton.me; script-src ''self'' ''wasm-unsafe-eval'' blob: ''sha256-eAhF1Kdccp0BTXM6nMW7SYBdV0c3fZwzcC177TQ692g=''; style-src ''self'' ''unsafe-inline''; img-src http: https: data: blob: cid:; frame-src ''self'' blob: https://mail-api.proton.me https://account.proton.me https://verify.proton.me https://calendar.proton.me https://drive.proton.me https://proton.me; object-src ''self'' blob:; child-src ''self'' data: blob:; report-uri https://reports.proton.me/reports/csp; frame-ancestors https://calendar.proton.me https://drive.proton.me;'
+            Content-Type:
+                - application/json
+            Date:
+                - Mon, 18 May 2026 18:08:23 GMT
+            Expect-Ct:
+                - max-age=2592000, enforce, report-uri="https://reports.proton.me/reports/tls"
+            Expires:
+                - Fri, 04 May 1984 22:15:00 GMT
+            Public-Key-Pins-Report-Only:
+                - pin-sha256="CT56BhOTmj5ZIPgb/xD5mH8rY3BLo/MlhP7oPyJUEDo="; pin-sha256="35Dx28/uzN3LeltkCBQ8RHK0tlNSa2kCpCRGNp34Gxc="; report-uri="https://reports.proton.me/reports/tls"
+            Referrer-Policy:
+                - strict-origin-when-cross-origin
+            Set-Cookie:
+                - REDACTED
+            Strict-Transport-Security:
+                - max-age=31536000; includeSubDomains; preload
+            Vary:
+                - Accept-Encoding
+            X-Content-Type-Options:
+                - nosniff
+            X-Permitted-Cross-Domain-Policies:
+                - none
+            X-Xss-Protection:
+                - "0"
+        status: 200 OK
+        code: 200
+        duration: 275.262375ms
+    - id: 1
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 44
+        host: mail.proton.me
+        body: '{"Desc":1,"Page":0,"PageSize":1,"Sort":"ID"}'
+        headers:
+            Authorization:
+                - REDACTED
+            Content-Type:
+                - application/json
+            User-Agent:
+                - go-resty/2.10.0 (https://github.com/go-resty/resty)
+            X-Http-Method-Override:
+                - GET
+            X-Pm-Appversion:
+                - macos-bridge@3.24.1
+            X-Pm-Uid:
+                - REDACTED
+        url: https://mail.proton.me/api/mail/v4/messages
+        method: POST
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: -1
+        uncompressed: true
+        body: "{\"Code\":1000,\"Limit\":508,\"Messages\":[{\"AddressID\":\"FLZjEknB7xrZs-yaNsNO2fuDzZe2vIfQ6Hy0hFWvVOqJn_kV_UnRm4j4E5sxK6ACjHXwbzxnsaZ2sePs_3Xf7w==\",\"AttachmentInfo\":{},\"AttachmentsMetadata\":[],\"BCCList\":[],\"BimiSelector\":null,\"CCList\":[],\"CategoryID\":\"25\",\"ConversationID\":\"VwL165WojCVDK_RJ_mBoV20jdS8RLgLZ9H1PmSvbMMli3Af5lpBeVv707lLu8FBut42rVq2JEcV1AbTtbPy7cw==\",\"DisplaySenderImage\":1,\"DisplaySnoozedReminder\":false,\"ExpirationTime\":1781717779,\"ExternalID\":\"2123007882.7101029.1779125769632@marketo-platform--email-sender-prod-batch-cluster-5c5f9b9fr42v6\",\"Flags\":276824065,\"ID\":\"WAD7HQfBCjQTXE8eml_r8DMgAehOz8QfjpD10i9jm5Kwjur9_ZBXkPEOX7m7elPjo2UcPHvpPhZ7A74mSIVdMg==\",\"IsEncrypted\":2,\"IsForwarded\":0,\"IsProton\":0,\"IsReplied\":0,\"IsRepliedAll\":0,\"LabelIDs\":[\"4\",\"5\",\"25\"],\"NewsletterSubscriptionID\":\"ngZ2bJFV-i_lY1005OpbX-kpYEH3YG_FdZ_BcQYcxlFJLKE0x5ahJu27nIL3rFtV1TBMDSsjrAWM8n-mBTLRbA==\",\"NumAttachments\":0,\"Order\":403894499982,\"Sender\":{\"Address\":\"Newsletter@email.msccruisesusa.com\",\"BimiSelector\":null,\"DisplaySenderImage\":1,\"IsProton\":0,\"IsSimpleLogin\":0,\"Name\":\"MSC Cruises\"},\"SenderAddress\":\"Newsletter@email.msccruisesusa.com\",\"SenderName\":\"MSC Cruises\",\"Size\":11884,\"SnoozeTime\":0,\"SpamScore\":0,\"Subject\":\"News Alert! Discover MSC World Atlantic's Seven Districts \U0001F6A2\",\"Time\":1779125770,\"ToList\":[{\"Address\":\"leslie@example.test\",\"Group\":\"\",\"IsProton\":0,\"Name\":\"\"}],\"Type\":0,\"Unread\":1}],\"Stale\":0,\"Total\":508}"
+        headers:
+            Access:
+                - application/vnd.protonmail.api+json;apiversion=4
+            Cache-Control:
+                - max-age=0, must-revalidate, no-cache, no-store, private
+            Content-Security-Policy:
+                - 'default-src ''self''; media-src ''self'' blob:; connect-src ''self'' blob: https://proton.me https://*.proton.me; script-src ''self'' ''wasm-unsafe-eval'' blob: ''sha256-eAhF1Kdccp0BTXM6nMW7SYBdV0c3fZwzcC177TQ692g=''; style-src ''self'' ''unsafe-inline''; img-src http: https: data: blob: cid:; frame-src ''self'' blob: https://mail-api.proton.me https://account.proton.me https://verify.proton.me https://calendar.proton.me https://drive.proton.me https://proton.me; object-src ''self'' blob:; child-src ''self'' data: blob:; report-uri https://reports.proton.me/reports/csp; frame-ancestors https://calendar.proton.me https://drive.proton.me;'
+            Content-Type:
+                - application/json
+            Date:
+                - Mon, 18 May 2026 18:08:23 GMT
+            Expect-Ct:
+                - max-age=2592000, enforce, report-uri="https://reports.proton.me/reports/tls"
+            Expires:
+                - Fri, 04 May 1984 22:15:00 GMT
+            Public-Key-Pins-Report-Only:
+                - pin-sha256="CT56BhOTmj5ZIPgb/xD5mH8rY3BLo/MlhP7oPyJUEDo="; pin-sha256="35Dx28/uzN3LeltkCBQ8RHK0tlNSa2kCpCRGNp34Gxc="; report-uri="https://reports.proton.me/reports/tls"
+            Referrer-Policy:
+                - strict-origin-when-cross-origin
+            Set-Cookie:
+                - REDACTED
+            Strict-Transport-Security:
+                - max-age=31536000; includeSubDomains; preload
+            Vary:
+                - Accept-Encoding
+            X-Content-Type-Options:
+                - nosniff
+            X-Permitted-Cross-Domain-Policies:
+                - none
+            X-Xss-Protection:
+                - "0"
+        status: 200 OK
+        code: 200
+        duration: 525.142625ms
+    - id: 2
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        host: mail.proton.me
+        headers:
+            Authorization:
+                - REDACTED
+            User-Agent:
+                - go-resty/2.10.0 (https://github.com/go-resty/resty)
+            X-Pm-Appversion:
+                - macos-bridge@3.24.1
+            X-Pm-Uid:
+                - REDACTED
+        url: https://mail.proton.me/api/mail/v4/messages/WAD7HQfBCjQTXE8eml_r8DMgAehOz8QfjpD10i9jm5Kwjur9_ZBXkPEOX7m7elPjo2UcPHvpPhZ7A74mSIVdMg==
+        method: GET
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: -1
+        uncompressed: true
+        body: "{\"Code\":1000,\"Message\":{\"AddressID\":\"FLZjEknB7xrZs-yaNsNO2fuDzZe2vIfQ6Hy0hFWvVOqJn_kV_UnRm4j4E5sxK6ACjHXwbzxnsaZ2sePs_3Xf7w==\",\"AttachmentInfo\":{},\"Attachments\":[],\"AttachmentsMetadata\":[],\"BCCList\":[],\"BimiSelector\":null,\"Body\":\"[REDACTED PGP MESSAGE]\\n\",\"CCList\":[],\"CategoryID\":\"25\",\"ConversationID\":\"VwL165WojCVDK_RJ_mBoV20jdS8RLgLZ9H1PmSvbMMli3Af5lpBeVv707lLu8FBut42rVq2JEcV1AbTtbPy7cw==\",\"DisplaySenderImage\":1,\"DisplaySnoozedReminder\":false,\"ExpirationTime\":1781717779,\"ExternalID\":\"2123007882.7101029.1779125769632@marketo-platform--email-sender-prod-batch-cluster-5c5f9b9fr42v6\",\"Flags\":276824065,\"Header\":\"Return-Path: <271-DJN-199.0.290400.0.0.164027.9.257926404-34@bounce2.msccruises.com>\\r\\nX-Original-To: leslie@example.test\\r\\nDelivered-To: mills@example.test\\r\\nAuthentication-Results: mail.protonmail.ch; dkim=pass (Good 1024 bit\\r\\n    rsa-sha256 signature) header.d=email.msccruisesusa.com\\r\\n    header.i=@email.msccruisesusa.com header.a=rsa-sha256; dkim=pass (Good\\r\\n    1024 bit rsa-sha256 signature) header.d=mktdns.com header.i=@mktdns.com\\r\\n    header.a=rsa-sha256\\r\\nAuthentication-Results: mail.protonmail.ch; dmarc=pass (p=reject dis=none)\\r\\n header.from=email.msccruisesusa.com\\r\\nAuthentication-Results: mail.protonmail.ch; spf=pass smtp.mailfrom=bounce2.msccruises.com\\r\\nAuthentication-Results: mail.protonmail.ch; arc=none smtp.remote-ip=185.28.196.2\\r\\nAuthentication-Results: mail.protonmail.ch; dkim=pass (1024-bit key)\\r\\n header.d=email.msccruisesusa.com header.i=@email.msccruisesusa.com header.b=\\\"YmQmj33A\\\";\\r\\n dkim=pass (1024-bit key) header.d=mktdns.com header.i=@mktdns.com header.b=\\\"KNnEwN1H\\\"\\r\\nReceived: from bounce2.msccruises.com (bounce2.msccruises.com [185.28.196.2]) (using\\r\\n TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits)) (No client certificate\\r\\n requested) by mailinosl107.protonmail.ch (Postfix) with ESMTPS id 4gK4j652R4z3h for\\r\\n <leslie@example.test>; Mon, 18 May 2026 17:36:10 +0000 (UTC)\\r\\nX-Msfbl: FyOph8HufRnq4spUpMo06/NNlsFOqjq3xZL15HIfyyo=|eyJnIjoiYmctbG9uZC0\\r\\n xMyIsInUiOiIyNzEtREpOLTE5OTowOjQ1MDQ5OjE0NjEwMzoxNDc3OTI3OjE2NDA\\r\\n yNzo5OjI5MDQwMDoyNTc5MjY0MDQtMzQiLCJyIjoibGVzbGllQG1pbGxzeW1pbGx\\r\\n zLmNvbSIsImIiOiJkdnAtMTg1LTI4LTE5Ni0yIn0=\\r\\nDkim-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; t=1779125769; s=m1;\\r\\n d=email.msccruisesusa.com; i=@email.msccruisesusa.com;\\r\\n h=List-Unsubscribe:List-Unsubscribe-Post:Content-Type:MIME-Version:Subject:To:From:Date;\\r\\n bh=ZkUOlklPJkUA2saGGZalCk+vyYqNqihB2hY9JCq97xI=;\\r\\n b=YmQmj33AdsJTsG+BELDmy4NQERWBCOJ2vwhDtn2LJdmeqRY2QpH5rMzCEPov+emC\\r\\n BMLHPWQqDkjgXq16WnYO47B6s4DY/G2+3aP6dUKU8EBZ4w0WreMWeYMfULNcQR0WG/2\\r\\n mwa/qzrJAkldEgUGqVOFO7ciSq/l3rB89oychcZc=\\r\\nDkim-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; t=1779125769; s=m1;\\r\\n d=mktdns.com; i=@mktdns.com;\\r\\n h=List-Unsubscribe:List-Unsubscribe-Post:Content-Type:MIME-Version:Subject:To:From:Date;\\r\\n bh=ZkUOlklPJkUA2saGGZalCk+vyYqNqihB2hY9JCq97xI=;\\r\\n b=KNnEwN1H4f5ROBKQzP5/zPQysJ9cqnemn0bEv/DfWmyy9b6B6SV38y9VT9JbHXkH\\r\\n DDeaUiZQoIwjGZdb3qOmuMmjJucb+dB98/28DKak+IkAlok4wyD5Rr5Fqx2Hk+x/GTh\\r\\n 16bDa99aMcWr9/ZY4NEPxtyLXjzFvwfxq1ScwdCk=\\r\\nDate: Mon, 18 May 2026 12:36:09 -0500\\r\\nFrom: MSC Cruises <Newsletter@email.msccruisesusa.com>\\r\\nReply-To: noreply@msccruises.com\\r\\nTo: leslie@example.test\\r\\nMessage-Id: <2123007882.7101029.1779125769632@marketo-platform--email-sender-prod-batch-cluster-5c5f9b9fr42v6>\\r\\nSubject: =?utf-8?Q?News_Alert!_Discover_MSC_World_Atlantic's_Seven_Districts_=F0=9F=9A=A2?=\\r\\nMime-Version: 1.0\\r\\nContent-Type: text/html\\r\\nX-Binding: bg-lond-13\\r\\nList-Unsubscribe-Post: List-Unsubscribe=One-Click\\r\\nList-Unsubscribe: <https://go.msccruises.com/u/MjcxLURKTi0xOTkAAAGh2yGFkuJ2Uswq-mHpsblk793AfFZrBKfD5AAxiVF0mJ4fIdkUtquL1HGR-Tu2DS-rc708AWk=?emailAddress=MjcxLURKTi0xOTkAAAGh2yGFkktpWdvYidinrCGgd_0HpT41PE_9-SDNhsKHgq7DG1WgH4vaxTSNRtnyMnDbT2uSyMEp>,\\r\\n <mailto:INFHM6CMHBXXES2SKQ4W4VBSPFHUU53XNUYEUU2UNRFFC6SSKM2GUZ3FGZCHQ4SDOZXG6PI=.290400.164027.9@unsub-lon.mktomail.com>\\r\\nX-Marketoid: 271-DJN-199:0:45049:146103:1477927:164027:9:290400:257926404-34\\r\\nX-Pviq: mkto-271DJN199-000001-000000-290400\\r\\nX-Mailfrom: 271-DJN-199.0.290400.0.0.164027.9.257926404-34@bounce2.msccruises.com\\r\\nX-Mktarchive: false\\r\\nX-Msys-Api: {\\\"options\\\":{\\\"open_tracking\\\":false,\\\"click_tracking\\\":false}}\\r\\nX-Mktmaildkim: true\\r\\nX-Pm-Spam: 0yezJI6YSpyJec91ztFGcjIwoJyLCvXBZcQniisnOERJt9TTVOUdSRQUiwslOjLdFJEL\\r\\n CN0lSXZ1BElETjIbpAuLTsV0MIRkLf1USkVMFRfSUiVUQOsltx4CMSXiwVBSESEVRXZ0Sf10TERGlV\\r\\n SRkUU5RXR0PJFUTlTiMswOldjJLLJCIM1EV0XPZRfTlXE9TXN0PSRlTVQUNpbIjsF0MIhkUfxUTUTT\\r\\n VFHU06SIRWBzdNJCL0UJd9GRFNk9UX10UI9VQUREFIiRVwlsOXwSiWNkUFRJ99NTlJ1BUSV0fiMDSl\\r\\n OwsIxLCuDUOMgju2kTMjLgIlzbGkGVdIlGusdHImLh1xzaWrGlcZ5SuiQXZSXiwNWUkJF9RT9lNJB1\\r\\n U0SfVwiV0wlsOXwSiGB1U0XFh9fTETEFUUIy6w0yWSXiwBGU1B1BXUM1itslOFMs0RfIlN0FSXh0Uf\\r\\n xUTkRO99JVFBlZTTlEEbpjIFM91JzLCy29YZIS6iwCM2cvNVkcmwjoILJj9zJCLic6IJheyp3RYb42\\r\\n izJiOGctFwiIifWxbcN2viUmcnOisJPUF6CIROwSiPJFUFRQ9VEUkUUNSS9UOxojICLSJI6UyuTELM\\r\\n ETsBNlIjIwoIsLjkl9IZJW1p91ZmbvZp7IjSlBITQ0iisnOWah1VfZ2tmFbZIS6zhmIGdjF9ma1lW5\\r\\n aXR31kVmb3X1BIwXzwjYMMAzziwiIWbpF8zbFfHJcb9WkiwWZiOtJlsYWy3BML0Sy2IDMDMwE5wNis\\r\\n CIdI1mhfxWa3MyBByX3i2IbOAjuwADMzMwAk5OTyTkONUz54kDOyMiwFpbWlHRbeRHfi1WZWZkR5na\\r\\n Wv21XZVGsiojIWa05xvZmvXQYbVXsslGdWan5FsdW1WULLNXtsxWYiIiw9zcFtGFcIojwzkjLDMxYc\\r\\n 0Nz5TYOMATwsUTOnIfBBhc3iV9bYNXlwojIjLzkYxMD0zcNOYT5wATMTOsUBfInp3dcdNGovR3X3Xo\\r\\n BNoaXnW5aIojwwAjLDMykA2MTzDUOOQD03kTNTOsQJ1Inul9bY1WliojIWYsxZlLW1XRYcVmz1BXL3\\r\\n X3NRjaX9CJaf0XsyNnIWaiQI2OiiTBYNUGwhF2YjMidgyMjjWZNYYmyiM2YfX0=\\r\\nX-Pm-Origin: external\\r\\nX-Pm-Transfer-Encryption: TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits)\\r\\nX-Pm-Content-Encryption: on-delivery\\r\\nX-Pm-Spamscore: 0\\r\\nX-Pm-Spam-Action: spam\\r\\nX-Pm-List-Identifier: @Newsletter@email.msccruisesusa.com\\r\\n\",\"ID\":\"WAD7HQfBCjQTXE8eml_r8DMgAehOz8QfjpD10i9jm5Kwjur9_ZBXkPEOX7m7elPjo2UcPHvpPhZ7A74mSIVdMg==\",\"IsEncrypted\":2,\"IsForwarded\":0,\"IsProton\":0,\"IsReplied\":0,\"IsRepliedAll\":0,\"LabelIDs\":[\"4\",\"5\",\"25\"],\"MIMEType\":\"text/html\",\"NewsletterSubscriptionID\":\"ngZ2bJFV-i_lY1005OpbX-kpYEH3YG_FdZ_BcQYcxlFJLKE0x5ahJu27nIL3rFtV1TBMDSsjrAWM8n-mBTLRbA==\",\"NumAttachments\":0,\"Order\":403894499982,\"ParsedHeaders\":{\"Authentication-Results\":[\"mail.protonmail.ch; dkim=pass (Good 1024 bit    rsa-sha256 signature) header.d=email.msccruisesusa.com    header.i=@email.msccruisesusa.com header.a=rsa-sha256; dkim=pass (Good    1024 bit rsa-sha256 signature) header.d=mktdns.com header.i=@mktdns.com    header.a=rsa-sha256\",\"mail.protonmail.ch; dmarc=pass (p=reject dis=none) header.from=email.msccruisesusa.com\",\"mail.protonmail.ch; spf=pass smtp.mailfrom=bounce2.msccruises.com\",\"mail.protonmail.ch; arc=none smtp.remote-ip=185.28.196.2\",\"mail.protonmail.ch; dkim=pass (1024-bit key) header.d=email.msccruisesusa.com header.i=@email.msccruisesusa.com header.b=\\\"YmQmj33A\\\"; dkim=pass (1024-bit key) header.d=mktdns.com header.i=@mktdns.com header.b=\\\"KNnEwN1H\\\"\"],\"Content-Type\":\"text/html\",\"Date\":\"Mon, 18 May 2026 12:36:09 -0500\",\"Delivered-To\":\"mills@example.test\",\"Dkim-Signature\":[\"v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; t=1779125769; s=m1; d=email.msccruisesusa.com; i=@email.msccruisesusa.com; h=List-Unsubscribe:List-Unsubscribe-Post:Content-Type:MIME-Version:Subject:To:From:Date; bh=ZkUOlklPJkUA2saGGZalCk+vyYqNqihB2hY9JCq97xI=; b=YmQmj33AdsJTsG+BELDmy4NQERWBCOJ2vwhDtn2LJdmeqRY2QpH5rMzCEPov+emC BMLHPWQqDkjgXq16WnYO47B6s4DY/G2+3aP6dUKU8EBZ4w0WreMWeYMfULNcQR0WG/2 mwa/qzrJAkldEgUGqVOFO7ciSq/l3rB89oychcZc=\",\"v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; t=1779125769; s=m1; d=mktdns.com; i=@mktdns.com; h=List-Unsubscribe:List-Unsubscribe-Post:Content-Type:MIME-Version:Subject:To:From:Date; bh=ZkUOlklPJkUA2saGGZalCk+vyYqNqihB2hY9JCq97xI=; b=KNnEwN1H4f5ROBKQzP5/zPQysJ9cqnemn0bEv/DfWmyy9b6B6SV38y9VT9JbHXkH DDeaUiZQoIwjGZdb3qOmuMmjJucb+dB98/28DKak+IkAlok4wyD5Rr5Fqx2Hk+x/GTh 16bDa99aMcWr9/ZY4NEPxtyLXjzFvwfxq1ScwdCk=\"],\"From\":\"MSC Cruises <Newsletter@email.msccruisesusa.com>\",\"List-Unsubscribe\":\"<https://go.msccruises.com/u/MjcxLURKTi0xOTkAAAGh2yGFkuJ2Uswq-mHpsblk793AfFZrBKfD5AAxiVF0mJ4fIdkUtquL1HGR-Tu2DS-rc708AWk=?emailAddress=MjcxLURKTi0xOTkAAAGh2yGFkktpWdvYidinrCGgd_0HpT41PE_9-SDNhsKHgq7DG1WgH4vaxTSNRtnyMnDbT2uSyMEp>, <mailto:INFHM6CMHBXXES2SKQ4W4VBSPFHUU53XNUYEUU2UNRFFC6SSKM2GUZ3FGZCHQ4SDOZXG6PI=.290400.164027.9@unsub-lon.mktomail.com>\",\"List-Unsubscribe-Post\":\"List-Unsubscribe=One-Click\",\"Message-Id\":\"<2123007882.7101029.1779125769632@marketo-platform--email-sender-prod-batch-cluster-5c5f9b9fr42v6>\",\"Mime-Version\":\"1.0\",\"Received\":\"from bounce2.msccruises.com (bounce2.msccruises.com [185.28.196.2]) (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits)) (No client certificate requested) by mailinosl107.protonmail.ch (Postfix) with ESMTPS id 4gK4j652R4z3h for <leslie@example.test>; Mon, 18 May 2026 17:36:10 +0000 (UTC)\",\"Reply-To\":\"noreply@msccruises.com\",\"Return-Path\":\"<271-DJN-199.0.290400.0.0.164027.9.257926404-34@bounce2.msccruises.com>\",\"Subject\":\"News Alert! Discover MSC World Atlantic's Seven Districts \U0001F6A2\",\"To\":\"leslie@example.test\",\"X-Binding\":\"bg-lond-13\",\"X-Mailfrom\":\"271-DJN-199.0.290400.0.0.164027.9.257926404-34@bounce2.msccruises.com\",\"X-Marketoid\":\"271-DJN-199:0:45049:146103:1477927:164027:9:290400:257926404-34\",\"X-Mktarchive\":\"false\",\"X-Mktmaildkim\":\"true\",\"X-Msfbl\":\"FyOph8HufRnq4spUpMo06/NNlsFOqjq3xZL15HIfyyo=|eyJnIjoiYmctbG9uZC0 xMyIsInUiOiIyNzEtREpOLTE5OTowOjQ1MDQ5OjE0NjEwMzoxNDc3OTI3OjE2NDA yNzo5OjI5MDQwMDoyNTc5MjY0MDQtMzQiLCJyIjoibGVzbGllQG1pbGxzeW1pbGx zLmNvbSIsImIiOiJkdnAtMTg1LTI4LTE5Ni0yIn0=\",\"X-Msys-Api\":\"{\\\"options\\\":{\\\"open_tracking\\\":false,\\\"click_tracking\\\":false}}\",\"X-Original-To\":\"leslie@example.test\",\"X-Pm-Content-Encryption\":\"on-delivery\",\"X-Pm-List-Identifier\":\"@Newsletter@email.msccruisesusa.com\",\"X-Pm-Origin\":\"external\",\"X-Pm-Spam\":\"0yezJI6YSpyJec91ztFGcjIwoJyLCvXBZcQniisnOERJt9TTVOUdSRQUiwslOjLdFJEL CN0lSXZ1BElETjIbpAuLTsV0MIRkLf1USkVMFRfSUiVUQOsltx4CMSXiwVBSESEVRXZ0Sf10TERGlV SRkUU5RXR0PJFUTlTiMswOldjJLLJCIM1EV0XPZRfTlXE9TXN0PSRlTVQUNpbIjsF0MIhkUfxUTUTT VFHU06SIRWBzdNJCL0UJd9GRFNk9UX10UI9VQUREFIiRVwlsOXwSiWNkUFRJ99NTlJ1BUSV0fiMDSl OwsIxLCuDUOMgju2kTMjLgIlzbGkGVdIlGusdHImLh1xzaWrGlcZ5SuiQXZSXiwNWUkJF9RT9lNJB1 U0SfVwiV0wlsOXwSiGB1U0XFh9fTETEFUUIy6w0yWSXiwBGU1B1BXUM1itslOFMs0RfIlN0FSXh0Uf xUTkRO99JVFBlZTTlEEbpjIFM91JzLCy29YZIS6iwCM2cvNVkcmwjoILJj9zJCLic6IJheyp3RYb42 izJiOGctFwiIifWxbcN2viUmcnOisJPUF6CIROwSiPJFUFRQ9VEUkUUNSS9UOxojICLSJI6UyuTELM ETsBNlIjIwoIsLjkl9IZJW1p91ZmbvZp7IjSlBITQ0iisnOWah1VfZ2tmFbZIS6zhmIGdjF9ma1lW5 aXR31kVmb3X1BIwXzwjYMMAzziwiIWbpF8zbFfHJcb9WkiwWZiOtJlsYWy3BML0Sy2IDMDMwE5wNis CIdI1mhfxWa3MyBByX3i2IbOAjuwADMzMwAk5OTyTkONUz54kDOyMiwFpbWlHRbeRHfi1WZWZkR5na Wv21XZVGsiojIWa05xvZmvXQYbVXsslGdWan5FsdW1WULLNXtsxWYiIiw9zcFtGFcIojwzkjLDMxYc 0Nz5TYOMATwsUTOnIfBBhc3iV9bYNXlwojIjLzkYxMD0zcNOYT5wATMTOsUBfInp3dcdNGovR3X3Xo BNoaXnW5aIojwwAjLDMykA2MTzDUOOQD03kTNTOsQJ1Inul9bY1WliojIWYsxZlLW1XRYcVmz1BXL3 X3NRjaX9CJaf0XsyNnIWaiQI2OiiTBYNUGwhF2YjMidgyMjjWZNYYmyiM2YfX0=\",\"X-Pm-Spam-Action\":\"spam\",\"X-Pm-Spamscore\":\"0\",\"X-Pm-Transfer-Encryption\":\"TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits)\",\"X-Pviq\":\"mkto-271DJN199-000001-000000-290400\"},\"ReplyTo\":{\"Address\":\"noreply@msccruises.com\",\"Group\":\"\",\"Name\":\"\"},\"ReplyTos\":[{\"Address\":\"noreply@msccruises.com\",\"Group\":\"\",\"Name\":\"\"}],\"Sender\":{\"Address\":\"Newsletter@email.msccruisesusa.com\",\"BimiSelector\":null,\"DisplaySenderImage\":1,\"IsProton\":0,\"IsSimpleLogin\":0,\"Name\":\"MSC Cruises\"},\"SenderAddress\":\"Newsletter@email.msccruisesusa.com\",\"SenderName\":\"MSC Cruises\",\"Size\":11884,\"SnoozeTime\":0,\"SpamScore\":0,\"Subject\":\"News Alert! Discover MSC World Atlantic's Seven Districts \U0001F6A2\",\"Time\":1779125770,\"ToList\":[{\"Address\":\"leslie@example.test\",\"Group\":\"\",\"IsProton\":0,\"Name\":\"\"}],\"Type\":0,\"Unread\":1,\"UnsubscribeMethods\":{\"Mailto\":{\"ToList\":[\"INFHM6CMHBXXES2SKQ4W4VBSPFHUU53XNUYEUU2UNRFFC6SSKM2GUZ3FGZCHQ4SDOZXG6PI=.290400.164027.9@unsub-lon.mktomail.com\"]},\"OneClick\":\"OneClick\"}}}"
+        headers:
+            Access:
+                - application/vnd.protonmail.api+json;apiversion=4
+            Cache-Control:
+                - max-age=0, must-revalidate, no-cache, no-store, private
+            Content-Security-Policy:
+                - 'default-src ''self''; media-src ''self'' blob:; connect-src ''self'' blob: https://proton.me https://*.proton.me; script-src ''self'' ''wasm-unsafe-eval'' blob: ''sha256-eAhF1Kdccp0BTXM6nMW7SYBdV0c3fZwzcC177TQ692g=''; style-src ''self'' ''unsafe-inline''; img-src http: https: data: blob: cid:; frame-src ''self'' blob: https://mail-api.proton.me https://account.proton.me https://verify.proton.me https://calendar.proton.me https://drive.proton.me https://proton.me; object-src ''self'' blob:; child-src ''self'' data: blob:; report-uri https://reports.proton.me/reports/csp; frame-ancestors https://calendar.proton.me https://drive.proton.me;'
+            Content-Type:
+                - application/json
+            Date:
+                - Mon, 18 May 2026 18:08:24 GMT
+            Expect-Ct:
+                - max-age=2592000, enforce, report-uri="https://reports.proton.me/reports/tls"
+            Expires:
+                - Fri, 04 May 1984 22:15:00 GMT
+            Public-Key-Pins-Report-Only:
+                - pin-sha256="CT56BhOTmj5ZIPgb/xD5mH8rY3BLo/MlhP7oPyJUEDo="; pin-sha256="35Dx28/uzN3LeltkCBQ8RHK0tlNSa2kCpCRGNp34Gxc="; report-uri="https://reports.proton.me/reports/tls"
+            Referrer-Policy:
+                - strict-origin-when-cross-origin
+            Set-Cookie:
+                - REDACTED
+            Strict-Transport-Security:
+                - max-age=31536000; includeSubDomains; preload
+            Vary:
+                - Accept-Encoding
+            X-Content-Type-Options:
+                - nosniff
+            X-Permitted-Cross-Domain-Policies:
+                - none
+            X-Xss-Protection:
+                - "0"
+        status: 200 OK
+        code: 200
+        duration: 278.804375ms

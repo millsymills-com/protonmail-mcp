@@ -1,0 +1,120 @@
+---
+version: 2
+interactions:
+    - id: 0
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 304
+        host: mail.proton.me
+        body: '{"GrantType":"refresh_token","RedirectURI":"https://protonmail.ch","RefreshToken":"REDACTED_REFRESHTOKEN_1","ResponseType":"token","State":"\u001d�G���2~!\u0006�f��V+\u0005H7+7�w�F���Ao2�","UID":"REDACTED_UID_1"}'
+        headers:
+            Content-Type:
+                - application/json
+            User-Agent:
+                - go-resty/2.10.0 (https://github.com/go-resty/resty)
+            X-Pm-Appversion:
+                - macos-bridge@3.24.1
+        url: https://mail.proton.me/api/auth/v4/refresh
+        method: POST
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: -1
+        uncompressed: true
+        body: '{"AccessToken":"REDACTED_ACCESSTOKEN_1","Code":1000,"ExpiresIn":86400,"LocalID":0,"RefreshCounter":7,"RefreshToken":"REDACTED_REFRESHTOKEN_1","Scope":"full self parent user loggedin paid nondelinquent mail verified settings","Scopes":["full","self","parent","user","loggedin","paid","nondelinquent","mail","verified","settings"],"TokenType":"Bearer","UID":"REDACTED_UID_1","Uid":"REDACTED_UID_2"}'
+        headers:
+            Access:
+                - application/vnd.protonmail.api+json;apiversion=4
+            Cache-Control:
+                - max-age=0, must-revalidate, no-cache, no-store, private
+            Content-Security-Policy:
+                - 'default-src ''self''; media-src ''self'' blob:; connect-src ''self'' blob: https://proton.me https://*.proton.me; script-src ''self'' ''wasm-unsafe-eval'' blob: ''sha256-eAhF1Kdccp0BTXM6nMW7SYBdV0c3fZwzcC177TQ692g=''; style-src ''self'' ''unsafe-inline''; img-src http: https: data: blob: cid:; frame-src ''self'' blob: https://mail-api.proton.me https://account.proton.me https://verify.proton.me https://calendar.proton.me https://drive.proton.me https://proton.me; object-src ''self'' blob:; child-src ''self'' data: blob:; report-uri https://reports.proton.me/reports/csp; frame-ancestors https://calendar.proton.me https://drive.proton.me;'
+            Content-Type:
+                - application/json
+            Date:
+                - Mon, 18 May 2026 18:08:19 GMT
+            Expect-Ct:
+                - max-age=2592000, enforce, report-uri="https://reports.proton.me/reports/tls"
+            Expires:
+                - Fri, 04 May 1984 22:15:00 GMT
+            Public-Key-Pins-Report-Only:
+                - pin-sha256="CT56BhOTmj5ZIPgb/xD5mH8rY3BLo/MlhP7oPyJUEDo="; pin-sha256="35Dx28/uzN3LeltkCBQ8RHK0tlNSa2kCpCRGNp34Gxc="; report-uri="https://reports.proton.me/reports/tls"
+            Referrer-Policy:
+                - strict-origin-when-cross-origin
+            Set-Cookie:
+                - REDACTED
+            Strict-Transport-Security:
+                - max-age=31536000; includeSubDomains; preload
+            Vary:
+                - Accept-Encoding
+            X-Content-Type-Options:
+                - nosniff
+            X-Permitted-Cross-Domain-Policies:
+                - none
+            X-Xss-Protection:
+                - "0"
+        status: 200 OK
+        code: 200
+        duration: 423.126708ms
+    - id: 1
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        host: mail.proton.me
+        headers:
+            Authorization:
+                - REDACTED
+            User-Agent:
+                - go-resty/2.10.0 (https://github.com/go-resty/resty)
+            X-Pm-Appversion:
+                - macos-bridge@3.24.1
+            X-Pm-Uid:
+                - REDACTED
+        url: https://mail.proton.me/api/core/v4/settings
+        method: GET
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: -1
+        uncompressed: true
+        body: '{"Code":1000,"UserSettings":{"2FA":{"Allowed":3,"Enabled":1,"ExpirationTime":null,"RegisteredKeys":[],"U2FKeys":[]},"AIAssistantFlags":0,"AppWelcome":{"Drive":["Web"],"Mail":["Web","macOS"]},"BreachAlerts":{"Eligible":1,"EmailNotifications":1,"Value":1},"Checklists":[],"CrashReports":1,"DateFormat":0,"Density":0,"DeviceRecovery":1,"EarlyAccess":0,"Email":{"Notify":1,"Reset":1,"Status":0,"UpdateTime":null,"Value":""},"Flags":{"DisplayTrialEndModal":0,"EdmOptOut":0,"SupportPgpV6Keys":0,"Welcomed":1},"HideSidePanel":0,"HighSecurity":{"Eligible":1,"SummaryEmail":1,"Value":0},"InvoiceText":"","Locale":"en_US","LogAuth":1,"Mnemonic":{"LastValidateTime":0,"UpdateTime":null},"News":24559,"OrganizationPolicy":{"Enforced":0},"Password":{"ExpirationTime":null,"Mode":1},"PasswordMode":1,"Phone":{"Notify":0,"Reset":0,"Status":0,"UpdateTime":null,"Value":null},"ProductDisabled":{"Authenticator":0,"Drive":0,"Mail":0,"Meet":0,"Neutron":0,"Pass":0,"VPN":0,"Wallet":0},"Referral":{"Eligible":true,"Link":"https://pr.tn/ref/E4WKGR36"},"SessionAccountRecovery":1,"TOTP":1,"Telemetry":1,"Theme":null,"ThemeType":0,"TimeFormat":0,"TwoFactor":1,"UsedClientFlags":14234415307708480,"UsedClients":["WebMail","iOSMail","macOSMail","WindowsVPN","macOSVPN","iOSVPN","macOSBridge","iOSCalendar","WebDrive","WindowsDrive","WindowsDriveCli","iOSPass","iOSPassAutofillExtension","iOSPassActionExtension","iOSPassShareExtension","iOSPassAutofillExtension","WebVPNSettings","WebAccount","WebAccountLite"],"WeekStart":0,"Welcome":0,"WelcomeFlag":0}}'
+        headers:
+            Access:
+                - application/vnd.protonmail.api+json;apiversion=4
+            Cache-Control:
+                - max-age=0, must-revalidate, no-cache, no-store, private
+            Content-Security-Policy:
+                - 'default-src ''self''; media-src ''self'' blob:; connect-src ''self'' blob: https://proton.me https://*.proton.me; script-src ''self'' ''wasm-unsafe-eval'' blob: ''sha256-eAhF1Kdccp0BTXM6nMW7SYBdV0c3fZwzcC177TQ692g=''; style-src ''self'' ''unsafe-inline''; img-src http: https: data: blob: cid:; frame-src ''self'' blob: https://mail-api.proton.me https://account.proton.me https://verify.proton.me https://calendar.proton.me https://drive.proton.me https://proton.me; object-src ''self'' blob:; child-src ''self'' data: blob:; report-uri https://reports.proton.me/reports/csp; frame-ancestors https://calendar.proton.me https://drive.proton.me;'
+            Content-Type:
+                - application/json
+            Date:
+                - Mon, 18 May 2026 18:08:20 GMT
+            Expect-Ct:
+                - max-age=2592000, enforce, report-uri="https://reports.proton.me/reports/tls"
+            Expires:
+                - Fri, 04 May 1984 22:15:00 GMT
+            Public-Key-Pins-Report-Only:
+                - pin-sha256="CT56BhOTmj5ZIPgb/xD5mH8rY3BLo/MlhP7oPyJUEDo="; pin-sha256="35Dx28/uzN3LeltkCBQ8RHK0tlNSa2kCpCRGNp34Gxc="; report-uri="https://reports.proton.me/reports/tls"
+            Referrer-Policy:
+                - strict-origin-when-cross-origin
+            Set-Cookie:
+                - REDACTED
+            Strict-Transport-Security:
+                - max-age=31536000; includeSubDomains; preload
+            Vary:
+                - Accept-Encoding
+            X-Content-Type-Options:
+                - nosniff
+            X-Permitted-Cross-Domain-Policies:
+                - none
+            X-Xss-Protection:
+                - "0"
+        status: 200 OK
+        code: 200
+        duration: 265.355417ms
