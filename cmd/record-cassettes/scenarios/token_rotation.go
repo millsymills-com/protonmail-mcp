@@ -32,11 +32,10 @@ func recordTokenRotation(ctx context.Context) (retErr error) {
 	}()
 
 	kc := keychain.New()
-	plainSess, err := loginAndPersistSession(ctx, kc)
+	_, err = loginAndPersistSession(ctx, kc)
 	if err != nil {
 		return err
 	}
-	defer logoutAndClear(plainSess, kc)
 
 	// Inject a one-shot 401 on /core/v4/users so the session refresh-on-401
 	// path fires, then the retry and refresh exchange are captured by the cassette.

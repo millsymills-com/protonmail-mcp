@@ -26,20 +26,35 @@ type lintRule struct {
 	re   *regexp.Regexp
 }
 
+// Token rules use `(?i)` because Proton's API returns the same field in
+// multiple casings — e.g. /auth/v4/refresh emits both "UID" and "Uid" in the
+// same response. A case-sensitive rule misses the lowercase variant; the
+// scrubber's case-fold lookup catches it, and this lint must mirror that.
 var lintRules = []lintRule{
 	{"bearer-token", regexp.MustCompile(`Bearer [A-Za-z0-9._\-]{20,}`)},
-	{"access-token-raw", regexp.MustCompile(`"AccessToken":\s*"[^R][^"]+"`)},
-	{"refresh-token-raw", regexp.MustCompile(`"RefreshToken":\s*"[^R][^"]+"`)},
-	{"uid-raw", regexp.MustCompile(`"UID":\s*"[^R][^"]+"`)},
-	{"key-salt-raw", regexp.MustCompile(`"KeySalt":\s*"[^R][^"]+"`)},
-	{"srp-session-raw", regexp.MustCompile(`"SrpSession":\s*"[^R][^"]+"`)},
-	{"server-proof-raw", regexp.MustCompile(`"ServerProof":\s*"[^R][^"]+"`)},
-	{"client-proof-raw", regexp.MustCompile(`"ClientProof":\s*"[^R][^"]+"`)},
-	{"client-ephemeral-raw", regexp.MustCompile(`"ClientEphemeral":\s*"[^R][^"]+"`)},
-	{"two-factor-code-raw", regexp.MustCompile(`"TwoFactorCode":\s*"[^R][^"]+"`)},
-	{"pgp-private", regexp.MustCompile(`BEGIN PGP PRIVATE KEY BLOCK`)},
-	{"pgp-message", regexp.MustCompile(`BEGIN PGP MESSAGE`)},
-	{"proton-email", regexp.MustCompile(`@protonmail\.|@proton\.me`)},
+	{"access-token-raw", regexp.MustCompile(`(?i)"AccessToken":\s*"[^R][^"]+"`)},
+	{"refresh-token-raw", regexp.MustCompile(`(?i)"RefreshToken":\s*"[^R][^"]+"`)},
+	{"uid-raw", regexp.MustCompile(`(?i)"UID":\s*"[^R][^"]+"`)},
+	{"key-salt-raw", regexp.MustCompile(`(?i)"KeySalt":\s*"[^R][^"]+"`)},
+	{"srp-session-raw", regexp.MustCompile(`(?i)"SrpSession":\s*"[^R][^"]+"`)},
+	{"server-proof-raw", regexp.MustCompile(`(?i)"ServerProof":\s*"[^R][^"]+"`)},
+	{"client-proof-raw", regexp.MustCompile(`(?i)"ClientProof":\s*"[^R][^"]+"`)},
+	{"client-ephemeral-raw", regexp.MustCompile(`(?i)"ClientEphemeral":\s*"[^R][^"]+"`)},
+	{"two-factor-code-raw", regexp.MustCompile(`(?i)"TwoFactorCode":\s*"[^R][^"]+"`)},
+	{"recovery-secret-raw", regexp.MustCompile(`(?i)"RecoverySecret":\s*"[^R][^"]+"`)},
+	{"fingerprint-raw", regexp.MustCompile(`(?i)"Fingerprint":\s*"[^R][^"]+"`)},
+	// Flag any Proton-issued PGP armor — PRIVATE KEY BLOCK, MESSAGE, or
+	// SIGNATURE — whose header line carries "Version: ProtonMail". The
+	// recorder swaps real keys for an in-repo gopenpgp fixture (see
+	// internal/testvcr/fixtures.go) whose armor reads
+	// "Comment: https://gopenpgp.org\nVersion: GopenPGP …", so this rule
+	// distinguishes fixture from real-leak. RecoverySecretSignature is the
+	// reason MESSAGE/SIGNATURE are in scope — the public-key+signature pair
+	// reveals the signing key fingerprint even when the secret is redacted.
+	// The escape sequence `\\n` is the literal characters backslash-n that
+	// appear in the YAML body, not a real newline.
+	{"pgp-proton", regexp.MustCompile(`BEGIN PGP (?:PRIVATE KEY BLOCK|MESSAGE|SIGNATURE)-----\\nVersion: ProtonMail`)},
+	{"proton-email", regexp.MustCompile(`@protonmail\.|@proton\.me|@pm\.me`)},
 }
 
 const staleThreshold = 90 * 24 * time.Hour
