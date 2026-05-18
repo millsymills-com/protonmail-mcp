@@ -81,9 +81,13 @@ func init() {
 	})
 
 	Register("search_messages_happy", func(ctx context.Context) error {
+		// Page size 50 matches the consumer's default in
+		// internal/tools/messages.go (proton_search_messages with an
+		// empty limit). The body matcher rejects PageSize mismatches,
+		// so this must stay in sync with the consumer default.
 		return recordReadTool(ctx, "search_messages_happy", toolsCassetteDir,
 			func(c *proton.Client) error {
-				_, err := c.GetMessageMetadataPage(ctx, 0, 10, proton.MessageFilter{
+				_, err := c.GetMessageMetadataPage(ctx, 0, 50, proton.MessageFilter{
 					Desc: proton.Bool(true),
 				})
 				return err
