@@ -4,6 +4,7 @@ package scenarios
 
 import (
 	"context"
+	"net/http"
 	"os"
 	"path/filepath"
 
@@ -21,7 +22,11 @@ func recordTokenRotation(ctx context.Context) (retErr error) {
 	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 		return err
 	}
-	rt, stop, err := testvcr.NewAtPath(target, testvcr.ModeRecord)
+	// Inject a one-shot 401 on /core/v4/users so the session refresh-on-401
+	// path fires; the synthetic 401 and the subsequent real refresh + retry
+	// are captured by the cassette via the recorder's normal record path.
+	injected := inject401AccessTokenExpired(http.DefaultTransport, "/core/v4/users")
+	rt, stop, err := testvcr.NewAtPath(target, testvcr.ModeRecord, testvcr.WithRealTransport(injected))
 	if err != nil {
 		return err
 	}
@@ -37,10 +42,7 @@ func recordTokenRotation(ctx context.Context) (retErr error) {
 		return err
 	}
 
-	// Inject a one-shot 401 on /core/v4/users so the session refresh-on-401
-	// path fires, then the retry and refresh exchange are captured by the cassette.
-	wrapped := inject401AccessTokenExpired(rt, "/core/v4/users")
-	sess := session.New(defaultAPIURL(), kc, session.WithTransport(wrapped))
+	sess := session.New(defaultAPIURL(), kc, session.WithTransport(rt))
 	c, err := sess.Client(ctx)
 	if err != nil {
 		return err

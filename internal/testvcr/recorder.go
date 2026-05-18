@@ -87,6 +87,22 @@ func New(t *testing.T, name string) http.RoundTripper {
 	return r.GetDefaultClient().Transport
 }
 
+// Option configures optional behavior on NewAtPath.
+type Option func(*atPathConfig)
+
+type atPathConfig struct {
+	realTransport http.RoundTripper
+}
+
+// WithRealTransport installs rt as the recorder's upstream transport, so any
+// response rt produces (including fully synthesised ones) is captured into the
+// cassette via the normal record path. Scenarios that need to inject errors
+// or replace specific endpoints should use this rather than wrapping the
+// returned RoundTripper, which would short-circuit the recorder.
+func WithRealTransport(rt http.RoundTripper) Option {
+	return func(c *atPathConfig) { c.realTransport = rt }
+}
+
 // NewAtPath constructs a recorder bound to an explicit cassette path. Used by
 // the recording CLI, which assembles cassette destinations itself. The path is
 // passed verbatim to recorder.New; go-vcr appends .yaml.
@@ -94,19 +110,27 @@ func New(t *testing.T, name string) http.RoundTripper {
 // Returns the underlying RoundTripper and a stop function that flushes the
 // cassette and writes the metadata sidecar (in record mode). The caller is
 // responsible for calling stop() and checking its error.
-func NewAtPath(path string, mode RecorderMode) (http.RoundTripper, func() error, error) {
+func NewAtPath(path string, mode RecorderMode, opts ...Option) (http.RoundTripper, func() error, error) {
 	if err := guardRecordInCI(); err != nil {
 		return nil, nil, err
+	}
+	cfg := atPathConfig{}
+	for _, opt := range opts {
+		opt(&cfg)
 	}
 	rmode := recorder.ModeReplayOnly
 	if mode == ModeRecord {
 		rmode = recorder.ModeRecordOnly
 	}
-	r, err := recorder.New(path,
+	rOpts := []recorder.Option{
 		recorder.WithMode(rmode),
 		recorder.WithMatcher(BodyAwareMatcher),
 		recorder.WithHook(saveHook, recorder.BeforeSaveHook),
-	)
+	}
+	if cfg.realTransport != nil {
+		rOpts = append(rOpts, recorder.WithRealTransport(cfg.realTransport))
+	}
+	r, err := recorder.New(path, rOpts...)
 	if err != nil {
 		return nil, nil, err
 	}
