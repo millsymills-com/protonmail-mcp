@@ -117,11 +117,16 @@ func canonicalJSON(s string) (any, bool) {
 	return v, true
 }
 
+// srpIgnoredKeys names per-request randomized auth fields that vary between
+// the recorded and replayed body. Comparing them strictly would force every
+// replay through the wrong interaction. State is the OAuth nonce attached
+// to /auth/v4/refresh and changes per call; the rest are SRP/2FA proofs.
 var srpIgnoredKeys = map[string]bool{
 	"ClientProof":     true,
 	"ClientEphemeral": true,
 	"SrpSession":      true,
 	"TwoFactorCode":   true,
+	"State":           true,
 }
 
 func jsonEqualIgnoringRedactedAndProof(a, b any) bool {
