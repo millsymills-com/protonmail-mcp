@@ -80,6 +80,9 @@ func TestLintNewRulesFireOnRaw(t *testing.T) {
 		body string
 	}{
 		{"uid-raw", `"UID": "abc123xyz"`},
+		// Lowercase variant — Proton /auth/v4/refresh returns "Uid" alongside
+		// "UID". Both must trip uid-raw via the case-insensitive regex.
+		{"uid-raw", `"Uid":"g6htg4va3y2qggaazx4wgmj2r5zjykda"`},
 		{"key-salt-raw", `"KeySalt": "somesaltvalue"`},
 		{"srp-session-raw", `"SrpSession": "srpdata123"`},
 		{"server-proof-raw", `"ServerProof": "proofvalue1"`},

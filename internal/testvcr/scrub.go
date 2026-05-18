@@ -10,6 +10,11 @@ import (
 	"gopkg.in/dnaeon/go-vcr.v4/pkg/cassette"
 )
 
+// sensitiveJSONKeys are compared against incoming JSON keys via
+// strings.EqualFold so casing variations like "UID" vs "Uid" and
+// "accessToken" vs "AccessToken" are all caught. Proton returns both
+// "UID" and "Uid" in some payloads (e.g. /auth/v4/refresh) and a
+// case-sensitive lookup missed the lowercase form.
 var sensitiveJSONKeys = map[string]bool{
 	"AccessToken":     true,
 	"RefreshToken":    true,
@@ -23,6 +28,15 @@ var sensitiveJSONKeys = map[string]bool{
 	"ClientProof":     true,
 	"ClientEphemeral": true,
 	"TwoFactorCode":   true,
+}
+
+func isSensitiveJSONKey(k string) bool {
+	for sk := range sensitiveJSONKeys {
+		if strings.EqualFold(sk, k) {
+			return true
+		}
+	}
+	return false
 }
 
 var redactedHeaders = []string{"Authorization", "X-Pm-Uid", "Cookie", "Set-Cookie"}
@@ -93,11 +107,13 @@ func (s *bodyScrubber) walk(v any) {
 	switch t := v.(type) {
 	case map[string]any:
 		for k, vv := range t {
-			if sensitiveJSONKeys[k] {
+			if isSensitiveJSONKey(k) {
 				if _, ok := vv.(string); ok {
-					// Counter tracks per-key occurrences; placeholder format: REDACTED_<KEY>_<N>.
-					s.counters[k]++
-					t[k] = fmt.Sprintf("REDACTED_%s_%d", strings.ToUpper(k), s.counters[k])
+					// Counter tracks per-key occurrences (counter key is canonical
+					// upper-case so "UID" and "Uid" share a sequence).
+					canonical := strings.ToUpper(k)
+					s.counters[canonical]++
+					t[k] = fmt.Sprintf("REDACTED_%s_%d", canonical, s.counters[canonical])
 					continue
 				}
 			}

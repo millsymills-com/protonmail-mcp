@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"reflect"
+	"strings"
 	"testing"
 
 	"gopkg.in/dnaeon/go-vcr.v4/pkg/cassette"
@@ -104,5 +105,27 @@ func TestScrubRewritesThrowawayDomain(t *testing.T) {
 	want := `{"DomainName":"throwaway.example.test","Status":"active"}`
 	if got := i.Response.Body; got != want {
 		t.Fatalf("throwaway domain not rewritten: got %s, want %s", got, want)
+	}
+}
+
+// TestScrubCaseFoldsSensitiveKeys guards against the leak found 2026-05-17
+// where Proton's /auth/v4/refresh response returned both "UID" and "Uid" but
+// only the upper-case form was redacted. Case-insensitive lookup is the fix.
+func TestScrubCaseFoldsSensitiveKeys(t *testing.T) {
+	body := `{"UID":"u1","Uid":"u2","accessToken":"at1","refreshtoken":"rt1"}`
+	i := &cassette.Interaction{
+		Response: cassette.Response{Body: body, Headers: http.Header{"Content-Type": []string{"application/json"}}},
+	}
+	if err := saveHook(i); err != nil {
+		t.Fatal(err)
+	}
+	var got map[string]any
+	if err := json.Unmarshal([]byte(i.Response.Body), &got); err != nil {
+		t.Fatal(err)
+	}
+	for key, val := range got {
+		if s, ok := val.(string); ok && !strings.HasPrefix(s, "REDACTED_") {
+			t.Fatalf("key %q value %q was not scrubbed", key, s)
+		}
 	}
 }
