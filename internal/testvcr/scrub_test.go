@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"gopkg.in/dnaeon/go-vcr.v4/pkg/cassette"
 )
@@ -118,6 +119,30 @@ func TestScrubRewritesThrowawayDomain(t *testing.T) {
 	want := `{"DomainName":"throwaway.example.test","Status":"active"}`
 	if got := i.Response.Body; got != want {
 		t.Fatalf("throwaway domain not rewritten: got %s, want %s", got, want)
+	}
+}
+
+// TestScrubFreezesDateHeader pins the Date-header freeze: a real recording
+// timestamp would otherwise mark exactly when the cassette was captured.
+// The replacement must stay RFC1123-parseable so downstream code that calls
+// time.Parse on it doesn't break at replay time.
+func TestScrubFreezesDateHeader(t *testing.T) {
+	i := &cassette.Interaction{
+		Request:  cassette.Request{Headers: http.Header{"Date": []string{"Mon, 18 May 2026 17:51:09 GMT"}}},
+		Response: cassette.Response{Headers: http.Header{"Date": []string{"Mon, 18 May 2026 17:51:10 GMT"}}},
+	}
+	if err := saveHook(i); err != nil {
+		t.Fatal(err)
+	}
+	want := "Mon, 01 Jan 2001 00:00:00 GMT"
+	if got := i.Request.Headers.Get("Date"); got != want {
+		t.Fatalf("request Date = %q, want %q", got, want)
+	}
+	if got := i.Response.Headers.Get("Date"); got != want {
+		t.Fatalf("response Date = %q, want %q", got, want)
+	}
+	if _, err := time.Parse(time.RFC1123, want); err != nil {
+		t.Fatalf("frozen Date isn't RFC1123-parseable: %v", err)
 	}
 }
 

@@ -44,6 +44,22 @@ func isSensitiveJSONKey(k string) bool {
 
 var redactedHeaders = []string{"Authorization", "X-Pm-Uid", "Cookie", "Set-Cookie"}
 
+// frozenDate replaces Date headers so the recording timestamp doesn't
+// identify when a cassette was captured. A constant valid RFC1123 value
+// keeps parsers happy without leaking anything.
+const frozenDate = "Mon, 01 Jan 2001 00:00:00 GMT"
+
+// Accepted residuals (not scrubbed by this package):
+//
+//   - Opaque Proton-internal IDs (User.ID, Keys[*].ID, Address.ID, DomainID).
+//     They round-trip between request URL paths and response bodies, so
+//     REDACTED_* would break URL-based replay; deterministic fixture
+//     substitution would require URL-aware rewriting and is deferred.
+//     The IDs are account-correlatable but cannot be used as credentials.
+//   - Response headers other than those in redactedHeaders + Date. Most
+//     are Proton infrastructure metadata (CSP, HSTS, cache hints) that
+//     leak no user-specific data.
+
 // Rescrub loads an on-disk cassette, runs saveHook against every interaction,
 // and writes the result back. Useful when scrub rules tighten and existing
 // cassettes need a re-pass without re-recording from the live API. Env vars
@@ -77,6 +93,12 @@ func saveHook(i *cassette.Interaction) error {
 		if i.Response.Headers.Get(h) != "" {
 			i.Response.Headers.Set(h, "REDACTED")
 		}
+	}
+	if i.Request.Headers.Get("Date") != "" {
+		i.Request.Headers.Set("Date", frozenDate)
+	}
+	if i.Response.Headers.Get("Date") != "" {
+		i.Response.Headers.Set("Date", frozenDate)
 	}
 	reqBody, err := newBodyScrubber().scrub(i.Request.Body, i.Request.Headers.Get("Content-Type"))
 	if err != nil {
