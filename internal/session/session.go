@@ -5,10 +5,12 @@ package session
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 	"sync"
 
 	proton "github.com/ProtonMail/go-proton-api"
@@ -242,9 +244,23 @@ func (s *Session) Login(ctx context.Context, in LoginInput) error {
 			c.Close()
 			return ErrTOTPRequired
 		}
+		// Proton rotates the refresh token during /auth/v4/2fa, but
+		// go-proton-api's Auth2FA discards the response body. Without
+		// intercepting it, keychain ends up holding the pre-2FA refresh
+		// token, which Proton rejects with Code=10013 on the next
+		// /auth/v4/refresh (#86). The post-request hook captures the
+		// fresh credentials from the 2FA response so the keychain and
+		// the in-memory client both use the post-2FA tokens.
+		captured := newAuth2FACapture()
+		c.AddPostRequestHook(captured.hook)
 		if err := c.Auth2FA(ctx, proton.Auth2FAReq{TwoFactorCode: code}); err != nil {
 			c.Close()
 			return fmt.Errorf("submit 2fa: %w", err)
+		}
+		if post := captured.merge(auth); post != nil {
+			c.Close()
+			c = s.mgr.NewClient(post.UID, post.AccessToken, post.RefreshToken)
+			auth = *post
 		}
 	}
 
@@ -299,6 +315,70 @@ func (s *Session) persistLoginState(creds keychain.Creds, sess keychain.Session)
 		return s.rollbackLoginPersist("save session", err)
 	}
 	return nil
+}
+
+// auth2FACapture buffers the JSON body returned by POST /auth/v4/2fa so the
+// caller can pick up the post-2FA tokens that go-proton-api's Auth2FA
+// otherwise discards. Concurrency is bounded: a single hook write happens
+// before Auth2FA's caller observes merge(), so the mutex covers the
+// possibility of resty re-running OnAfterResponse on a retried request.
+type auth2FACapture struct {
+	mu  sync.Mutex
+	set bool
+	got proton.Auth
+}
+
+func newAuth2FACapture() *auth2FACapture { return &auth2FACapture{} }
+
+func (a *auth2FACapture) hook(_ *resty.Client, r *resty.Response) error {
+	if r == nil || r.Request == nil || r.RawResponse == nil {
+		return nil
+	}
+	if !strings.HasSuffix(r.Request.URL, "/auth/v4/2fa") {
+		return nil
+	}
+	if r.StatusCode() != http.StatusOK {
+		return nil
+	}
+	var parsed proton.Auth
+	if err := json.Unmarshal(r.Body(), &parsed); err != nil {
+		return nil
+	}
+	a.mu.Lock()
+	a.got = parsed
+	a.set = true
+	a.mu.Unlock()
+	return nil
+}
+
+// merge returns the post-2FA Auth to adopt, layered over the pre-2FA auth
+// for any field the 2FA response omitted. Returns nil if nothing was
+// captured or the captured body had no usable token fields, in which case
+// the caller keeps the original auth (legacy behaviour for accounts whose
+// 2FA flow does not rotate tokens).
+func (a *auth2FACapture) merge(base proton.Auth) *proton.Auth {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if !a.set {
+		return nil
+	}
+	if a.got.AccessToken == "" && a.got.RefreshToken == "" && a.got.UID == "" {
+		return nil
+	}
+	merged := base
+	if a.got.UID != "" {
+		merged.UID = a.got.UID
+	}
+	if a.got.AccessToken != "" {
+		merged.AccessToken = a.got.AccessToken
+	}
+	if a.got.RefreshToken != "" {
+		merged.RefreshToken = a.got.RefreshToken
+	}
+	if a.got.Scope != "" {
+		merged.Scope = a.got.Scope
+	}
+	return &merged
 }
 
 func (s *Session) rollbackLoginPersist(op string, cause error) error {
