@@ -17,6 +17,14 @@ import (
 	"github.com/millsmillsymills/protonmail-mcp/internal/testvcr"
 )
 
+// nonexistentResourceID is a syntactically-valid Proton opaque resource ID
+// (88-char URL-safe base64 with two padding chars) that does not correspond
+// to any real message, address, or domain. Proton validates ID shape before
+// the lookup; passing a short literal like nonexistentResourceID trips the format
+// check and yields 400 Code=2061 "Attribute ID is invalid" rather than the
+// 404 the consumer tests assert on.
+const nonexistentResourceID = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=="
+
 func init() {
 	Register("error_captcha", recordErrorCaptcha)
 	Register("error_rate_limited", recordErrorRateLimited)
@@ -102,7 +110,7 @@ func recordErrorRateLimited(ctx context.Context) error {
 func recordErrorNotFoundMessage(ctx context.Context) error {
 	return recordReadTool(ctx, "error_not_found_message", toolsCassetteDir,
 		func(c *proton.Client) error {
-			_, _ = c.GetMessage(ctx, "nonexistent") // ignore error — recording the 404 path
+			_, _ = c.GetMessage(ctx, nonexistentResourceID) // ignore error — recording the 404 path
 			return nil
 		},
 	)
@@ -112,7 +120,7 @@ func recordErrorNotFoundMessage(ctx context.Context) error {
 func recordErrorNotFoundAddress(ctx context.Context) error {
 	return recordReadTool(ctx, "error_not_found_address", toolsCassetteDir,
 		func(c *proton.Client) error {
-			_, _ = c.GetAddress(ctx, "nonexistent") // ignore error — recording the 404 path
+			_, _ = c.GetAddress(ctx, nonexistentResourceID) // ignore error — recording the 404 path
 			return nil
 		},
 	)
@@ -122,7 +130,7 @@ func recordErrorNotFoundAddress(ctx context.Context) error {
 func recordErrorNotFoundDomain(ctx context.Context) error {
 	return recordRawTool(ctx, "error_not_found_domain", toolsCassetteDir,
 		func(ctx context.Context, s *session.Session) error {
-			_, _ = protonraw.GetCustomDomain(ctx, s.Raw(ctx), "nonexistent") // ignore error
+			_, _ = protonraw.GetCustomDomain(ctx, s.Raw(ctx), nonexistentResourceID) // ignore error
 			return nil
 		},
 	)
