@@ -9,6 +9,27 @@ import (
 	"github.com/go-resty/resty/v2"
 )
 
+// TestAuth2FACaptureAdoptsWrappedTokens covers the alternative response
+// shape Proton may use for /auth/v4/2fa: `{"Code":1000,"Auth":{...}}`
+// rather than the flat layout `{"Code":1000,"AccessToken":...}`. The
+// parser tries the wrapped form first, so the hook works on either.
+func TestAuth2FACaptureAdoptsWrappedTokens(t *testing.T) {
+	body := []byte(`{"Code":1000,"Auth":{"UID":"uid-w","AccessToken":"acc-w","RefreshToken":"ref-w","Scope":"full"}}`)
+	resp := newRestyResponse(t, http.MethodPost, "https://api.example/auth/v4/2fa", http.StatusOK, body)
+
+	cap := newAuth2FACapture()
+	if err := cap.hook(nil, resp); err != nil {
+		t.Fatalf("hook: %v", err)
+	}
+	got := cap.merge(proton.Auth{UID: "uid-pre", AccessToken: "acc-pre", RefreshToken: "ref-pre"})
+	if got == nil {
+		t.Fatal("merge returned nil; want post-2FA Auth")
+	}
+	if got.UID != "uid-w" || got.AccessToken != "acc-w" || got.RefreshToken != "ref-w" {
+		t.Fatalf("merge = %+v", *got)
+	}
+}
+
 // TestAuth2FACaptureAdoptsPostTokens pins the fix for #86: when Proton's
 // /auth/v4/2fa response carries rotated tokens, merge() returns an Auth
 // that overlays them on the pre-2FA values.

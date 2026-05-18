@@ -251,6 +251,14 @@ func (s *Session) Login(ctx context.Context, in LoginInput) error {
 		// /auth/v4/refresh (#86). The post-request hook captures the
 		// fresh credentials from the 2FA response so the keychain and
 		// the in-memory client both use the post-2FA tokens.
+		//
+		// Cost: AddPostRequestHook registers the closure on the shared
+		// resty.Client owned by the Manager, not on this Client. Client
+		// disposal does not unregister it. Each successful 2FA login
+		// adds one closure to that chain; entries from disposed
+		// clients short-circuit via the clientID guard. Bounded by the
+		// number of 2FA logins in a process's lifetime, not by request
+		// volume, so the leak stays small in practice.
 		captured := newAuth2FACapture()
 		c.AddPostRequestHook(captured.hook)
 		if err := c.Auth2FA(ctx, proton.Auth2FAReq{TwoFactorCode: code}); err != nil {
@@ -340,8 +348,8 @@ func (a *auth2FACapture) hook(_ *resty.Client, r *resty.Response) error {
 	if r.StatusCode() != http.StatusOK {
 		return nil
 	}
-	var parsed proton.Auth
-	if err := json.Unmarshal(r.Body(), &parsed); err != nil {
+	parsed, ok := parseAuth2FABody(r.Body())
+	if !ok {
 		return nil
 	}
 	a.mu.Lock()
@@ -349,6 +357,30 @@ func (a *auth2FACapture) hook(_ *resty.Client, r *resty.Response) error {
 	a.set = true
 	a.mu.Unlock()
 	return nil
+}
+
+// parseAuth2FABody decodes the /auth/v4/2fa response body. Proton's other
+// auth endpoints (/auth/v4, /auth/v4/refresh) return tokens at the JSON
+// root, but the 2FA endpoint has not been pinned in this codebase yet —
+// try the wrapped `{"Auth": {...}}` shape first and fall back to a flat
+// decode so the hook works on either layout. Returns (Auth, true) only if
+// at least one token field is populated.
+func parseAuth2FABody(body []byte) (proton.Auth, bool) {
+	var wrapped struct {
+		Auth proton.Auth
+	}
+	if err := json.Unmarshal(body, &wrapped); err == nil && hasTokenField(wrapped.Auth) {
+		return wrapped.Auth, true
+	}
+	var flat proton.Auth
+	if err := json.Unmarshal(body, &flat); err == nil && hasTokenField(flat) {
+		return flat, true
+	}
+	return proton.Auth{}, false
+}
+
+func hasTokenField(a proton.Auth) bool {
+	return a.AccessToken != "" || a.RefreshToken != "" || a.UID != ""
 }
 
 // merge returns the post-2FA Auth to adopt, layered over the pre-2FA auth
@@ -362,7 +394,7 @@ func (a *auth2FACapture) merge(base proton.Auth) *proton.Auth {
 	if !a.set {
 		return nil
 	}
-	if a.got.AccessToken == "" && a.got.RefreshToken == "" && a.got.UID == "" {
+	if !hasTokenField(a.got) {
 		return nil
 	}
 	merged := base
