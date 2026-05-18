@@ -24,7 +24,7 @@ interactions:
         proto_minor: 0
         content_length: -1
         uncompressed: true
-        body: '{"AccessToken":"REDACTED_ACCESSTOKEN_1","Code":1000,"ExpiresIn":86400,"LocalID":0,"RefreshCounter":9,"RefreshToken":"REDACTED_REFRESHTOKEN_1","Scope":"full self parent user loggedin paid nondelinquent mail verified settings","Scopes":["full","self","parent","user","loggedin","paid","nondelinquent","mail","verified","settings"],"TokenType":"Bearer","UID":"REDACTED_UID_2","Uid":"REDACTED_UID_1"}'
+        body: '{"AccessToken":"REDACTED_ACCESSTOKEN_1","Code":1000,"ExpiresIn":86400,"LocalID":0,"RefreshCounter":9,"RefreshToken":"REDACTED_REFRESHTOKEN_1","Scope":"full self parent user loggedin paid nondelinquent mail verified settings","Scopes":["full","self","parent","user","loggedin","paid","nondelinquent","mail","verified","settings"],"TokenType":"Bearer","UID":"REDACTED_UID_1","Uid":"REDACTED_UID_2"}'
         headers:
             Access:
                 - application/vnd.protonmail.api+json;apiversion=4
@@ -35,7 +35,7 @@ interactions:
             Content-Type:
                 - application/json
             Date:
-                - Mon, 18 May 2026 18:38:28 GMT
+                - Mon, 01 Jan 2001 00:00:00 GMT
             Expect-Ct:
                 - max-age=2592000, enforce, report-uri="https://reports.proton.me/reports/tls"
             Expires:
@@ -99,7 +99,7 @@ interactions:
             Content-Type:
                 - application/json
             Date:
-                - Mon, 18 May 2026 18:38:29 GMT
+                - Mon, 01 Jan 2001 00:00:00 GMT
             Expect-Ct:
                 - max-age=2592000, enforce, report-uri="https://reports.proton.me/reports/tls"
             Expires:
@@ -158,7 +158,7 @@ interactions:
             Content-Type:
                 - application/json
             Date:
-                - Mon, 18 May 2026 18:38:29 GMT
+                - Mon, 01 Jan 2001 00:00:00 GMT
             Expect-Ct:
                 - max-age=2592000, enforce, report-uri="https://reports.proton.me/reports/tls"
             Expires:
