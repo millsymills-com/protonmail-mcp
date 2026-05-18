@@ -12,7 +12,7 @@ import (
 	"github.com/millsmillsymills/protonmail-mcp/internal/session"
 )
 
-func init() {
+func registerWriteAddresses() {
 	Register("create_delete_address", recordCreateDeleteAddress)
 	Register("address_status_toggle", recordAddressStatusToggle)
 	Register("update_address_display_name", recordUpdateAddressDisplayName)

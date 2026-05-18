@@ -13,7 +13,7 @@ import (
 	"github.com/millsmillsymills/protonmail-mcp/internal/testvcr"
 )
 
-func init() {
+func registerServerBoot() {
 	Register("boot_dispatch", recordBootDispatch)
 }
 

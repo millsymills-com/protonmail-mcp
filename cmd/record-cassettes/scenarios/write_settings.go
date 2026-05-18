@@ -9,7 +9,7 @@ import (
 	proton "github.com/ProtonMail/go-proton-api"
 )
 
-func init() {
+func registerWriteSettings() {
 	Register("update_mail_settings_signature", recordUpdateMailSettingsSignature)
 	Register("update_core_settings_flags", recordUpdateCoreSettingsFlags)
 }

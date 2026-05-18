@@ -11,7 +11,7 @@ import (
 	"github.com/millsmillsymills/protonmail-mcp/internal/session"
 )
 
-func init() {
+func registerCustomDomainLifecycle() {
 	Register("add_remove_custom_domain", recordAddRemoveCustomDomain)
 	Register("verify_custom_domain_pending", recordVerifyCustomDomainPending)
 }

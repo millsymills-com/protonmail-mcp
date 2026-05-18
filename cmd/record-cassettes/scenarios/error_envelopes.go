@@ -25,7 +25,7 @@ import (
 // 404 the consumer tests assert on.
 const nonexistentResourceID = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=="
 
-func init() {
+func registerErrorEnvelopes() {
 	Register("error_captcha", recordErrorCaptcha)
 	Register("error_rate_limited", recordErrorRateLimited)
 	Register("error_not_found_message", recordErrorNotFoundMessage)

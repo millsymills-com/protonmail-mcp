@@ -15,7 +15,7 @@ import (
 
 const cliCassetteDir = "cmd/protonmail-mcp/testdata/cassettes"
 
-func init() {
+func registerCLIFlows() {
 	Register("status_logged_in", recordStatusLoggedIn)
 	Register("login_no_2fa", func(ctx context.Context) error {
 		return recordLogin(ctx, "login_no_2fa", cliCassetteDir)

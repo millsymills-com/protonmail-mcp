@@ -14,7 +14,7 @@ import (
 	"github.com/millsmillsymills/protonmail-mcp/internal/testvcr"
 )
 
-func init() {
+func registerRefreshRevoked() {
 	Register("refresh_revoked", recordRefreshRevoked)
 }
 

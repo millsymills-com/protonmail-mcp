@@ -12,7 +12,7 @@ import (
 	"github.com/millsmillsymills/protonmail-mcp/internal/testvcr"
 )
 
-func init() {
+func registerLogoutInvalidates() {
 	Register("logout_invalidates", recordLogoutInvalidates)
 }
 
