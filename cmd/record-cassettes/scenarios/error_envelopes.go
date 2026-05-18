@@ -59,11 +59,9 @@ func recordInjectedError(
 	}()
 
 	kc := keychain.New()
-	plainSess, err := loginAndPersistSession(ctx, kc)
-	if err != nil {
+	if _, err := loginAndPersistSession(ctx, kc); err != nil {
 		return err
 	}
-	defer logoutAndClear(plainSess, kc)
 
 	wrapped := inject(rt)
 	sess := session.New(defaultAPIURL(), kc, session.WithTransport(wrapped))

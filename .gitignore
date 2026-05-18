@@ -3,6 +3,7 @@
 /record-cassettes
 /testvcr-lint
 /dist/
+/bin/
 
 # IDE
 .vscode/

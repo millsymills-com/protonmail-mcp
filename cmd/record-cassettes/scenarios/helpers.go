@@ -43,11 +43,10 @@ func recordReadTool(
 	}()
 
 	kc := keychain.New()
-	plainSess, loginErr := loginAndPersistSession(ctx, kc)
+	_, loginErr := loginAndPersistSession(ctx, kc)
 	if loginErr != nil {
 		return loginErr
 	}
-	defer logoutAndClear(plainSess, kc)
 
 	// Bind a second session to the cassette transport so all subsequent API
 	// calls are captured.
@@ -82,11 +81,10 @@ func recordRawTool(
 	}()
 
 	kc := keychain.New()
-	plainSess, loginErr := loginAndPersistSession(ctx, kc)
+	_, loginErr := loginAndPersistSession(ctx, kc)
 	if loginErr != nil {
 		return loginErr
 	}
-	defer logoutAndClear(plainSess, kc)
 
 	recSess := session.New(defaultAPIURL(), kc, session.WithTransport(rt))
 	// Initialise the proton.Client so the session bearer is seeded before the
