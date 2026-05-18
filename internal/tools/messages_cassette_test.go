@@ -19,6 +19,13 @@ func TestSearchMessagesHappyCassette(t *testing.T) {
 	}
 }
 
+// TestGetMessageHappyCassette is currently skipped: the recorded cassette
+// was removed because get_message returns full inbox content (RFC2822
+// headers, sender names, DKIM signatures, Subject, X-Pm-Spam blob, etc.)
+// and the testvcr scrubber only handles structured Proton-API JSON, not
+// arbitrary email content. Re-record only after a controlled plain-text
+// message has been sent to the recording account; see the follow-up issue
+// linked from #63.
 func TestGetMessageHappyCassette(t *testing.T) {
 	h := testharness.BootWithCassette(t, "get_message_happy")
 	defer h.Close()
