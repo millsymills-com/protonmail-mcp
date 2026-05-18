@@ -4,6 +4,7 @@ package scenarios
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -39,16 +40,24 @@ func recordRefreshRevoked(ctx context.Context) (retErr error) {
 	}()
 
 	kc := keychain.New()
-	_, err = loginAndPersistSession(ctx, kc)
-	if err != nil {
+	if _, err := loginAndPersistSession(ctx, kc); err != nil {
 		return err
 	}
 
-	sess := session.New(defaultAPIURL(), kc, session.WithTransport(rt))
-	c, err := sess.Client(ctx)
+	// Seed the proton.Client directly from the keychain-persisted session
+	// instead of building a fresh session.Session whose Client(ctx) would
+	// run mgr.NewClientWithRefresh on first access. That cold-start
+	// refresh hits /auth/v4/refresh and would consume the
+	// inject422RefreshRevoked one-shot before the GetUser-triggered
+	// refresh we actually want to record (see #95).
+	seed, err := kc.LoadSession()
 	if err != nil {
-		return err
+		return fmt.Errorf("load session for direct seed: %w", err)
 	}
+	driver := session.New(defaultAPIURL(), kc, session.WithTransport(rt))
+	c := driver.ManagerForTest().NewClient(seed.UID, seed.AccessToken, seed.RefreshToken)
+	defer c.Close()
+
 	_, err = c.GetUser(ctx)
 	return err
 }
