@@ -12,7 +12,9 @@ package testvcr
 //     proton-go-api something parseable without exposing user secrets.
 //
 // The keypair below was generated once with gopenpgp v2.10.0:
-//   crypto.GenerateKey("Fixture", "fixture@example.test", "rsa", 2048)
+//
+//	crypto.GenerateKey("Fixture", "fixture@example.test", "rsa", 2048)
+//
 // It has no real-world use and is safe to commit.
 const (
 	fixturePrivateKey = `-----BEGIN PGP PRIVATE KEY BLOCK-----
