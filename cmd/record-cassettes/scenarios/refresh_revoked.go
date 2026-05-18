@@ -32,11 +32,10 @@ func recordRefreshRevoked(ctx context.Context) (retErr error) {
 	}()
 
 	kc := keychain.New()
-	plainSess, err := loginAndPersistSession(ctx, kc)
+	_, err = loginAndPersistSession(ctx, kc)
 	if err != nil {
 		return err
 	}
-	defer logoutAndClear(plainSess, kc)
 
 	// Layer order matters: the 401 on /core/v4/users triggers a refresh attempt,
 	// which then hits the 422 on /auth/refresh before falling through to rt.

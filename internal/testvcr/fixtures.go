@@ -1,0 +1,116 @@
+package testvcr
+
+// PGP fixtures used by the scrubber to replace real ProtonMail account keys
+// in recorded cassettes. The substitution makes two requirements meet:
+//
+//  1. proton.Key.UnmarshalJSON calls crypto.NewKeyFromArmored(PrivateKey) on
+//     every cassette load. Replacing real values with a "REDACTED_*" string
+//     fails that parse and breaks /core/v4/users replay. The substitute MUST
+//     be valid PGP armored data.
+//  2. We can't ship real (even encrypted) Proton private keys in checked-in
+//     test fixtures. A fresh dummy keypair generated for this repo gives
+//     proton-go-api something parseable without exposing user secrets.
+//
+// The keypair below was generated once with gopenpgp v2.10.0:
+//
+//	crypto.GenerateKey("Fixture", "fixture@example.test", "rsa", 2048)
+//
+// It has no real-world use and is safe to commit.
+const (
+	fixturePrivateKey = `-----BEGIN PGP PRIVATE KEY BLOCK-----
+Comment: https://gopenpgp.org
+Version: GopenPGP 2.10.0
+
+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
+=D9tX
+-----END PGP PRIVATE KEY BLOCK-----`
+
+	fixturePublicKey = `-----BEGIN PGP PUBLIC KEY BLOCK-----
+Comment: https://gopenpgp.org
+Version: GopenPGP 2.10.0
+
+xsBNBGoLUOMBCADIoLjdA67xwZBBO8TasYglzoC99GOxyO8IXILNODlFKuxThNtT
+8Iuvn2mDdTaZs+SdoT5kbqi3rPhCvtz/3s3FRlvjXHNe9O2/jLu0VP4iQNaASQH+
+S8wu5SG+4IB5RXwXCFNgTQzxRtrn59ORqeSymZr8clvEhX3FPJnCzTEvQaAVivzr
+UnZwvv5txuh3/RSQp2aZmc5xCZMvvAF8oNDsgQdGjMe9bSgmcDJz3iArpSznUKeM
+xV3fODGk+7yS3rKoQ8JtlQdPt46YVkOjqQTPJnwKOXoDEwTck1/FeL5QVS7Orrf6
+QUEEeeZ0MpDEjVgVN1K0Es2l+T6mgWHhEvZZABEBAAHNHkZpeHR1cmUgPGZpeHR1
+cmVAZXhhbXBsZS50ZXN0PsLAvQQTAQgAcQWCagtQ4wMLCQcJEAHuX7nUCHtMNRQA
+AAAAABwAEHNhbHRAbm90YXRpb25zLm9wZW5wZ3Bqcy5vcmcjW/QhO/I91wj/9v1G
+xLCXAhUIAxYAAgIZAQKbAwIeARYhBFbyUbt0LNR94f83WAHuX7nUCHtMAAAw4gf8
+CHGT0GuahQku5bf+6m/e4Dmf4RrNlAuWGLlI0OUTiwcHMzYffpBDBPgKPkmxniHd
+zdNOtY9H+qOvWdjV+W6GrR7g3Xh+Nb5+VmDh9nK7bUlJMgzTEjtHQep9FC5gUt/7
+1Ype82lvF+ZkyZfMCL0v6V5ivW5f/QYE0YOGcDDoDGwQeMEekpGhOcF2MoHjmfvE
+q/+h0rhr3384xuZYejVIbqVXnwmW+BXe5Nuro86xdP9bRHaYEgLhqCVPYwNhYzaf
+idjemf+SXr8LoypiitBAvTvIGPuPwTvjGgQJtPxL1biLWEjhhrA9Ltxa2eQ4dyi8
+7anapaKyjgXv3jpYoSe2U87ATQRqC1DjAQgA+RZbSSShGGRRAwF3Pher+9gspgQo
+EQqlPV/a+PN15R+Sqv9fRtjzyYou14x2I6qYjcFPEgFQLxzfAtDrFA2ehByaBh5y
+i4rIS3dVt25RPwf6tke9mdcbu26RwQEjwa3HEl5ug8uw0rOl10W3T+mOGBzNjM9K
+pDwP1iqKDKYV2YhJlhyaGGLqwEO7ZDSG2WDcfmyd5VBHIibMrzI/HilzxQon06zf
+JYH6EqBGeJrhEbgocr0QZ/MyTYz8Fdu+OSmt0XWlpL/5OKz2K8oLf6pQWDAqUTP8
+Abv1Su6hY0EeqESf3clQXiZH/WqPQ/tsQKUuczqWY1s2zthFKTm2COQ6fwARAQAB
+wsCsBBgBCABgBYJqC1DjCRAB7l+51Ah7TDUUAAAAAAAcABBzYWx0QG5vdGF0aW9u
+cy5vcGVucGdwanMub3JnDqJafVDqN6knZtBkLgEnNAKbDBYhBFbyUbt0LNR94f83
+WAHuX7nUCHtMAAB8mgf8ChVaw6jdG/3xFmBgvt0MIUbJ+waIXydRm3uTO079j0QZ
+DsXWtp/vvUc+ldvrimcdvt26rBhJi5EgHLH3MNtaQDWLtzE5U43DbuitlkJwfwNk
+2iQ3VOul9584HjNuDPB6GWR5UMLYM9aw2G3uGlzW6dr9pAKjVl0Kton3kAt29Ru6
+7VppVo/f/WMaFmjrddaZ7JSuFztmGOSKD8FtQpPFLHeoanCrDeTQGICaWq/axmOI
+9AChfaoZKO3D1xfLTDd5KROB9KWIXRhwc2+mZ4qrgJV73iGE46dqYQFAN9PpLy9R
+pPRi6QlUPDTEG+2kBNybNfRlg38+bXQkEAQQZt+8YQ==
+=y1cq
+-----END PGP PUBLIC KEY BLOCK-----`
+)

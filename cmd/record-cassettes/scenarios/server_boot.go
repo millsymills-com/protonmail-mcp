@@ -33,11 +33,10 @@ func recordBootDispatch(ctx context.Context) (retErr error) {
 	}()
 
 	kc := keychain.New()
-	plainSess, loginErr := loginAndPersistSession(ctx, kc)
+	_, loginErr := loginAndPersistSession(ctx, kc)
 	if loginErr != nil {
 		return loginErr
 	}
-	defer logoutAndClear(plainSess, kc)
 
 	recSess := session.New(defaultAPIURL(), kc, session.WithTransport(rt))
 	c, err := recSess.Client(ctx)
