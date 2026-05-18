@@ -43,13 +43,33 @@ func TestLintAllowsPublicPGP(t *testing.T) {
 
 func TestLintFlagsPrivatePGP(t *testing.T) {
 	dir := t.TempDir()
-	body := "-----BEGIN PGP PRIVATE KEY BLOCK-----\n"
+	// Real Proton private key armor: BEGIN PRIVATE pairs with
+	// Version: ProtonMail on the next line. Both halves must be present
+	// for the lint to fire (the in-repo gopenpgp fixture has the BEGIN
+	// header but a Version: GopenPGP marker, which the rule must not
+	// match).
+	body := `"-----BEGIN PGP PRIVATE KEY BLOCK-----\nVersion: ProtonMail\n\nxsBN..."`
 	if err := os.WriteFile(filepath.Join(dir, "private.yaml"), []byte(body), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	got := testvcr.Scan(dir)
 	if len(got) == 0 || got[0].Rule != "pgp-private" {
 		t.Fatalf("expected pgp-private finding; got %+v", got)
+	}
+}
+
+func TestLintAllowsFixturePGP(t *testing.T) {
+	dir := t.TempDir()
+	// The recorder-substituted gopenpgp fixture: BEGIN header followed by
+	// a Comment line and Version: GopenPGP. Must not match pgp-private.
+	body := `"-----BEGIN PGP PRIVATE KEY BLOCK-----\nComment: https://gopenpgp.org\nVersion: GopenPGP 2.10.0\n\nxsBN..."`
+	if err := os.WriteFile(filepath.Join(dir, "fixture.yaml"), []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range testvcr.Scan(dir) {
+		if f.Rule == "pgp-private" {
+			t.Fatalf("unexpected pgp-private finding on fixture: %+v", f)
+		}
 	}
 }
 

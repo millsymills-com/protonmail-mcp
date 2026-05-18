@@ -107,10 +107,27 @@ func (s *bodyScrubber) walk(v any) {
 	switch t := v.(type) {
 	case map[string]any:
 		for k, vv := range t {
+			if _, ok := vv.(string); ok {
+				// PGP key fields need valid armored substitutes — proton.Key.
+				// UnmarshalJSON calls crypto.NewKeyFromArmored(PrivateKey), so
+				// a "REDACTED_*" string fails parse and breaks every cassette
+				// that loads a User. The fixture pair gives proton-go-api
+				// something parseable and strips the real key's embedded
+				// email-bearing UID at the same time. PublicKey gets the
+				// matching armor even though it isn't in sensitiveJSONKeys.
+				if strings.EqualFold(k, "PrivateKey") {
+					t[k] = fixturePrivateKey
+					continue
+				}
+				if strings.EqualFold(k, "PublicKey") {
+					t[k] = fixturePublicKey
+					continue
+				}
+			}
 			if isSensitiveJSONKey(k) {
 				if _, ok := vv.(string); ok {
-					// Counter tracks per-key occurrences (counter key is canonical
-					// upper-case so "UID" and "Uid" share a sequence).
+					// Counter tracks per-key occurrences (canonical upper-case
+					// so "UID" and "Uid" share one REDACTED_UID_<N> sequence).
 					canonical := strings.ToUpper(k)
 					s.counters[canonical]++
 					t[k] = fmt.Sprintf("REDACTED_%s_%d", canonical, s.counters[canonical])

@@ -41,7 +41,15 @@ var lintRules = []lintRule{
 	{"client-proof-raw", regexp.MustCompile(`(?i)"ClientProof":\s*"[^R][^"]+"`)},
 	{"client-ephemeral-raw", regexp.MustCompile(`(?i)"ClientEphemeral":\s*"[^R][^"]+"`)},
 	{"two-factor-code-raw", regexp.MustCompile(`(?i)"TwoFactorCode":\s*"[^R][^"]+"`)},
-	{"pgp-private", regexp.MustCompile(`BEGIN PGP PRIVATE KEY BLOCK`)},
+	// Match BEGIN PGP PRIVATE KEY BLOCK only when immediately followed by
+	// "Version: ProtonMail" in the YAML-escaped line. The recorder scrubber
+	// swaps real Proton keys for an in-repo gopenpgp fixture (see
+	// internal/testvcr/fixtures.go) whose armor header reads
+	// "Comment: https://gopenpgp.org\nVersion: GopenPGP …", so the tighter
+	// anchor distinguishes fixture from real-leak. The escape sequence
+	// `\\n` is the literal characters backslash-n that appear in the YAML
+	// body, not a real newline.
+	{"pgp-private", regexp.MustCompile(`BEGIN PGP PRIVATE KEY BLOCK-----\\nVersion: ProtonMail`)},
 	{"pgp-message", regexp.MustCompile(`BEGIN PGP MESSAGE`)},
 	{"proton-email", regexp.MustCompile(`@protonmail\.|@proton\.me`)},
 }

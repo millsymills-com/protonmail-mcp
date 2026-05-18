@@ -65,16 +65,29 @@ func TestScrubJSONBodyReplacesSensitiveKeys(t *testing.T) {
 	}
 }
 
-func TestScrubLeavesPublicPGPKeyAlone(t *testing.T) {
-	body := `{"PublicKey":"-----BEGIN PGP PUBLIC KEY BLOCK-----\nAAAA\n-----END PGP PUBLIC KEY BLOCK-----"}`
+// TestScrubReplacesPGPKeysWithFixture pins the scrubber's PGP substitution
+// behaviour. Real Proton key payloads embed the account UID inside the
+// armored packet (so the raw email leaks through) and the matching
+// PrivateKey is encrypted-but-still-sensitive material; replacing the pair
+// with a generated fixture both removes the leak and gives
+// proton.Key.UnmarshalJSON valid armored data to parse on cassette load.
+func TestScrubReplacesPGPKeysWithFixture(t *testing.T) {
+	body := `{"PrivateKey":"-----BEGIN PGP PRIVATE KEY BLOCK-----\nAAAA\n-----END PGP PRIVATE KEY BLOCK-----","PublicKey":"-----BEGIN PGP PUBLIC KEY BLOCK-----\nBBBB\n-----END PGP PUBLIC KEY BLOCK-----"}`
 	i := &cassette.Interaction{
 		Response: cassette.Response{Body: body, Headers: http.Header{"Content-Type": []string{"application/json"}}},
 	}
 	if err := saveHook(i); err != nil {
 		t.Fatal(err)
 	}
-	if i.Response.Body != body {
-		t.Fatalf("public key block was modified: %s", i.Response.Body)
+	got := i.Response.Body
+	if !strings.Contains(got, "-----BEGIN PGP PRIVATE KEY BLOCK-----") {
+		t.Fatalf("private key armor missing after scrub: %s", got)
+	}
+	if !strings.Contains(got, "-----BEGIN PGP PUBLIC KEY BLOCK-----") {
+		t.Fatalf("public key armor missing after scrub: %s", got)
+	}
+	if !strings.Contains(got, "Comment: https://gopenpgp.org") {
+		t.Fatalf("expected gopenpgp fixture marker, got: %s", got)
 	}
 }
 
