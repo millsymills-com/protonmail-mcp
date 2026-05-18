@@ -35,7 +35,7 @@ interactions:
             Content-Type:
                 - application/json
             Date:
-                - Mon, 18 May 2026 18:38:31 GMT
+                - Mon, 01 Jan 2001 00:00:00 GMT
             Expect-Ct:
                 - max-age=2592000, enforce, report-uri="https://reports.proton.me/reports/tls"
             Expires:
@@ -94,7 +94,7 @@ interactions:
             Content-Type:
                 - application/json
             Date:
-                - Mon, 18 May 2026 18:38:32 GMT
+                - Mon, 01 Jan 2001 00:00:00 GMT
             Expect-Ct:
                 - max-age=2592000, enforce, report-uri="https://reports.proton.me/reports/tls"
             Expires:
@@ -156,7 +156,7 @@ interactions:
             Content-Type:
                 - application/json
             Date:
-                - Mon, 18 May 2026 18:38:32 GMT
+                - Mon, 01 Jan 2001 00:00:00 GMT
             Expect-Ct:
                 - max-age=2592000, enforce, report-uri="https://reports.proton.me/reports/tls"
             Expires:
@@ -218,7 +218,7 @@ interactions:
             Content-Type:
                 - application/json
             Date:
-                - Mon, 18 May 2026 18:38:32 GMT
+                - Mon, 01 Jan 2001 00:00:00 GMT
             Expect-Ct:
                 - max-age=2592000, enforce, report-uri="https://reports.proton.me/reports/tls"
             Expires:
