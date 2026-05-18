@@ -121,6 +121,107 @@ func TestScrubRewritesThrowawayDomain(t *testing.T) {
 	}
 }
 
+// TestScrubRedactsRecoverySecretAndFingerprint pins the post-2026-05-18
+// additions to sensitiveJSONKeys. Real Proton /core/v4/users responses leak
+// a base64 RecoverySecret and the account's PGP key Fingerprint inline —
+// both need REDACTED_*_N placeholders before commit.
+func TestScrubRedactsRecoverySecretAndFingerprint(t *testing.T) {
+	body := `{"RecoverySecret":"g8RbbkMK/qLTE0R7vh1Q0mh5lrUL51dWcbIluRbJg0w=","Fingerprint":"e1a4a657f6898d2204d606e235fac8ab7e0011e6"}`
+	i := &cassette.Interaction{
+		Response: cassette.Response{Body: body, Headers: http.Header{"Content-Type": []string{"application/json"}}},
+	}
+	if err := saveHook(i); err != nil {
+		t.Fatal(err)
+	}
+	var got map[string]any
+	if err := json.Unmarshal([]byte(i.Response.Body), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got["RecoverySecret"] != "REDACTED_RECOVERYSECRET_1" {
+		t.Fatalf("RecoverySecret = %v, want REDACTED_RECOVERYSECRET_1", got["RecoverySecret"])
+	}
+	if got["Fingerprint"] != "REDACTED_FINGERPRINT_1" {
+		t.Fatalf("Fingerprint = %v, want REDACTED_FINGERPRINT_1", got["Fingerprint"])
+	}
+}
+
+// TestScrubReplacesPGPSignatureAndMessage covers armor variants that aren't
+// keys — RecoverySecretSignature (PGP SIGNATURE) and any PGP MESSAGE — by
+// asserting they collapse to a REDACTED_PGP_* placeholder rather than
+// shipping the real Proton-tagged armor.
+func TestScrubReplacesPGPSignatureAndMessage(t *testing.T) {
+	body := `{"RecoverySecretSignature":"-----BEGIN PGP SIGNATURE-----\nVersion: ProtonMail\n\nwsB...\n-----END PGP SIGNATURE-----","Token":"-----BEGIN PGP MESSAGE-----\nVersion: ProtonMail\n\nwcB...\n-----END PGP MESSAGE-----"}`
+	i := &cassette.Interaction{
+		Response: cassette.Response{Body: body, Headers: http.Header{"Content-Type": []string{"application/json"}}},
+	}
+	if err := saveHook(i); err != nil {
+		t.Fatal(err)
+	}
+	var got map[string]any
+	if err := json.Unmarshal([]byte(i.Response.Body), &got); err != nil {
+		t.Fatal(err)
+	}
+	sig, _ := got["RecoverySecretSignature"].(string)
+	if !strings.HasPrefix(sig, "REDACTED_PGP_") {
+		t.Fatalf("RecoverySecretSignature not collapsed: %q", sig)
+	}
+	tok, _ := got["Token"].(string)
+	if !strings.HasPrefix(tok, "REDACTED_PGP_") {
+		t.Fatalf("Token not collapsed: %q", tok)
+	}
+	if strings.Contains(i.Response.Body, "Version: ProtonMail") {
+		t.Fatalf("real Proton armor survived: %s", i.Response.Body)
+	}
+}
+
+// TestScrubRewritesSiblingProtonAddresses covers Proton accounts that hold
+// addresses on multiple TLDs (e.g. RECORD_EMAIL=foo@pm.me but the account
+// also has foo@protonmail.com). proton_list_addresses returns every alias,
+// and a substring rewrite of just RECORD_EMAIL misses the siblings.
+func TestScrubRewritesSiblingProtonAddresses(t *testing.T) {
+	t.Setenv("RECORD_EMAIL", "overm1nd@pm.me")
+	body := `{"Addresses":[{"Email":"overm1nd@pm.me"},{"Email":"overm1nd@protonmail.com"},{"Email":"overm1nd@proton.me"},{"Email":"overm1nd@protonmail.ch"}]}`
+	i := &cassette.Interaction{
+		Response: cassette.Response{Body: body, Headers: http.Header{"Content-Type": []string{"application/json"}}},
+	}
+	if err := saveHook(i); err != nil {
+		t.Fatal(err)
+	}
+	for _, tld := range []string{"@pm.me", "@protonmail.com", "@proton.me", "@protonmail.ch"} {
+		if strings.Contains(i.Response.Body, "overm1nd"+tld) {
+			t.Fatalf("sibling address overm1nd%s survived: %s", tld, i.Response.Body)
+		}
+	}
+}
+
+// TestScrubRewritesEmailLocalPart covers Name/DisplayName which hold the
+// email local part standalone (not the full address). rewriteIdentifiers'
+// substring replace on the full email misses these — the walk-time
+// exact-match check is what catches them.
+func TestScrubRewritesEmailLocalPart(t *testing.T) {
+	t.Setenv("RECORD_EMAIL", "overm1nd@pm.me")
+	body := `{"Name":"overm1nd","DisplayName":"overm1nd","Unrelated":"overm1nd-prime"}`
+	i := &cassette.Interaction{
+		Response: cassette.Response{Body: body, Headers: http.Header{"Content-Type": []string{"application/json"}}},
+	}
+	if err := saveHook(i); err != nil {
+		t.Fatal(err)
+	}
+	var got map[string]any
+	if err := json.Unmarshal([]byte(i.Response.Body), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got["Name"] != "user" {
+		t.Fatalf("Name not rewritten: %v", got["Name"])
+	}
+	if got["DisplayName"] != "user" {
+		t.Fatalf("DisplayName not rewritten: %v", got["DisplayName"])
+	}
+	if got["Unrelated"] != "overm1nd-prime" {
+		t.Fatalf("substring false-positive: %v", got["Unrelated"])
+	}
+}
+
 // TestScrubCaseFoldsSensitiveKeys guards against the leak found 2026-05-17
 // where Proton's /auth/v4/refresh response returned both "UID" and "Uid" but
 // only the upper-case form was redacted. Case-insensitive lookup is the fix.

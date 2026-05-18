@@ -41,46 +41,68 @@ func TestLintAllowsPublicPGP(t *testing.T) {
 	}
 }
 
-func TestLintFlagsPrivatePGP(t *testing.T) {
-	dir := t.TempDir()
-	// Real Proton private key armor: BEGIN PRIVATE pairs with
-	// Version: ProtonMail on the next line. Both halves must be present
-	// for the lint to fire (the in-repo gopenpgp fixture has the BEGIN
-	// header but a Version: GopenPGP marker, which the rule must not
-	// match).
-	body := `"-----BEGIN PGP PRIVATE KEY BLOCK-----\nVersion: ProtonMail\n\nxsBN..."`
-	if err := os.WriteFile(filepath.Join(dir, "private.yaml"), []byte(body), 0o644); err != nil {
-		t.Fatal(err)
+func TestLintFlagsProtonPGPArmor(t *testing.T) {
+	// pgp-proton fires on any Proton-tagged armor (PRIVATE KEY BLOCK,
+	// MESSAGE, SIGNATURE) followed by "Version: ProtonMail". The in-repo
+	// gopenpgp fixture uses "Version: GopenPGP" so it must not match.
+	cases := []struct {
+		name string
+		body string
+	}{
+		{"private-key-block", `"-----BEGIN PGP PRIVATE KEY BLOCK-----\nVersion: ProtonMail\n\nxsBN..."`},
+		{"message", `"-----BEGIN PGP MESSAGE-----\nVersion: ProtonMail\n\nwcB..."`},
+		{"signature", `"-----BEGIN PGP SIGNATURE-----\nVersion: ProtonMail\n\nwsB..."`},
 	}
-	got := testvcr.Scan(dir)
-	if len(got) == 0 || got[0].Rule != "pgp-private" {
-		t.Fatalf("expected pgp-private finding; got %+v", got)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			if err := os.WriteFile(filepath.Join(dir, "leaky.yaml"), []byte(tc.body), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			got := testvcr.Scan(dir)
+			found := false
+			for _, f := range got {
+				if f.Rule == "pgp-proton" {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Fatalf("expected pgp-proton finding; got %+v", got)
+			}
+		})
 	}
 }
 
 func TestLintAllowsFixturePGP(t *testing.T) {
 	dir := t.TempDir()
 	// The recorder-substituted gopenpgp fixture: BEGIN header followed by
-	// a Comment line and Version: GopenPGP. Must not match pgp-private.
+	// a Comment line and Version: GopenPGP. Must not match pgp-proton.
 	body := `"-----BEGIN PGP PRIVATE KEY BLOCK-----\nComment: https://gopenpgp.org\nVersion: GopenPGP 2.10.0\n\nxsBN..."`
 	if err := os.WriteFile(filepath.Join(dir, "fixture.yaml"), []byte(body), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	for _, f := range testvcr.Scan(dir) {
-		if f.Rule == "pgp-private" {
-			t.Fatalf("unexpected pgp-private finding on fixture: %+v", f)
+		if f.Rule == "pgp-proton" {
+			t.Fatalf("unexpected pgp-proton finding on fixture: %+v", f)
 		}
 	}
 }
 
 func TestLintFlagsProtonEmail(t *testing.T) {
-	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "leaky.yaml"), []byte("alice@protonmail.com"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	got := testvcr.Scan(dir)
-	if len(got) == 0 || got[0].Rule != "proton-email" {
-		t.Fatalf("expected proton-email finding; got %+v", got)
+	// Proton issues addresses on three TLDs — all three must trip the rule.
+	cases := []string{"alice@protonmail.com", "bob@proton.me", "carol@pm.me"}
+	for _, body := range cases {
+		t.Run(body, func(t *testing.T) {
+			dir := t.TempDir()
+			if err := os.WriteFile(filepath.Join(dir, "leaky.yaml"), []byte(body), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			got := testvcr.Scan(dir)
+			if len(got) == 0 || got[0].Rule != "proton-email" {
+				t.Fatalf("expected proton-email finding for %s; got %+v", body, got)
+			}
+		})
 	}
 }
 
@@ -109,6 +131,8 @@ func TestLintNewRulesFireOnRaw(t *testing.T) {
 		{"client-proof-raw", `"ClientProof": "proofvalue2"`},
 		{"client-ephemeral-raw", `"ClientEphemeral": "ephemdata1"`},
 		{"two-factor-code-raw", `"TwoFactorCode": "123456789"`},
+		{"recovery-secret-raw", `"RecoverySecret": "g8RbbkMK+secretbytes="`},
+		{"fingerprint-raw", `"Fingerprint": "e1a4a657f6898d2204d606e235fac8ab7e0011e6"`},
 	}
 	for _, tc := range cases {
 		t.Run(tc.rule, func(t *testing.T) {
@@ -143,6 +167,8 @@ func TestLintNewRulesIgnoreScrubbed(t *testing.T) {
 		{"client-proof-raw", `"ClientProof": "REDACTED_CLIENTPROOF_1"`},
 		{"client-ephemeral-raw", `"ClientEphemeral": "REDACTED_CLIENTEPHEMERAL_1"`},
 		{"two-factor-code-raw", `"TwoFactorCode": "REDACTED_TWOFACTORCODE_1"`},
+		{"recovery-secret-raw", `"RecoverySecret": "REDACTED_RECOVERYSECRET_1"`},
+		{"fingerprint-raw", `"Fingerprint": "REDACTED_FINGERPRINT_1"`},
 	}
 	for _, tc := range cases {
 		t.Run(tc.rule, func(t *testing.T) {

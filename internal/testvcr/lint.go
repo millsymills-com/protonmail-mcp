@@ -41,17 +41,20 @@ var lintRules = []lintRule{
 	{"client-proof-raw", regexp.MustCompile(`(?i)"ClientProof":\s*"[^R][^"]+"`)},
 	{"client-ephemeral-raw", regexp.MustCompile(`(?i)"ClientEphemeral":\s*"[^R][^"]+"`)},
 	{"two-factor-code-raw", regexp.MustCompile(`(?i)"TwoFactorCode":\s*"[^R][^"]+"`)},
-	// Match BEGIN PGP PRIVATE KEY BLOCK only when immediately followed by
-	// "Version: ProtonMail" in the YAML-escaped line. The recorder scrubber
-	// swaps real Proton keys for an in-repo gopenpgp fixture (see
-	// internal/testvcr/fixtures.go) whose armor header reads
-	// "Comment: https://gopenpgp.org\nVersion: GopenPGP …", so the tighter
-	// anchor distinguishes fixture from real-leak. The escape sequence
-	// `\\n` is the literal characters backslash-n that appear in the YAML
-	// body, not a real newline.
-	{"pgp-private", regexp.MustCompile(`BEGIN PGP PRIVATE KEY BLOCK-----\\nVersion: ProtonMail`)},
-	{"pgp-message", regexp.MustCompile(`BEGIN PGP MESSAGE`)},
-	{"proton-email", regexp.MustCompile(`@protonmail\.|@proton\.me`)},
+	{"recovery-secret-raw", regexp.MustCompile(`(?i)"RecoverySecret":\s*"[^R][^"]+"`)},
+	{"fingerprint-raw", regexp.MustCompile(`(?i)"Fingerprint":\s*"[^R][^"]+"`)},
+	// Flag any Proton-issued PGP armor — PRIVATE KEY BLOCK, MESSAGE, or
+	// SIGNATURE — whose header line carries "Version: ProtonMail". The
+	// recorder swaps real keys for an in-repo gopenpgp fixture (see
+	// internal/testvcr/fixtures.go) whose armor reads
+	// "Comment: https://gopenpgp.org\nVersion: GopenPGP …", so this rule
+	// distinguishes fixture from real-leak. RecoverySecretSignature is the
+	// reason MESSAGE/SIGNATURE are in scope — the public-key+signature pair
+	// reveals the signing key fingerprint even when the secret is redacted.
+	// The escape sequence `\\n` is the literal characters backslash-n that
+	// appear in the YAML body, not a real newline.
+	{"pgp-proton", regexp.MustCompile(`BEGIN PGP (?:PRIVATE KEY BLOCK|MESSAGE|SIGNATURE)-----\\nVersion: ProtonMail`)},
+	{"proton-email", regexp.MustCompile(`@protonmail\.|@proton\.me|@pm\.me`)},
 }
 
 const staleThreshold = 90 * 24 * time.Hour

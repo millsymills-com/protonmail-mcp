@@ -6,9 +6,9 @@ interactions:
         proto: HTTP/1.1
         proto_major: 1
         proto_minor: 1
-        content_length: 304
+        content_length: 324
         host: mail.proton.me
-        body: '{"GrantType":"refresh_token","RedirectURI":"https://protonmail.ch","RefreshToken":"REDACTED_REFRESHTOKEN_1","ResponseType":"token","State":"\u001d�G���2~!\u0006�f��V+\u0005H7+7�w�F���Ao2�","UID":"REDACTED_UID_1"}'
+        body: '{"GrantType":"refresh_token","RedirectURI":"https://protonmail.ch","RefreshToken":"REDACTED_REFRESHTOKEN_1","ResponseType":"token","State":"�[�<g�\u001c�@�T���\u000e���5�h��{�.7J\u0013-\u0014v","UID":"REDACTED_UID_1"}'
         headers:
             Content-Type:
                 - application/json
@@ -35,7 +35,7 @@ interactions:
             Content-Type:
                 - application/json
             Date:
-                - Mon, 18 May 2026 18:08:19 GMT
+                - Mon, 18 May 2026 18:38:26 GMT
             Expect-Ct:
                 - max-age=2592000, enforce, report-uri="https://reports.proton.me/reports/tls"
             Expires:
@@ -58,7 +58,7 @@ interactions:
                 - "0"
         status: 200 OK
         code: 200
-        duration: 423.126708ms
+        duration: 254.339833ms
     - id: 1
       request:
         proto: HTTP/1.1
@@ -94,7 +94,7 @@ interactions:
             Content-Type:
                 - application/json
             Date:
-                - Mon, 18 May 2026 18:08:20 GMT
+                - Mon, 18 May 2026 18:38:26 GMT
             Expect-Ct:
                 - max-age=2592000, enforce, report-uri="https://reports.proton.me/reports/tls"
             Expires:
@@ -117,4 +117,4 @@ interactions:
                 - "0"
         status: 200 OK
         code: 200
-        duration: 265.355417ms
+        duration: 308.583292ms

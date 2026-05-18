@@ -6,9 +6,9 @@ interactions:
         proto: HTTP/1.1
         proto_major: 1
         proto_minor: 1
-        content_length: 335
+        content_length: 295
         host: mail.proton.me
-        body: '{"GrantType":"refresh_token","RedirectURI":"https://protonmail.ch","RefreshToken":"REDACTED_REFRESHTOKEN_1","ResponseType":"token","State":"��-\u000e�\u0010�\u0010�����\u000ea��E\f��\u001cQ��C}Fi\u0012\u001aD","UID":"REDACTED_UID_1"}'
+        body: '{"GrantType":"refresh_token","RedirectURI":"https://protonmail.ch","RefreshToken":"REDACTED_REFRESHTOKEN_1","ResponseType":"token","State":"BC��\u0003)x$F�\u0018��m\ri\u0012\u0019[Byzݼc%��\u001fR��","UID":"REDACTED_UID_1"}'
         headers:
             Content-Type:
                 - application/json
@@ -24,7 +24,7 @@ interactions:
         proto_minor: 0
         content_length: -1
         uncompressed: true
-        body: '{"AccessToken":"REDACTED_ACCESSTOKEN_1","Code":1000,"ExpiresIn":86400,"LocalID":0,"RefreshCounter":6,"RefreshToken":"REDACTED_REFRESHTOKEN_1","Scope":"full self parent user loggedin paid nondelinquent mail verified settings","Scopes":["full","self","parent","user","loggedin","paid","nondelinquent","mail","verified","settings"],"TokenType":"Bearer","UID":"REDACTED_UID_2","Uid":"REDACTED_UID_1"}'
+        body: '{"AccessToken":"REDACTED_ACCESSTOKEN_1","Code":1000,"ExpiresIn":86400,"LocalID":0,"RefreshCounter":6,"RefreshToken":"REDACTED_REFRESHTOKEN_1","Scope":"full self parent user loggedin paid nondelinquent mail verified settings","Scopes":["full","self","parent","user","loggedin","paid","nondelinquent","mail","verified","settings"],"TokenType":"Bearer","UID":"REDACTED_UID_1","Uid":"REDACTED_UID_2"}'
         headers:
             Access:
                 - application/vnd.protonmail.api+json;apiversion=4
@@ -35,7 +35,7 @@ interactions:
             Content-Type:
                 - application/json
             Date:
-                - Mon, 18 May 2026 18:08:18 GMT
+                - Mon, 18 May 2026 18:38:25 GMT
             Expect-Ct:
                 - max-age=2592000, enforce, report-uri="https://reports.proton.me/reports/tls"
             Expires:
@@ -58,7 +58,7 @@ interactions:
                 - "0"
         status: 200 OK
         code: 200
-        duration: 310.750709ms
+        duration: 245.303166ms
     - id: 1
       request:
         proto: HTTP/1.1
@@ -83,7 +83,7 @@ interactions:
         proto_minor: 0
         content_length: -1
         uncompressed: true
-        body: '{"Code":1000,"MailSettings":{"AlmostAllMail":1,"AlsoArchive":0,"AttachPublicKey":0,"AutoDeleteSpamAndTrashDays":30,"AutoResponder":{"DaysSelected":[],"EndTime":0,"IsEnabled":false,"Message":"","Repeat":0,"StartTime":0,"Subject":"Auto","Zone":"Europe/Zurich"},"AutoSaveContacts":1,"AutoWildcardSearch":1,"Autocrypt":0,"BlockSenderConfirmation":null,"ComposerMode":0,"ConfirmLink":1,"DelaySendSeconds":10,"DisplayName":"","DraftMIMEType":"text/html","EnableFolderColor":0,"ExpandFolders":0,"FontFace":null,"FontSize":null,"HideEmbeddedImages":0,"HideRemoteImages":0,"HideSenderImages":0,"Hotkeys":0,"ImageProxy":2,"InheritParentFolderColor":1,"KT":0,"LastLoginTime":1779127691,"MailCategoryView":true,"MessageButtons":0,"NextMessageOnMove":1,"NumMessagePerPage":50,"PGPScheme":16,"PMSignature":1,"PMSignatureContent":"Sent with <a href=\"https://proton.me/mail/home\" target=\"_blank\">Proton Mail</a> secure email.","PMSignatureReferralLink":0,"PageSize":50,"PromptPin":1,"ReceiveMIMEType":"text/html","RecipientLimit":100,"RemoveImageMetadata":false,"RightToLeft":0,"Shortcuts":1,"ShowImages":2,"ShowMIMEType":"text/html","ShowMoved":0,"Sign":0,"Signature":"REDACTED_SIGNATURE_1","SpamAction":null,"StickyLabels":0,"SubmissionAccess":0,"SwipeLeft":0,"SwipeRight":1,"TLS":0,"Theme":"","ThemeType":0,"ThemeVersion":null,"UnreadFavicon":0,"ViewLayout":0,"ViewMode":0}}'
+        body: '{"Code":1000,"MailSettings":{"AlmostAllMail":1,"AlsoArchive":0,"AttachPublicKey":0,"AutoDeleteSpamAndTrashDays":30,"AutoResponder":{"DaysSelected":[],"EndTime":0,"IsEnabled":false,"Message":"","Repeat":0,"StartTime":0,"Subject":"Auto","Zone":"Europe/Zurich"},"AutoSaveContacts":1,"AutoWildcardSearch":1,"Autocrypt":0,"BlockSenderConfirmation":null,"ComposerMode":0,"ConfirmLink":1,"DelaySendSeconds":10,"DisplayName":"","DraftMIMEType":"text/html","EnableFolderColor":0,"ExpandFolders":0,"FontFace":null,"FontSize":null,"HideEmbeddedImages":0,"HideRemoteImages":0,"HideSenderImages":0,"Hotkeys":0,"ImageProxy":2,"InheritParentFolderColor":1,"KT":0,"LastLoginTime":1779129498,"MailCategoryView":true,"MessageButtons":0,"NextMessageOnMove":1,"NumMessagePerPage":50,"PGPScheme":16,"PMSignature":1,"PMSignatureContent":"Sent with <a href=\"https://proton.me/mail/home\" target=\"_blank\">Proton Mail</a> secure email.","PMSignatureReferralLink":0,"PageSize":50,"PromptPin":1,"ReceiveMIMEType":"text/html","RecipientLimit":100,"RemoveImageMetadata":false,"RightToLeft":0,"Shortcuts":1,"ShowImages":2,"ShowMIMEType":"text/html","ShowMoved":0,"Sign":0,"Signature":"REDACTED_SIGNATURE_1","SpamAction":null,"StickyLabels":0,"SubmissionAccess":0,"SwipeLeft":0,"SwipeRight":1,"TLS":0,"Theme":"","ThemeType":0,"ThemeVersion":null,"UnreadFavicon":0,"ViewLayout":0,"ViewMode":0}}'
         headers:
             Access:
                 - application/vnd.protonmail.api+json;apiversion=4
@@ -94,7 +94,7 @@ interactions:
             Content-Type:
                 - application/json
             Date:
-                - Mon, 18 May 2026 18:08:19 GMT
+                - Mon, 18 May 2026 18:38:25 GMT
             Expect-Ct:
                 - max-age=2592000, enforce, report-uri="https://reports.proton.me/reports/tls"
             Expires:
@@ -117,4 +117,4 @@ interactions:
                 - "0"
         status: 200 OK
         code: 200
-        duration: 321.856833ms
+        duration: 210.956791ms

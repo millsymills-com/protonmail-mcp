@@ -51,18 +51,11 @@ func loginAndPersistSession(ctx context.Context, kc *keychain.Keychain) (*sessio
 	return sess, nil
 }
 
-// logoutAndClear is a no-op while a cached session is live; FinalLogout is
-// the single end-of-batch entry point that actually tears down the session.
-func logoutAndClear(sess *session.Session, kc *keychain.Keychain) {
-	if cachedSess != nil {
-		return
-	}
-	_ = sess.Logout()
-	_ = kc.Clear()
-}
-
-// FinalLogout tears down the cached session at the end of a batch run.
-// Safe to call when no session was ever cached.
+// FinalLogout tears down the cached session at end of a batch run.
+// Safe to call when no session was ever cached. This is the single
+// teardown entry point — scenarios used to defer a per-scenario
+// logoutAndClear helper, but the in-process session cache made that
+// path a no-op and FinalLogout the only thing that actually runs.
 func FinalLogout() {
 	if cachedSess == nil {
 		return

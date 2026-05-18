@@ -38,11 +38,9 @@ func recordStatusLoggedIn(ctx context.Context) (retErr error) {
 	}()
 
 	kc := keychain.New()
-	plainSess, loginErr := loginAndPersistSession(ctx, kc)
-	if loginErr != nil {
+	if _, loginErr := loginAndPersistSession(ctx, kc); loginErr != nil {
 		return loginErr
 	}
-	defer logoutAndClear(plainSess, kc)
 
 	recSess := session.New(defaultAPIURL(), kc, session.WithTransport(rt))
 	c, err := recSess.Client(ctx)

@@ -6,9 +6,9 @@ interactions:
         proto: HTTP/1.1
         proto_major: 1
         proto_minor: 1
-        content_length: 315
+        content_length: 325
         host: mail.proton.me
-        body: '{"GrantType":"refresh_token","RedirectURI":"https://protonmail.ch","RefreshToken":"REDACTED_REFRESHTOKEN_1","ResponseType":"token","State":"r�1�\u0007�<n*��\"^��y-�Qg����<��qi''\u0004;","UID":"REDACTED_UID_1"}'
+        body: '{"GrantType":"refresh_token","RedirectURI":"https://protonmail.ch","RefreshToken":"REDACTED_REFRESHTOKEN_1","ResponseType":"token","State":"��>u��k�\r�b���w��V��l�E\u0004�&Z1\u0007�^k","UID":"REDACTED_UID_1"}'
         headers:
             Content-Type:
                 - application/json
@@ -24,7 +24,7 @@ interactions:
         proto_minor: 0
         content_length: -1
         uncompressed: true
-        body: '{"AccessToken":"REDACTED_ACCESSTOKEN_1","Code":1000,"ExpiresIn":86400,"LocalID":0,"RefreshCounter":14,"RefreshToken":"REDACTED_REFRESHTOKEN_1","Scope":"full self parent user loggedin paid nondelinquent mail verified settings","Scopes":["full","self","parent","user","loggedin","paid","nondelinquent","mail","verified","settings"],"TokenType":"Bearer","UID":"REDACTED_UID_2","Uid":"REDACTED_UID_1"}'
+        body: '{"AccessToken":"REDACTED_ACCESSTOKEN_1","Code":1000,"ExpiresIn":86400,"LocalID":0,"RefreshCounter":12,"RefreshToken":"REDACTED_REFRESHTOKEN_1","Scope":"full self parent user loggedin paid nondelinquent mail verified settings","Scopes":["full","self","parent","user","loggedin","paid","nondelinquent","mail","verified","settings"],"TokenType":"Bearer","UID":"REDACTED_UID_1","Uid":"REDACTED_UID_2"}'
         headers:
             Access:
                 - application/vnd.protonmail.api+json;apiversion=4
@@ -35,7 +35,7 @@ interactions:
             Content-Type:
                 - application/json
             Date:
-                - Mon, 18 May 2026 18:08:31 GMT
+                - Mon, 18 May 2026 18:38:33 GMT
             Expect-Ct:
                 - max-age=2592000, enforce, report-uri="https://reports.proton.me/reports/tls"
             Expires:
@@ -58,7 +58,7 @@ interactions:
                 - "0"
         status: 200 OK
         code: 200
-        duration: 217.023416ms
+        duration: 235.495125ms
     - id: 1
       request:
         proto: HTTP/1.1
@@ -94,7 +94,7 @@ interactions:
             Content-Type:
                 - application/json
             Date:
-                - Mon, 18 May 2026 18:08:32 GMT
+                - Mon, 18 May 2026 18:38:33 GMT
             Expect-Ct:
                 - max-age=2592000, enforce, report-uri="https://reports.proton.me/reports/tls"
             Expires:
@@ -117,7 +117,7 @@ interactions:
                 - "0"
         status: 200 OK
         code: 200
-        duration: 270.723791ms
+        duration: 328.67025ms
     - id: 2
       request:
         proto: HTTP/1.1
@@ -156,7 +156,7 @@ interactions:
             Content-Type:
                 - application/json
             Date:
-                - Mon, 18 May 2026 18:08:32 GMT
+                - Mon, 18 May 2026 18:38:34 GMT
             Expect-Ct:
                 - max-age=2592000, enforce, report-uri="https://reports.proton.me/reports/tls"
             Expires:
@@ -179,7 +179,7 @@ interactions:
                 - "0"
         status: 200 OK
         code: 200
-        duration: 281.275583ms
+        duration: 349.503291ms
     - id: 3
       request:
         proto: HTTP/1.1
@@ -218,7 +218,7 @@ interactions:
             Content-Type:
                 - application/json
             Date:
-                - Mon, 18 May 2026 18:08:33 GMT
+                - Mon, 18 May 2026 18:38:35 GMT
             Expect-Ct:
                 - max-age=2592000, enforce, report-uri="https://reports.proton.me/reports/tls"
             Expires:
@@ -241,7 +241,7 @@ interactions:
                 - "0"
         status: 200 OK
         code: 200
-        duration: 305.711875ms
+        duration: 285.578458ms
     - id: 4
       request:
         proto: HTTP/1.1
@@ -280,7 +280,7 @@ interactions:
             Content-Type:
                 - application/json
             Date:
-                - Mon, 18 May 2026 18:08:34 GMT
+                - Mon, 18 May 2026 18:38:35 GMT
             Expect-Ct:
                 - max-age=2592000, enforce, report-uri="https://reports.proton.me/reports/tls"
             Expires:
@@ -303,7 +303,7 @@ interactions:
                 - "0"
         status: 200 OK
         code: 200
-        duration: 319.275584ms
+        duration: 288.542041ms
     - id: 5
       request:
         proto: HTTP/1.1
@@ -342,7 +342,7 @@ interactions:
             Content-Type:
                 - application/json
             Date:
-                - Mon, 18 May 2026 18:08:34 GMT
+                - Mon, 18 May 2026 18:38:36 GMT
             Expect-Ct:
                 - max-age=2592000, enforce, report-uri="https://reports.proton.me/reports/tls"
             Expires:
@@ -365,4 +365,4 @@ interactions:
                 - "0"
         status: 200 OK
         code: 200
-        duration: 478.010417ms
+        duration: 336.429208ms

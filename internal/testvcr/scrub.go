@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"gopkg.in/dnaeon/go-vcr.v4/pkg/cassette"
+	"gopkg.in/yaml.v3"
 )
 
 // sensitiveJSONKeys are compared against incoming JSON keys via
@@ -28,6 +29,8 @@ var sensitiveJSONKeys = map[string]bool{
 	"ClientProof":     true,
 	"ClientEphemeral": true,
 	"TwoFactorCode":   true,
+	"RecoverySecret":  true,
+	"Fingerprint":     true,
 }
 
 func isSensitiveJSONKey(k string) bool {
@@ -40,6 +43,31 @@ func isSensitiveJSONKey(k string) bool {
 }
 
 var redactedHeaders = []string{"Authorization", "X-Pm-Uid", "Cookie", "Set-Cookie"}
+
+// Rescrub loads an on-disk cassette, runs saveHook against every interaction,
+// and writes the result back. Useful when scrub rules tighten and existing
+// cassettes need a re-pass without re-recording from the live API. Env vars
+// (RECORD_EMAIL etc.) drive identifier rewrites the same way as a live record.
+func Rescrub(path string) error {
+	// cassette.Load appends ".yaml"; accept either form by stripping it.
+	name := strings.TrimSuffix(path, ".yaml")
+	c, err := cassette.Load(name)
+	if err != nil {
+		return fmt.Errorf("load %s: %w", path, err)
+	}
+	// Load() doesn't set MarshalFunc — Save() panics without one. Match the
+	// recorder default (gopkg.in/yaml.v3 Marshal).
+	c.MarshalFunc = yaml.Marshal
+	for _, i := range c.Interactions {
+		if err := saveHook(i); err != nil {
+			return fmt.Errorf("scrub interaction %d: %w", i.ID, err)
+		}
+	}
+	if err := c.Save(); err != nil {
+		return fmt.Errorf("save %s: %w", path, err)
+	}
+	return nil
+}
 
 func saveHook(i *cassette.Interaction) error {
 	for _, h := range redactedHeaders {
@@ -107,20 +135,13 @@ func (s *bodyScrubber) walk(v any) {
 	switch t := v.(type) {
 	case map[string]any:
 		for k, vv := range t {
-			if _, ok := vv.(string); ok {
-				// PGP key fields need valid armored substitutes — proton.Key.
-				// UnmarshalJSON calls crypto.NewKeyFromArmored(PrivateKey), so
-				// a "REDACTED_*" string fails parse and breaks every cassette
-				// that loads a User. The fixture pair gives proton-go-api
-				// something parseable and strips the real key's embedded
-				// email-bearing UID at the same time. PublicKey gets the
-				// matching armor even though it isn't in sensitiveJSONKeys.
-				if strings.EqualFold(k, "PrivateKey") {
-					t[k] = fixturePrivateKey
+			if str, ok := vv.(string); ok {
+				if replaced, did := s.replacePGPArmor(k, str); did {
+					t[k] = replaced
 					continue
 				}
-				if strings.EqualFold(k, "PublicKey") {
-					t[k] = fixturePublicKey
+				if s.matchesLocalPart(str) {
+					t[k] = "user"
 					continue
 				}
 			}
@@ -143,10 +164,58 @@ func (s *bodyScrubber) walk(v any) {
 	}
 }
 
+// replacePGPArmor returns (substitute, true) when v is a PGP-armored block.
+// PRIVATE/PUBLIC KEY BLOCKs swap to the in-repo fixture pair so
+// proton.Key.UnmarshalJSON can still parse them on cassette load; MESSAGE
+// and SIGNATURE blocks (e.g. RecoverySecretSignature) get REDACTED_PGP_*
+// since they don't round-trip through a crypto parser.
+func (s *bodyScrubber) replacePGPArmor(k, v string) (string, bool) {
+	if !strings.HasPrefix(v, "-----BEGIN PGP ") {
+		return "", false
+	}
+	switch {
+	case strings.HasPrefix(v, "-----BEGIN PGP PRIVATE KEY BLOCK"):
+		return fixturePrivateKey, true
+	case strings.HasPrefix(v, "-----BEGIN PGP PUBLIC KEY BLOCK"):
+		return fixturePublicKey, true
+	default:
+		canonical := strings.ToUpper(k)
+		s.counters["PGP_"+canonical]++
+		return fmt.Sprintf("REDACTED_PGP_%s_%d", canonical, s.counters["PGP_"+canonical]), true
+	}
+}
+
+// matchesLocalPart reports whether v exactly equals the local part of
+// RECORD_EMAIL. Proton's Name/DisplayName fields hold the email local part
+// standalone, so the full-string ReplaceAll in rewriteIdentifiers misses
+// them. Exact-match (not substring) avoids collateral on short local parts.
+func (s *bodyScrubber) matchesLocalPart(v string) bool {
+	if s.email == "" {
+		return false
+	}
+	at := strings.IndexByte(s.email, '@')
+	if at <= 0 || at >= len(s.email)-1 {
+		return false
+	}
+	return v == s.email[:at]
+}
+
+// protonAddressTLDs covers the Proton-issued address suffixes a single
+// account can hold simultaneously. proton_list_addresses returns every alias
+// across all four, so scrubbing only the configured RECORD_EMAIL TLD leaves
+// the sibling addresses intact.
+var protonAddressTLDs = []string{"@protonmail.com", "@protonmail.ch", "@proton.me", "@pm.me"}
+
 func (s *bodyScrubber) rewriteIdentifiers(in string) string {
 	out := in
 	if s.email != "" {
 		out = strings.ReplaceAll(out, s.email, "user@example.test")
+		if at := strings.IndexByte(s.email, '@'); at > 0 && at < len(s.email)-1 {
+			local := s.email[:at]
+			for _, tld := range protonAddressTLDs {
+				out = strings.ReplaceAll(out, local+tld, "user@example.test")
+			}
+		}
 	}
 	if s.throwawayDomain != "" {
 		out = strings.ReplaceAll(out, s.throwawayDomain, "throwaway.example.test")
