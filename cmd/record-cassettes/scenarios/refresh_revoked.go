@@ -4,6 +4,7 @@ package scenarios
 
 import (
 	"context"
+	"net/http"
 	"os"
 	"path/filepath"
 
@@ -21,7 +22,13 @@ func recordRefreshRevoked(ctx context.Context) (retErr error) {
 	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 		return err
 	}
-	rt, stop, err := testvcr.NewAtPath(target, testvcr.ModeRecord)
+	// Layer order matters: the 401 on /core/v4/users triggers a refresh
+	// attempt, which then hits the 422 on /auth/refresh. Both synthetic
+	// responses sit inside the recorder (via WithRealTransport) so they
+	// land in the cassette via the normal record path.
+	injected := inject401AccessTokenExpired(http.DefaultTransport, "/core/v4/users")
+	injected = inject422RefreshRevoked(injected, "/auth/refresh")
+	rt, stop, err := testvcr.NewAtPath(target, testvcr.ModeRecord, testvcr.WithRealTransport(injected))
 	if err != nil {
 		return err
 	}
@@ -37,11 +44,7 @@ func recordRefreshRevoked(ctx context.Context) (retErr error) {
 		return err
 	}
 
-	// Layer order matters: the 401 on /core/v4/users triggers a refresh attempt,
-	// which then hits the 422 on /auth/refresh before falling through to rt.
-	wrapped := inject401AccessTokenExpired(rt, "/core/v4/users")
-	wrapped = inject422RefreshRevoked(wrapped, "/auth/refresh")
-	sess := session.New(defaultAPIURL(), kc, session.WithTransport(wrapped))
+	sess := session.New(defaultAPIURL(), kc, session.WithTransport(rt))
 	c, err := sess.Client(ctx)
 	if err != nil {
 		return err
