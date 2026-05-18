@@ -30,25 +30,26 @@ func init() {
 	Register("error_upstream_503", recordErrorUpstream503)
 }
 
-func openErrorCassette(scenario string) (http.RoundTripper, func() error, error) {
+func openErrorCassette(scenario string, opts ...testvcr.Option) (http.RoundTripper, func() error, error) {
 	target := filepath.Join(toolsCassetteDir, scenario)
 	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 		return nil, nil, err
 	}
-	return testvcr.NewAtPath(target, testvcr.ModeRecord)
+	return testvcr.NewAtPath(target, testvcr.ModeRecord, opts...)
 }
 
-// recordInjectedError is shared by injector-based error scenarios. It logs in,
-// wraps the recorder transport with an injector, calls fn (which fires the
-// injected error), then logs out. The cassette captures the synthetic response
-// so replay does not require a live API.
+// recordInjectedError is shared by injector-based error scenarios. The
+// injector is installed as the recorder's upstream transport so its
+// synthetic response is captured into the cassette through go-vcr's normal
+// record path; pre-#87 it wrapped the recorder externally and short-circuited
+// the cassette write.
 func recordInjectedError(
 	ctx context.Context,
 	scenario string,
 	inject func(rt http.RoundTripper) http.RoundTripper,
 	fn func(c *proton.Client) error,
 ) (retErr error) {
-	rt, stop, err := openErrorCassette(scenario)
+	rt, stop, err := openErrorCassette(scenario, testvcr.WithRealTransport(inject(http.DefaultTransport)))
 	if err != nil {
 		return err
 	}
@@ -63,8 +64,7 @@ func recordInjectedError(
 		return err
 	}
 
-	wrapped := inject(rt)
-	sess := session.New(defaultAPIURL(), kc, session.WithTransport(wrapped))
+	sess := session.New(defaultAPIURL(), kc, session.WithTransport(rt))
 	c, err := sess.Client(ctx)
 	if err != nil {
 		return err
