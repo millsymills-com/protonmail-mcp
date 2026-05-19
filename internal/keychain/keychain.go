@@ -1,13 +1,42 @@
 // Package keychain wraps go-keyring with typed Creds and Session bundles
-// stored under the service name "protonmail-mcp".
+// stored under the service name "protonmail-mcp". Selectable via env var:
+// PROTONMAIL_MCP_STORAGE=file falls back to a 0600 JSON file under
+// ~/.config/protonmail-mcp/ for contexts where the macOS Keychain is
+// unreachable (e.g. Claude Code shells without a SecurityAgent connection).
 package keychain
 
 import (
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/zalando/go-keyring"
 )
+
+// Store is the persistence surface both Keychain and FileStore implement.
+// Exported so callers can mix backends behind a single interface; the
+// session package's internal keychainStore interface is satisfied
+// structurally by both.
+type Store interface {
+	SaveCreds(Creds) error
+	LoadCreds() (Creds, error)
+	SaveSession(Session) error
+	LoadSession() (Session, error)
+	Clear() error
+}
+
+// NewFromEnv picks the backend based on PROTONMAIL_MCP_STORAGE:
+//   - "file" → file-based JSON store at ~/.config/protonmail-mcp/secrets.json
+//   - anything else (default) → macOS Keychain via go-keyring
+//
+// Returned errors are limited to file-backend bootstrap failures (e.g. $HOME
+// unresolvable). The keychain backend has no constructor failure path.
+func NewFromEnv() (Store, error) {
+	if os.Getenv("PROTONMAIL_MCP_STORAGE") == "file" {
+		return NewFileStore()
+	}
+	return New(), nil
+}
 
 const service = "protonmail-mcp"
 

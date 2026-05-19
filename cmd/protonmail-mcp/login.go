@@ -27,7 +27,11 @@ func runLogin(
 	if apiURL == "" {
 		apiURL = "https://mail.proton.me/api"
 	}
-	sess := session.New(apiURL, keychain.New(), session.WithTransport(transport))
+	kc, err := keychain.NewFromEnv()
+	if err != nil {
+		return err
+	}
+	sess := session.New(apiURL, kc, session.WithTransport(transport))
 
 	reader := bufio.NewReader(stdin)
 	username, err := promptReader(stdout, reader, "Proton email: ")

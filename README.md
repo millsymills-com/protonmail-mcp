@@ -75,6 +75,7 @@ PROTONMAIL_MCP_ENABLE_WRITES=1 ./protonmail-mcp
 | `PROTONMAIL_MCP_ENABLE_WRITES` | When `1`/`true`/`yes`, registers mutating tools. Read tools are always available. | unset (reads only) |
 | `PROTONMAIL_MCP_LOG_LEVEL` | `debug` for verbose JSON logs to stderr. | `info` |
 | `PROTONMAIL_MCP_API_URL` | Override Proton API base URL (used in tests). | `https://mail.proton.me/api` |
+| `PROTONMAIL_MCP_STORAGE` | `file` selects the JSON file backend at `~/.config/protonmail-mcp/secrets.json` (mode `0600`). Use when the macOS Keychain is unreachable from the calling shell (e.g. an MCP host launched outside an `Aqua` GUI session — symptom: `errSecInteractionNotAllowed` / `exit status 36`). | unset (macOS Keychain via go-keyring) |
 
 ## Tool reference
 

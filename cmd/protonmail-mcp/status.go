@@ -16,7 +16,11 @@ func runStatus(
 	if apiURL == "" {
 		apiURL = "https://mail.proton.me/api"
 	}
-	sess := session.New(apiURL, keychain.New(), session.WithTransport(transport))
+	kc, err := keychain.NewFromEnv()
+	if err != nil {
+		return err
+	}
+	sess := session.New(apiURL, kc, session.WithTransport(transport))
 	c, err := sess.Client(ctx)
 	if err != nil {
 		_, _ = fmt.Fprintln(out, "not logged in")

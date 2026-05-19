@@ -14,7 +14,11 @@ func runLogout(_ context.Context, apiURL string, transport http.RoundTripper, ou
 	if apiURL == "" {
 		apiURL = "https://mail.proton.me/api"
 	}
-	sess := session.New(apiURL, keychain.New(), session.WithTransport(transport))
+	kc, err := keychain.NewFromEnv()
+	if err != nil {
+		return err
+	}
+	sess := session.New(apiURL, kc, session.WithTransport(transport))
 	if err := sess.Logout(); err != nil {
 		return err
 	}

@@ -42,7 +42,11 @@ func RunWithOptions(ctx context.Context, apiURL string, transport http.RoundTrip
 	if v := os.Getenv("PROTONMAIL_MCP_API_URL"); v != "" && apiURL == defaultAPIURL {
 		apiURL = v
 	}
-	sess := session.New(apiURL, keychain.New(), session.WithTransport(transport))
+	kc, err := keychain.NewFromEnv()
+	if err != nil {
+		return err
+	}
+	sess := session.New(apiURL, kc, session.WithTransport(transport))
 	srv := mcp.NewServer(&mcp.Implementation{Name: serverName, Version: version.MCP}, nil)
 	tools.Register(srv, tools.Deps{Session: sess})
 	if err := srv.Run(ctx, &mcp.StdioTransport{}); err != nil {
