@@ -92,4 +92,8 @@ func TestStatusPersistDegradedOnRotation(t *testing.T) {
 	if got.PersistError != "save session: keychain locked" {
 		t.Fatalf("PersistError = %q, want %q", got.PersistError, "save session: keychain locked")
 	}
+	cur := s.CurrentForTest()
+	if cur.AccessToken != "b" || cur.RefreshToken != "r2" {
+		t.Fatalf("in-memory tokens not rotated despite persist failure: %+v", cur)
+	}
 }

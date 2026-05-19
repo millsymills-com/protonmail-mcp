@@ -130,6 +130,16 @@ func (s *Session) RawForTest() RawClientForTest { return s.raw }
 
 func (s *Session) ManagerForTest() *proton.Manager { return s.mgr }
 
+// CurrentForTest returns the in-memory session snapshot for tests that
+// need to verify rotation reached the in-memory state independently of
+// the keychain (e.g. asserting that a persist failure did not block
+// the rotation itself).
+func (s *Session) CurrentForTest() keychain.Session {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.current
+}
+
 // NewForTesting bypasses keychain load and seeds an existing Session directly.
 func NewForTesting(apiURL string, seed keychain.Session, opts ...Option) (*Session, error) {
 	kc := keychain.New()
