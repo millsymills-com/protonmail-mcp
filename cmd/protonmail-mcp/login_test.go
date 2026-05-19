@@ -12,10 +12,10 @@ import (
 // empty password, internal whitespace, multi-byte UTF-8, and EOF.
 func TestPromptAndPassword(t *testing.T) {
 	tests := []struct {
-		name        string
-		stdin       string
-		wantEmail   string
-		wantPass    string
+		name         string
+		stdin        string
+		wantEmail    string
+		wantPass     string
 		wantEmailErr bool
 	}{
 		{

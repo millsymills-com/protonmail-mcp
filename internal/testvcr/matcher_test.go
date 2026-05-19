@@ -21,7 +21,7 @@ func req(t *testing.T, method, url, body string) *http.Request {
 
 func TestBodyAwareMatcher(t *testing.T) {
 	tests := []struct {
-		name                      string
+		name                       string
 		reqMethod, reqURL, reqBody string
 		cMethod, cURL, cBody       string
 		want                       bool
