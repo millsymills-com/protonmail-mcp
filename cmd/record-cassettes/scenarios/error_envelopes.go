@@ -62,14 +62,14 @@ func recordInjectedError(
 		return err
 	}
 	defer func() {
-		if err := stop(); err != nil && retErr == nil {
-			retErr = err
+		if closeErr := stop(); closeErr != nil && retErr == nil {
+			retErr = closeErr
 		}
 	}()
 
 	kc := keychain.New()
-	if _, err := loginAndPersistSession(ctx, kc); err != nil {
-		return err
+	if _, loginErr := loginAndPersistSession(ctx, kc); loginErr != nil {
+		return loginErr
 	}
 
 	sess := session.New(defaultAPIURL(), kc, session.WithTransport(rt))

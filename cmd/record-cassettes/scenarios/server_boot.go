@@ -27,8 +27,8 @@ func recordBootDispatch(ctx context.Context) (retErr error) {
 		return err
 	}
 	defer func() {
-		if err := stop(); err != nil && retErr == nil {
-			retErr = err
+		if closeErr := stop(); closeErr != nil && retErr == nil {
+			retErr = closeErr
 		}
 	}()
 

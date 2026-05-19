@@ -7,144 +7,87 @@ import (
 	"testing"
 )
 
-func TestPromptThenPasswordSharesReader(t *testing.T) {
-	stdin := strings.NewReader("user@example.test\nhunter2\n")
-	reader := bufio.NewReader(stdin)
-	out := &bytes.Buffer{}
+// TestPromptAndPassword exercises promptReader + readPassword across the
+// stdin shapes that real users feed in: LF / CRLF, missing trailing newline,
+// empty password, internal whitespace, multi-byte UTF-8, and EOF.
+func TestPromptAndPassword(t *testing.T) {
+	tests := []struct {
+		name        string
+		stdin       string
+		wantEmail   string
+		wantPass    string
+		wantEmailErr bool
+	}{
+		{
+			name:      "lf-line-endings",
+			stdin:     "user@example.test\nhunter2\n",
+			wantEmail: "user@example.test", wantPass: "hunter2",
+		},
+		{
+			name:      "preserves-internal-whitespace",
+			stdin:     "user@example.test\n  pa ss \n",
+			wantEmail: "user@example.test", wantPass: "  pa ss ",
+		},
+		{
+			name:      "crlf-line-endings",
+			stdin:     "user@example.test\r\nsecret\r\n",
+			wantEmail: "user@example.test", wantPass: "secret",
+		},
+		{
+			name:      "no-trailing-newline",
+			stdin:     "user@example.test\nhunter2",
+			wantEmail: "user@example.test", wantPass: "hunter2",
+		},
+		{
+			name:      "empty-password-line",
+			stdin:     "user@example.test\n\n",
+			wantEmail: "user@example.test", wantPass: "",
+		},
+		{
+			name:      "utf8-password",
+			stdin:     "user@example.test\npässwörd_密码_🔑\n",
+			wantEmail: "user@example.test", wantPass: "pässwörd_密码_🔑",
+		},
+		{
+			// strip exactly one trailing \n then one trailing \r;
+			// "foo\r\r\n" → "foo\r" (only a single CRLF removed).
+			name:      "single-crlf-stripped",
+			stdin:     "user@example.test\nfoo\r\r\n",
+			wantEmail: "user@example.test", wantPass: "foo\r",
+		},
+		{
+			name:         "eof-on-prompt",
+			stdin:        "",
+			wantEmailErr: true,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			stdin := strings.NewReader(tc.stdin)
+			reader := bufio.NewReader(stdin)
+			out := &bytes.Buffer{}
 
-	got, err := promptReader(out, reader, "Proton email: ")
-	if err != nil {
-		t.Fatalf("promptReader: %v", err)
-	}
-	if got != "user@example.test" {
-		t.Fatalf("email = %q, want %q", got, "user@example.test")
-	}
+			email, err := promptReader(out, reader, "Proton email: ")
+			if tc.wantEmailErr {
+				if err == nil {
+					t.Fatal("promptReader: want error, got nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("promptReader: %v", err)
+			}
+			if email != tc.wantEmail {
+				t.Fatalf("email = %q, want %q", email, tc.wantEmail)
+			}
 
-	got, err = readPassword(out, stdin, reader)
-	if err != nil {
-		t.Fatalf("readPassword: %v", err)
-	}
-	if got != "hunter2" {
-		t.Fatalf("password = %q, want %q", got, "hunter2")
-	}
-}
-
-func TestPasswordPreservesInternalWhitespace(t *testing.T) {
-	stdin := strings.NewReader("user@example.test\n  pa ss \n")
-	reader := bufio.NewReader(stdin)
-	out := &bytes.Buffer{}
-
-	if _, err := promptReader(out, reader, "email: "); err != nil {
-		t.Fatal(err)
-	}
-	got, err := readPassword(out, stdin, reader)
-	if err != nil {
-		t.Fatalf("readPassword: %v", err)
-	}
-	if got != "  pa ss " {
-		t.Fatalf("password = %q, want %q (leading/trailing/internal spaces preserved)", got, "  pa ss ")
-	}
-}
-
-func TestPromptCRLF(t *testing.T) {
-	stdin := strings.NewReader("user@example.test\r\nsecret\r\n")
-	reader := bufio.NewReader(stdin)
-	out := &bytes.Buffer{}
-
-	email, err := promptReader(out, reader, "email: ")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if email != "user@example.test" {
-		t.Fatalf("email = %q", email)
-	}
-	pass, err := readPassword(out, stdin, reader)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if pass != "secret" {
-		t.Fatalf("password = %q", pass)
-	}
-}
-
-func TestPromptEOF(t *testing.T) {
-	reader := bufio.NewReader(strings.NewReader(""))
-	out := &bytes.Buffer{}
-	if _, err := promptReader(out, reader, "x: "); err == nil {
-		t.Fatal("expected EOF error, got nil")
-	}
-}
-
-func TestPromptAndPasswordNoTrailingNewline(t *testing.T) {
-	stdin := strings.NewReader("user@example.test\nhunter2")
-	reader := bufio.NewReader(stdin)
-	out := &bytes.Buffer{}
-
-	got, err := promptReader(out, reader, "email: ")
-	if err != nil {
-		t.Fatalf("promptReader: %v", err)
-	}
-	if got != "user@example.test" {
-		t.Fatalf("email = %q", got)
-	}
-	pass, err := readPassword(out, stdin, reader)
-	if err != nil {
-		t.Fatalf("readPassword (no trailing newline): %v", err)
-	}
-	if pass != "hunter2" {
-		t.Fatalf("password = %q, want %q", pass, "hunter2")
-	}
-}
-
-func TestEmptyPasswordLine(t *testing.T) {
-	stdin := strings.NewReader("user@example.test\n\n")
-	reader := bufio.NewReader(stdin)
-	out := &bytes.Buffer{}
-
-	if _, err := promptReader(out, reader, "email: "); err != nil {
-		t.Fatal(err)
-	}
-	got, err := readPassword(out, stdin, reader)
-	if err != nil {
-		t.Fatalf("readPassword: %v", err)
-	}
-	if got != "" {
-		t.Fatalf("password = %q, want empty string", got)
-	}
-}
-
-func TestPasswordUTF8(t *testing.T) {
-	want := "pässwörd_密码_🔑"
-	stdin := strings.NewReader("user@example.test\n" + want + "\n")
-	reader := bufio.NewReader(stdin)
-	out := &bytes.Buffer{}
-
-	if _, err := promptReader(out, reader, "email: "); err != nil {
-		t.Fatal(err)
-	}
-	got, err := readPassword(out, stdin, reader)
-	if err != nil {
-		t.Fatalf("readPassword: %v", err)
-	}
-	if got != want {
-		t.Fatalf("password = %q, want %q", got, want)
-	}
-}
-
-func TestPasswordSingleCRLFStripped(t *testing.T) {
-	// strip exactly one trailing \n then one trailing \r; "foo\r\r\n" → "foo\r".
-	stdin := strings.NewReader("user@example.test\nfoo\r\r\n")
-	reader := bufio.NewReader(stdin)
-	out := &bytes.Buffer{}
-
-	if _, err := promptReader(out, reader, "email: "); err != nil {
-		t.Fatal(err)
-	}
-	got, err := readPassword(out, stdin, reader)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got != "foo\r" {
-		t.Fatalf("password = %q, want %q (only one CRLF stripped)", got, "foo\r")
+			pass, err := readPassword(out, stdin, reader)
+			if err != nil {
+				t.Fatalf("readPassword: %v", err)
+			}
+			if pass != tc.wantPass {
+				t.Fatalf("password = %q, want %q", pass, tc.wantPass)
+			}
+		})
 	}
 }

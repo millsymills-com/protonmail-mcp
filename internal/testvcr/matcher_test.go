@@ -19,46 +19,56 @@ func req(t *testing.T, method, url, body string) *http.Request {
 	return r
 }
 
-func TestMatcherMethodAndPath(t *testing.T) {
-	r := req(t, "GET", "https://mail.proton.me/api/core/v4/users", "")
-	c := cassette.Request{Method: "GET", URL: "https://mail.proton.me/api/core/v4/users"}
-	if !BodyAwareMatcher(r, c) {
-		t.Fatal("expected match")
+func TestBodyAwareMatcher(t *testing.T) {
+	tests := []struct {
+		name                      string
+		reqMethod, reqURL, reqBody string
+		cMethod, cURL, cBody       string
+		want                       bool
+	}{
+		{
+			name:      "method+path-match",
+			reqMethod: "GET", reqURL: "https://mail.proton.me/api/core/v4/users",
+			cMethod: "GET", cURL: "https://mail.proton.me/api/core/v4/users",
+			want: true,
+		},
+		{
+			name:      "method-mismatch",
+			reqMethod: "GET", reqURL: "https://mail.proton.me/api/core/v4/users",
+			cMethod: "POST", cURL: "https://mail.proton.me/api/core/v4/users",
+			want: false,
+		},
+		{
+			name:      "json-key-reorder-canonicalised",
+			reqMethod: "POST", reqURL: "https://example.test/api/auth",
+			reqBody: `{"Username":"alice","ClientProof":"random123"}`,
+			cMethod: "POST", cURL: "https://example.test/api/auth",
+			cBody: `{"ClientProof":"random123","Username":"alice"}`,
+			want:  true,
+		},
+		{
+			name:      "srp-ignores-clientproof-value",
+			reqMethod: "POST", reqURL: "https://example.test/api/auth",
+			reqBody: `{"Username":"alice","ClientProof":"differentvalue","ClientEphemeral":"e1"}`,
+			cMethod: "POST", cURL: "https://example.test/api/auth",
+			cBody: `{"Username":"alice","ClientProof":"REDACTED_CLIENTPROOF_1",` +
+				`"ClientEphemeral":"REDACTED_CLIENTEPHEMERAL_1"}`,
+			want: true,
+		},
+		{
+			name:      "path-tolerant-to-opaque-ids",
+			reqMethod: "GET", reqURL: "https://example.test/api/core/v4/addresses/abcdef1234/keys",
+			cMethod: "GET", cURL: "https://example.test/api/core/v4/addresses/zyxw98765/keys",
+			want: true,
+		},
 	}
-	c.Method = "POST"
-	if BodyAwareMatcher(r, c) {
-		t.Fatal("expected mismatch on method")
-	}
-}
-
-func TestMatcherCanonicalisesJSONBody(t *testing.T) {
-	a := `{"Username":"alice","ClientProof":"random123"}`
-	b := `{"ClientProof":"random123","Username":"alice"}`
-	r := req(t, "POST", "https://example.test/api/auth", a)
-	c := cassette.Request{Method: "POST", URL: "https://example.test/api/auth", Body: b}
-	if !BodyAwareMatcher(r, c) {
-		t.Fatal("expected match after key reorder")
-	}
-}
-
-func TestMatcherSRPIgnoresClientProofValue(t *testing.T) {
-	a := `{"Username":"alice","ClientProof":"differentvalue","ClientEphemeral":"e1"}`
-	b := `{"Username":"alice","ClientProof":"REDACTED_CLIENTPROOF_1",` +
-		`"ClientEphemeral":"REDACTED_CLIENTEPHEMERAL_1"}`
-	r := req(t, "POST", "https://example.test/api/auth", a)
-	c := cassette.Request{Method: "POST", URL: "https://example.test/api/auth", Body: b}
-	if !BodyAwareMatcher(r, c) {
-		t.Fatal("SRP matcher should ignore proof value, match on presence + Username")
-	}
-}
-
-func TestMatcherPathTolerantToOpaqueIDs(t *testing.T) {
-	r := req(t, "GET", "https://example.test/api/core/v4/addresses/abcdef1234/keys", "")
-	c := cassette.Request{
-		Method: "GET",
-		URL:    "https://example.test/api/core/v4/addresses/zyxw98765/keys",
-	}
-	if !BodyAwareMatcher(r, c) {
-		t.Fatal("expected ID-tolerant path match")
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			r := req(t, tc.reqMethod, tc.reqURL, tc.reqBody)
+			c := cassette.Request{Method: tc.cMethod, URL: tc.cURL, Body: tc.cBody}
+			if got := BodyAwareMatcher(r, c); got != tc.want {
+				t.Fatalf("BodyAwareMatcher = %v, want %v", got, tc.want)
+			}
+		})
 	}
 }
