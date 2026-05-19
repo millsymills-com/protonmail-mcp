@@ -43,6 +43,47 @@ func TestSessionStatusHappyCassette(t *testing.T) {
 	}
 }
 
+func TestSessionStatusReportsPersistDegraded(t *testing.T) {
+	// BootDevServer calls Login which sets s.client, so Client() fast-paths
+	// on subsequent calls and does not clear persistDegraded via cold-start.
+	h := testharness.BootDevServer(t, "user@persist.test", "hunter2")
+	defer h.Close()
+	h.Session().SetPersistDegradedForTest("save session: keychain locked")
+
+	out, err := h.Call(context.Background(), "proton_session_status", map[string]any{})
+	if err != nil {
+		t.Fatalf("call: %v", err)
+	}
+	if v, ok := out["persist_degraded"]; !ok || v != true {
+		t.Fatalf("persist_degraded = %v, want true", out["persist_degraded"])
+	}
+	if v, ok := out["persist_error"]; !ok || v != "save session: keychain locked" {
+		t.Fatalf("persist_error = %v, want %q", out["persist_error"], "save session: keychain locked")
+	}
+}
+
+func TestWhoamiReportsPersistDegraded(t *testing.T) {
+	h := testharness.BootDevServer(t, "user@example.test", "hunter2")
+	defer h.Close()
+	h.Session().SetPersistDegradedForTest("save session: keychain locked")
+
+	out, err := h.Call(context.Background(), "proton_whoami", map[string]any{})
+	if err != nil {
+		t.Fatalf("call: %v", err)
+	}
+	if v, ok := out["persist_degraded"]; !ok || v != true {
+		t.Fatalf("persist_degraded = %v, want true", out["persist_degraded"])
+	}
+	if v, ok := out["persist_error"]; !ok || v != "save session: keychain locked" {
+		t.Fatalf("persist_error = %v, want %q", out["persist_error"], "save session: keychain locked")
+	}
+	for _, k := range []string{"email", "used_space_bytes", "max_space_bytes"} {
+		if _, ok := out[k]; !ok {
+			t.Fatalf("envelope missing %q", k)
+		}
+	}
+}
+
 func TestWhoamiRoundTrip(t *testing.T) {
 	h := testharness.BootDevServer(t, "user@example.test", "hunter2")
 	defer h.Close()

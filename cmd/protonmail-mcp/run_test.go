@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/millsmillsymills/protonmail-mcp/internal/keychain"
+	"github.com/millsmillsymills/protonmail-mcp/internal/session"
 	"github.com/millsmillsymills/protonmail-mcp/internal/testvcr"
 	"github.com/zalando/go-keyring"
 )
@@ -80,6 +81,49 @@ func TestStatusLoggedInUsesCassette(t *testing.T) {
 	}
 	if !strings.Contains(stdout.String(), "user@example.test") {
 		t.Fatalf("stdout missing email: %q", stdout.String())
+	}
+}
+
+func TestStatusReportsPersistDegraded(t *testing.T) {
+	keyring.MockInit()
+	kc := keychain.New()
+	seed := keychain.Session{
+		UID:          "REDACTED_UID_1",
+		AccessToken:  "REDACTED_ACCESSTOKEN_1",
+		RefreshToken: "REDACTED_REFRESHTOKEN_1",
+	}
+	if err := kc.SaveSession(seed); err != nil {
+		t.Fatal(err)
+	}
+	rt := testvcr.New(t, "status_logged_in")
+	stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
+
+	preboot := func(s *session.Session) {
+		s.SetPersistDegradedForTest("save session: keychain locked")
+	}
+
+	code := runWithSessionHook(
+		context.Background(),
+		[]string{"status"},
+		[]string{"PROTONMAIL_MCP_API_URL=https://mail.proton.me/api"},
+		strings.NewReader(""),
+		stdout,
+		stderr,
+		rt,
+		preboot,
+	)
+	if code != 0 {
+		t.Fatalf("exit = %d, stderr=%s", code, stderr.String())
+	}
+	out := stdout.String()
+	if !strings.Contains(out, "user@example.test") {
+		t.Fatalf("stdout missing email: %q", out)
+	}
+	if !strings.Contains(out, "warning: token persistence degraded") {
+		t.Fatalf("stdout missing warning: %q", out)
+	}
+	if !strings.Contains(out, "save session: keychain locked") {
+		t.Fatalf("stdout missing persist error reason: %q", out)
 	}
 }
 

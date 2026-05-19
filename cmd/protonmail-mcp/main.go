@@ -13,6 +13,7 @@ import (
 
 	mcplog "github.com/millsmillsymills/protonmail-mcp/internal/log"
 	"github.com/millsmillsymills/protonmail-mcp/internal/server"
+	"github.com/millsmillsymills/protonmail-mcp/internal/session"
 )
 
 func main() {
@@ -79,6 +80,29 @@ func run(
 		return 1
 	}
 	return 0
+}
+
+// runWithSessionHook is the test-injectable variant of run. Only the
+// "status" subcommand honours statusHook today; all other args delegate
+// to run for parity.
+func runWithSessionHook(
+	ctx context.Context,
+	args []string,
+	env []string,
+	stdin io.Reader,
+	stdout, stderr io.Writer,
+	transport http.RoundTripper,
+	statusHook func(*session.Session),
+) int {
+	if len(args) > 0 && args[0] == "status" {
+		apiURL := envLookup(env, "PROTONMAIL_MCP_API_URL")
+		if err := runStatusWithHook(ctx, apiURL, transport, stdout, statusHook); err != nil {
+			_, _ = stderr.Write([]byte("status: " + err.Error() + "\n"))
+			return 1
+		}
+		return 0
+	}
+	return run(ctx, args, env, stdin, stdout, stderr, transport)
 }
 
 func envLookup(env []string, key string) string {
