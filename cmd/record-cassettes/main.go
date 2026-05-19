@@ -16,6 +16,7 @@ import (
 // session cache in scenarios/auth.go so a 30-scenario batch costs one SRP
 // exchange (not 30) — keeps Proton's anti-abuse threshold from firing.
 func main() {
+	scenarios.RegisterAll()
 	if len(os.Args) < 2 {
 		fmt.Fprintln(os.Stderr, "usage: record-cassettes <scenario> [scenario...]")
 		fmt.Fprintln(os.Stderr, "available scenarios:")

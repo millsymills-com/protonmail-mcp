@@ -12,7 +12,7 @@ import (
 	"github.com/millsmillsymills/protonmail-mcp/internal/session"
 )
 
-func init() {
+func registerReadTools() {
 	Register("whoami_happy", func(ctx context.Context) error {
 		return recordReadTool(ctx, "whoami_happy", toolsCassetteDir, func(c *proton.Client) error {
 			_, err := c.GetUser(ctx)

@@ -12,7 +12,7 @@ import (
 	"github.com/millsmillsymills/protonmail-mcp/internal/session"
 )
 
-func init() {
+func registerWriteAddresses() {
 	Register("create_delete_address", recordCreateDeleteAddress)
 	Register("address_status_toggle", recordAddressStatusToggle)
 	Register("update_address_display_name", recordUpdateAddressDisplayName)
@@ -129,10 +129,10 @@ func recordUpdateAddressDisplayName(ctx context.Context) error {
 				return fmt.Errorf("get mail settings: %w", err)
 			}
 			original := ms.DisplayName
-			if _, err := c.SetDisplayName(ctx, proton.SetDisplayNameReq{
+			if _, setErr := c.SetDisplayName(ctx, proton.SetDisplayNameReq{
 				DisplayName: "Record Test Name",
-			}); err != nil {
-				return fmt.Errorf("set display name: %w", err)
+			}); setErr != nil {
+				return fmt.Errorf("set display name: %w", setErr)
 			}
 			_, err = c.SetDisplayName(ctx, proton.SetDisplayNameReq{
 				DisplayName: original,

@@ -13,6 +13,22 @@ type Func func(ctx context.Context) error
 
 var registry = map[string]Func{}
 
+// RegisterAll wires every scenario into the registry. Call once at startup
+// before Names() or Lookup(). Each sibling file in this package contributes
+// an unexported register*() that this function invokes.
+func RegisterAll() {
+	registerCLIFlows()
+	registerCustomDomainLifecycle()
+	registerErrorEnvelopes()
+	registerLogoutInvalidates()
+	registerReadTools()
+	registerRefreshRevoked()
+	registerServerBoot()
+	registerTokenRotation()
+	registerWriteAddresses()
+	registerWriteSettings()
+}
+
 // Register attaches fn to name. Panics on duplicate registration.
 func Register(name string, fn Func) {
 	if _, dup := registry[name]; dup {
