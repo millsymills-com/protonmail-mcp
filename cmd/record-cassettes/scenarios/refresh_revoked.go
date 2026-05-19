@@ -14,7 +14,7 @@ import (
 	"github.com/millsmillsymills/protonmail-mcp/internal/testvcr"
 )
 
-func init() {
+func registerRefreshRevoked() {
 	Register("refresh_revoked", recordRefreshRevoked)
 }
 
@@ -34,14 +34,14 @@ func recordRefreshRevoked(ctx context.Context) (retErr error) {
 		return err
 	}
 	defer func() {
-		if err := stop(); err != nil && retErr == nil {
-			retErr = err
+		if closeErr := stop(); closeErr != nil && retErr == nil {
+			retErr = closeErr
 		}
 	}()
 
 	kc := keychain.New()
-	if _, err := loginAndPersistSession(ctx, kc); err != nil {
-		return err
+	if _, loginErr := loginAndPersistSession(ctx, kc); loginErr != nil {
+		return loginErr
 	}
 
 	// Seed the proton.Client directly from the keychain-persisted session

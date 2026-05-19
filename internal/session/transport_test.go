@@ -20,9 +20,10 @@ func TestNewWiresTransportIntoBothClients(t *testing.T) {
 	rt := &countingTransport{}
 	s := session.New("https://example.test/api", keychain.New(), session.WithTransport(rt))
 
-	if _, err := s.RawForTest().Get(t.Context(), "/core/v4/domains"); err == nil {
-		// 599 from the stub transport is fine — we only care it was invoked.
-	}
+	// resty surfaces 599 as a non-error status, so we ignore both return
+	// values — the only assertion is that the stub transport was invoked
+	// (checked via rt.hits below).
+	_, _ = s.RawForTest().Get(t.Context(), "/core/v4/domains")
 	if got := rt.hits.Load(); got < 1 {
 		t.Fatalf("resty client did not use injected transport: hits=%d", got)
 	}

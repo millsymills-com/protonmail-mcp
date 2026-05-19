@@ -9,7 +9,7 @@ import (
 	proton "github.com/ProtonMail/go-proton-api"
 )
 
-func init() {
+func registerWriteSettings() {
 	Register("update_mail_settings_signature", recordUpdateMailSettingsSignature)
 	Register("update_core_settings_flags", recordUpdateCoreSettingsFlags)
 }
@@ -24,10 +24,10 @@ func recordUpdateMailSettingsSignature(ctx context.Context) error {
 				return fmt.Errorf("get mail settings: %w", err)
 			}
 			original := ms.Signature
-			if _, err := c.SetSignature(ctx, proton.SetSignatureReq{
+			if _, setErr := c.SetSignature(ctx, proton.SetSignatureReq{
 				Signature: "<p>Record test signature</p>",
-			}); err != nil {
-				return fmt.Errorf("set signature: %w", err)
+			}); setErr != nil {
+				return fmt.Errorf("set signature: %w", setErr)
 			}
 			_, err = c.SetSignature(ctx, proton.SetSignatureReq{Signature: original})
 			return err
