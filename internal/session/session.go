@@ -227,6 +227,10 @@ func (s *Session) OnAuthRotated(next keychain.Session) {
 	s.raw.setAuth(next.AccessToken, next.UID)
 	s.mu.Unlock()
 	if err := s.kc.SaveSession(next); err != nil {
+		s.mu.Lock()
+		s.persistDegraded = true
+		s.persistErrReason = err.Error()
+		s.mu.Unlock()
 		slog.Warn("session: persist rotated tokens failed", "err", err)
 	}
 }
