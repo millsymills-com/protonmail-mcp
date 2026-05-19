@@ -118,3 +118,25 @@ func TestStatusPersistDegradedClearsOnNextRotationSuccess(t *testing.T) {
 		t.Fatalf("Status() = %+v, want zero after successful rotation", got)
 	}
 }
+
+func TestStatusPersistDegradedClearsOnLogout(t *testing.T) {
+	keyring.MockInit()
+	kc := &fakeKC{
+		seed:    keychain.Session{UID: "u", AccessToken: "a", RefreshToken: "r"},
+		saveErr: errors.New("save session: keychain locked"),
+	}
+	s := session.New("http://invalid.test", kc)
+
+	s.OnAuthRotated(keychain.Session{UID: "u", AccessToken: "b", RefreshToken: "r2"})
+	if !s.Status().PersistDegraded {
+		t.Fatalf("setup: expected PersistDegraded=true")
+	}
+
+	if err := s.Logout(); err != nil {
+		t.Fatalf("Logout: %v", err)
+	}
+	got := s.Status()
+	if got.PersistDegraded || got.PersistError != "" {
+		t.Fatalf("Status() = %+v, want zero after Logout", got)
+	}
+}

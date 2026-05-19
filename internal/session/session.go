@@ -265,6 +265,8 @@ func (s *Session) Logout() error {
 		return err
 	}
 	s.poisoned = false
+	s.persistDegraded = false
+	s.persistErrReason = ""
 	return nil
 }
 
