@@ -266,6 +266,10 @@ func copyResponse(w http.ResponseWriter, resp *http.Response) {
 // list/info methods directly.
 func (h *Harness) MCP() *mcp.ClientSession { return h.mcp }
 
+// Session exposes the underlying *session.Session so tests can inject
+// state (e.g. SetPersistDegradedForTest) before calling a tool.
+func (h *Harness) Session() *session.Session { return h.sess }
+
 // SeedMessage injects a raw RFC822 message into the dev server's mailbox for
 // the harness's primary user. Returns the resulting message ID.
 func (h *Harness) SeedMessage(t *testing.T, raw []byte) string {

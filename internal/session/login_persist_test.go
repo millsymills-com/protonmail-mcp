@@ -113,6 +113,10 @@ func TestPersistLoginStateSucceedsClean(t *testing.T) {
 	if s.poisoned {
 		t.Fatal("clean path must not poison the Session")
 	}
+	if s.persistDegraded || s.persistErrReason != "" {
+		t.Fatalf("persistDegraded must be clear after success; got degraded=%v reason=%q",
+			s.persistDegraded, s.persistErrReason)
+	}
 	gotCreds, err := real.LoadCreds()
 	if err != nil {
 		t.Fatalf("LoadCreds: %v", err)
@@ -126,6 +130,25 @@ func TestPersistLoginStateSucceedsClean(t *testing.T) {
 	}
 	if gotSess != sess {
 		t.Fatalf("session = %+v, want %+v", gotSess, sess)
+	}
+}
+
+func TestPersistLoginStateClearsDegradedFlag(t *testing.T) {
+	keyring.MockInit()
+	real := keychain.New()
+	s := newSessionWithStore(real)
+	s.persistDegraded = true
+	s.persistErrReason = "disk full"
+
+	creds := keychain.Creds{Username: "u@example.test", Password: "hunter2"}
+	sess := keychain.Session{UID: "uid-2", AccessToken: "at-2", RefreshToken: "rt-2"}
+
+	if err := s.persistLoginState(creds, sess); err != nil {
+		t.Fatalf("unexpected: %v", err)
+	}
+	if s.persistDegraded || s.persistErrReason != "" {
+		t.Fatalf("persistDegraded not cleared by successful Login persist; got degraded=%v reason=%q",
+			s.persistDegraded, s.persistErrReason)
 	}
 }
 
