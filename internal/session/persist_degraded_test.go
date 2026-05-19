@@ -144,6 +144,35 @@ func TestStatusPersistDegradedClearsOnLogout(t *testing.T) {
 	}
 }
 
+// TestStatusPersistDegradedSurvivesFailedLogout guards the invariant that
+// when Logout's kc.Clear() fails, neither poisoned nor persistDegraded
+// gets cleared — the session is still inconsistent on disk and callers
+// must be able to observe that.
+func TestStatusPersistDegradedSurvivesFailedLogout(t *testing.T) {
+	kc := &fakeKC{
+		seed:     keychain.Session{UID: "u", AccessToken: "a", RefreshToken: "r"},
+		saveErr:  errors.New("save session: keychain locked"),
+		clearErr: errors.New("clear: keychain locked"),
+	}
+	s := session.New("http://invalid.test", kc)
+
+	s.OnAuthRotated(keychain.Session{UID: "u", AccessToken: "b", RefreshToken: "r2"})
+	if !s.Status().PersistDegraded {
+		t.Fatalf("setup: expected PersistDegraded=true")
+	}
+
+	if err := s.Logout(); err == nil {
+		t.Fatalf("Logout: expected error from failing Clear(), got nil")
+	}
+	got := s.Status()
+	if !got.PersistDegraded {
+		t.Fatalf("PersistDegraded cleared after failed Logout: %+v", got)
+	}
+	if got.PersistError != "save session: keychain locked" {
+		t.Fatalf("PersistError = %q, want %q", got.PersistError, "save session: keychain locked")
+	}
+}
+
 func TestStatusPersistDegradedOnColdStart(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/auth/v4/refresh" {

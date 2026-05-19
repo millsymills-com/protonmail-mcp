@@ -16,9 +16,12 @@ func runStatus(
 	return runStatusWithHook(ctx, apiURL, transport, out, nil)
 }
 
-// runStatusWithHook is the test-injectable variant of runStatus. When hook
-// is non-nil, it runs after Session is constructed but before any API
-// call, so tests can deterministically seed Session state.
+// runStatusWithHook is the test-injectable variant of runStatus. When
+// hook is non-nil, it runs after the cold-start Client() call resolves
+// (success or failure) and before output is written. This timing lets
+// tests inject Session state (e.g. SetPersistDegradedForTest) that
+// would otherwise be cleared by the cold-start refresh's own
+// SaveSession set/clear logic.
 func runStatusWithHook(
 	ctx context.Context,
 	apiURL string,
