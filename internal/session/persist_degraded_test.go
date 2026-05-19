@@ -97,3 +97,24 @@ func TestStatusPersistDegradedOnRotation(t *testing.T) {
 		t.Fatalf("in-memory tokens not rotated despite persist failure: %+v", cur)
 	}
 }
+
+func TestStatusPersistDegradedClearsOnNextRotationSuccess(t *testing.T) {
+	kc := &fakeKC{
+		seed:    keychain.Session{UID: "u", AccessToken: "a", RefreshToken: "r"},
+		saveErr: errors.New("save session: keychain locked"),
+	}
+	s := session.New("http://invalid.test", kc)
+
+	s.OnAuthRotated(keychain.Session{UID: "u", AccessToken: "b", RefreshToken: "r2"})
+	if !s.Status().PersistDegraded {
+		t.Fatalf("setup: expected PersistDegraded=true")
+	}
+
+	kc.saveErr = nil
+	s.OnAuthRotated(keychain.Session{UID: "u", AccessToken: "c", RefreshToken: "r3"})
+
+	got := s.Status()
+	if got.PersistDegraded || got.PersistError != "" {
+		t.Fatalf("Status() = %+v, want zero after successful rotation", got)
+	}
+}

@@ -242,7 +242,12 @@ func (s *Session) OnAuthRotated(next keychain.Session) {
 		s.persistErrReason = err.Error()
 		s.mu.Unlock()
 		slog.Warn("session: persist rotated tokens failed", "err", err)
+		return
 	}
+	s.mu.Lock()
+	s.persistDegraded = false
+	s.persistErrReason = ""
+	s.mu.Unlock()
 }
 
 func (s *Session) Logout() error {
