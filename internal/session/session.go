@@ -211,12 +211,7 @@ func (s *Session) Client(ctx context.Context) (*proton.Client, error) {
 	s.current = rotated
 	s.raw.setAuth(rotated.AccessToken, rotated.UID)
 	if err := s.kc.SaveSession(rotated); err != nil {
-		s.persistDegraded = true
-		s.persistErrReason = err.Error()
 		slog.Warn("session: persist rotated tokens failed", "err", err)
-	} else {
-		s.persistDegraded = false
-		s.persistErrReason = ""
 	}
 	return c, nil
 }
