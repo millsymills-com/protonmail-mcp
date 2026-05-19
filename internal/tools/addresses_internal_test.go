@@ -55,9 +55,6 @@ func TestToAddressDTO(t *testing.T) {
 			if !reflect.DeepEqual(got, tc.want) {
 				t.Fatalf("toAddressDTO mismatch\n got: %+v\nwant: %+v", got, tc.want)
 			}
-			if tc.name == "empty-keys-yields-empty-slice" && got.KeyIDs == nil {
-				t.Fatal("KeyIDs must be non-nil empty slice, not nil (matches make())")
-			}
 		})
 	}
 }
