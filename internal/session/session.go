@@ -43,6 +43,12 @@ type Session struct {
 	// the user re-runs Logout (which retries Clear) or Login (which writes
 	// fresh state).
 	poisoned bool
+
+	// persistDegraded is true when the most recent SaveSession write failed;
+	// in-memory tokens still work but the keychain holds stale tokens.
+	// Cleared by the next successful SaveSession or by Logout.
+	persistDegraded  bool
+	persistErrReason string
 }
 
 // ErrSessionInconsistent is returned when a prior Login persist rollback
@@ -57,6 +63,33 @@ var ErrSessionInconsistent = errors.New(
 // errors.Is(err, ErrTOTPRequired) to branch into a 2FA-prompt flow rather
 // than matching the error string.
 var ErrTOTPRequired = errors.New("2FA required but no TOTP provided")
+
+// Status reports persistence-layer health. PersistDegraded is true when
+// the most recent SaveSession write failed; in-memory tokens still work
+// for the current process.
+type Status struct {
+	PersistDegraded bool
+	PersistError    string
+}
+
+// Status returns a snapshot of the persistence-layer health.
+func (s *Session) Status() Status {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return Status{
+		PersistDegraded: s.persistDegraded,
+		PersistError:    s.persistErrReason,
+	}
+}
+
+// SetPersistDegradedForTest injects degraded state for tests that hold
+// only a *Session and cannot drive a keychainStore failure directly.
+func (s *Session) SetPersistDegradedForTest(reason string) {
+	s.mu.Lock()
+	s.persistDegraded = reason != ""
+	s.persistErrReason = reason
+	s.mu.Unlock()
+}
 
 type Option func(*config)
 
@@ -96,6 +129,16 @@ type RawClientForTest interface {
 func (s *Session) RawForTest() RawClientForTest { return s.raw }
 
 func (s *Session) ManagerForTest() *proton.Manager { return s.mgr }
+
+// CurrentForTest returns the in-memory session snapshot for tests that
+// need to verify rotation reached the in-memory state independently of
+// the keychain (e.g. asserting that a persist failure did not block
+// the rotation itself).
+func (s *Session) CurrentForTest() keychain.Session {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.current
+}
 
 // NewForTesting bypasses keychain load and seeds an existing Session directly.
 func NewForTesting(apiURL string, seed keychain.Session, opts ...Option) (*Session, error) {
@@ -168,7 +211,12 @@ func (s *Session) Client(ctx context.Context) (*proton.Client, error) {
 	s.current = rotated
 	s.raw.setAuth(rotated.AccessToken, rotated.UID)
 	if err := s.kc.SaveSession(rotated); err != nil {
+		s.persistDegraded = true
+		s.persistErrReason = err.Error()
 		slog.Warn("session: persist rotated tokens failed", "err", err)
+	} else {
+		s.persistDegraded = false
+		s.persistErrReason = ""
 	}
 	return c, nil
 }
@@ -194,8 +242,17 @@ func (s *Session) OnAuthRotated(next keychain.Session) {
 	s.raw.setAuth(next.AccessToken, next.UID)
 	s.mu.Unlock()
 	if err := s.kc.SaveSession(next); err != nil {
+		s.mu.Lock()
+		s.persistDegraded = true
+		s.persistErrReason = err.Error()
+		s.mu.Unlock()
 		slog.Warn("session: persist rotated tokens failed", "err", err)
+		return
 	}
+	s.mu.Lock()
+	s.persistDegraded = false
+	s.persistErrReason = ""
+	s.mu.Unlock()
 }
 
 func (s *Session) Logout() error {
@@ -213,6 +270,8 @@ func (s *Session) Logout() error {
 		return err
 	}
 	s.poisoned = false
+	s.persistDegraded = false
+	s.persistErrReason = ""
 	return nil
 }
 
@@ -322,6 +381,8 @@ func (s *Session) persistLoginState(creds keychain.Creds, sess keychain.Session)
 	if err := s.kc.SaveSession(sess); err != nil {
 		return s.rollbackLoginPersist("save session", err)
 	}
+	s.persistDegraded = false
+	s.persistErrReason = ""
 	return nil
 }
 
