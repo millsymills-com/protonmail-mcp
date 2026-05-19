@@ -381,6 +381,8 @@ func (s *Session) persistLoginState(creds keychain.Creds, sess keychain.Session)
 	if err := s.kc.SaveSession(sess); err != nil {
 		return s.rollbackLoginPersist("save session", err)
 	}
+	s.persistDegraded = false
+	s.persistErrReason = ""
 	return nil
 }
 
