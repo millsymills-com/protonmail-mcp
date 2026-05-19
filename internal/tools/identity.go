@@ -17,8 +17,10 @@ type whoamiOutput struct {
 
 type sessionStatusInput struct{}
 type sessionStatusOutput struct {
-	LoggedIn bool   `json:"logged_in"`
-	Email    string `json:"email,omitempty"`
+	LoggedIn        bool   `json:"logged_in"`
+	Email           string `json:"email,omitempty"`
+	PersistDegraded bool   `json:"persist_degraded,omitempty"`
+	PersistError    string `json:"persist_error,omitempty"`
 }
 
 func registerIdentity(server *mcp.Server, d Deps) {
@@ -44,16 +46,32 @@ func registerIdentity(server *mcp.Server, d Deps) {
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "proton_session_status",
-		Description: "Reports whether a session is currently authenticated.",
+		Description: "Reports whether a session is currently authenticated and whether token persistence is healthy.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ sessionStatusInput) (*mcp.CallToolResult, sessionStatusOutput, error) {
 		c, fail := clientOrFail(ctx, d)
 		if fail != nil {
-			return nil, sessionStatusOutput{LoggedIn: false}, nil
+			st := d.Session.Status()
+			return nil, sessionStatusOutput{
+				LoggedIn:        false,
+				PersistDegraded: st.PersistDegraded,
+				PersistError:    st.PersistError,
+			}, nil
 		}
 		u, err := c.GetUser(ctx)
 		if err != nil {
-			return nil, sessionStatusOutput{LoggedIn: false}, nil
+			st := d.Session.Status()
+			return nil, sessionStatusOutput{
+				LoggedIn:        false,
+				PersistDegraded: st.PersistDegraded,
+				PersistError:    st.PersistError,
+			}, nil
 		}
-		return nil, sessionStatusOutput{LoggedIn: true, Email: u.Email}, nil
+		st := d.Session.Status()
+		return nil, sessionStatusOutput{
+			LoggedIn:        true,
+			Email:           u.Email,
+			PersistDegraded: st.PersistDegraded,
+			PersistError:    st.PersistError,
+		}, nil
 	})
 }
