@@ -1,8 +1,12 @@
 package session_test
 
 import (
+	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/millsmillsymills/protonmail-mcp/internal/keychain"
 	"github.com/millsmillsymills/protonmail-mcp/internal/session"
@@ -137,5 +141,50 @@ func TestStatusPersistDegradedClearsOnLogout(t *testing.T) {
 	got := s.Status()
 	if got.PersistDegraded || got.PersistError != "" {
 		t.Fatalf("Status() = %+v, want zero after Logout", got)
+	}
+}
+
+func TestStatusPersistDegradedOnColdStart(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/auth/v4/refresh" {
+			http.Error(w, "unexpected path: "+r.URL.Path, http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Date", time.Now().UTC().Format(http.TimeFormat))
+		_, _ = w.Write([]byte(`{
+			"Code": 1000,
+			"AccessToken": "fresh-access",
+			"RefreshToken": "fresh-refresh",
+			"UID": "u",
+			"Scope": "self",
+			"TokenType": "Bearer",
+			"ExpiresIn": 86400
+		}`))
+	}))
+	defer srv.Close()
+
+	kc := &fakeKC{
+		seed:    keychain.Session{UID: "u", AccessToken: "stale-access", RefreshToken: "stale-refresh"},
+		saveErr: errors.New("save session: keychain locked"),
+	}
+	s := session.New(srv.URL, kc)
+
+	if _, err := s.Client(context.Background()); err != nil {
+		t.Fatalf("Client: %v", err)
+	}
+
+	got := s.Status()
+	if !got.PersistDegraded {
+		t.Fatalf("PersistDegraded = false, want true")
+	}
+	if got.PersistError != "save session: keychain locked" {
+		t.Fatalf("PersistError = %q, want %q", got.PersistError, "save session: keychain locked")
+	}
+
+	// Sanity: the in-memory client got the rotated tokens even though persist failed.
+	cur := s.CurrentForTest()
+	if cur.AccessToken != "fresh-access" || cur.RefreshToken != "fresh-refresh" {
+		t.Fatalf("in-memory tokens not rotated: %+v", cur)
 	}
 }
