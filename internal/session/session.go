@@ -43,6 +43,14 @@ type Session struct {
 	// the user re-runs Logout (which retries Clear) or Login (which writes
 	// fresh state).
 	poisoned bool
+
+	// persistDegraded is true when the most recent rotation-time
+	// SaveSession write failed; the in-memory tokens still work for the
+	// current process, but the keychain holds the stale pre-rotation
+	// refresh token. Cleared by the next successful SaveSession or by
+	// Logout.
+	persistDegraded  bool
+	persistErrReason string
 }
 
 // ErrSessionInconsistent is returned when a prior Login persist rollback
@@ -57,6 +65,35 @@ var ErrSessionInconsistent = errors.New(
 // errors.Is(err, ErrTOTPRequired) to branch into a 2FA-prompt flow rather
 // than matching the error string.
 var ErrTOTPRequired = errors.New("2FA required but no TOTP provided")
+
+// Status reports persistence-layer health. PersistDegraded is true when
+// the most recent background SaveSession write failed; in-memory tokens
+// still work for the current process. Surfaced through
+// `protonmail-mcp status` and the proton_session_status /
+// proton_whoami MCP tools.
+type Status struct {
+	PersistDegraded bool
+	PersistError    string
+}
+
+func (s *Session) Status() Status {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return Status{
+		PersistDegraded: s.persistDegraded,
+		PersistError:    s.persistErrReason,
+	}
+}
+
+// SetPersistDegradedForTest is used by CLI and MCP-tool tests to inject
+// the degraded state without driving an actual SaveSession failure. The
+// real session_test cases drive it through a failing fake keychainStore.
+func (s *Session) SetPersistDegradedForTest(reason string) {
+	s.mu.Lock()
+	s.persistDegraded = reason != ""
+	s.persistErrReason = reason
+	s.mu.Unlock()
+}
 
 type Option func(*config)
 
