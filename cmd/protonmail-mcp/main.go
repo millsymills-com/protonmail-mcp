@@ -19,12 +19,15 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	// AfterFunc fires when ctx is canceled (SIGINT/SIGTERM). The 50ms
 	// grace window lets run() return cleanly; if it hangs past that, we
-	// force-exit with the SIGINT convention (128+2).
-	context.AfterFunc(ctx, func() {
+	// force-exit with the SIGINT convention (128+2). Capture the stop
+	// handle and cancel it on the happy path so the callback can't fire
+	// during a normal-exit ctx cancellation triggered by future code.
+	stopAfterFunc := context.AfterFunc(ctx, func() {
 		time.Sleep(50 * time.Millisecond)
 		os.Exit(130)
 	})
 	code := run(ctx, os.Args[1:], os.Environ(), os.Stdin, os.Stdout, os.Stderr, nil)
+	stopAfterFunc()
 	stop()
 	os.Exit(code)
 }
