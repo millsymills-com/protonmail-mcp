@@ -12,7 +12,7 @@ import (
 	"github.com/millsmillsymills/protonmail-mcp/internal/testvcr"
 )
 
-func init() {
+func registerLogoutInvalidates() {
 	Register("logout_invalidates", recordLogoutInvalidates)
 }
 
@@ -26,8 +26,8 @@ func recordLogoutInvalidates(ctx context.Context) (retErr error) {
 		return err
 	}
 	defer func() {
-		if err := stop(); err != nil && retErr == nil {
-			retErr = err
+		if closeErr := stop(); closeErr != nil && retErr == nil {
+			retErr = closeErr
 		}
 	}()
 
@@ -38,8 +38,8 @@ func recordLogoutInvalidates(ctx context.Context) (retErr error) {
 		TOTPSecret: os.Getenv("RECORD_TOTP_SECRET"),
 	}
 	sess := session.New(defaultAPIURL(), kc, session.WithTransport(rt))
-	if err := sess.Login(ctx, in); err != nil {
-		return err
+	if loginErr := sess.Login(ctx, in); loginErr != nil {
+		return loginErr
 	}
 	c, err := sess.Client(ctx)
 	if err != nil {

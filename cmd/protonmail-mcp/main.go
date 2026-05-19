@@ -18,13 +18,16 @@ import (
 
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
-	go func() {
-		<-ctx.Done()
+	// AfterFunc fires when ctx is canceled (SIGINT/SIGTERM). The 50ms
+	// grace window lets run() return cleanly; if it hangs past that, we
+	// force-exit with the SIGINT convention (128+2).
+	context.AfterFunc(ctx, func() {
 		time.Sleep(50 * time.Millisecond)
 		os.Exit(130)
-	}()
-	os.Exit(run(ctx, os.Args[1:], os.Environ(), os.Stdin, os.Stdout, os.Stderr, nil))
+	})
+	code := run(ctx, os.Args[1:], os.Environ(), os.Stdin, os.Stdout, os.Stderr, nil)
+	stop()
+	os.Exit(code)
 }
 
 // run is the testable entrypoint. transport is normally nil; tests pass a
