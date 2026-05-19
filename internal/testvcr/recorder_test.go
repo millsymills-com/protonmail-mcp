@@ -13,17 +13,22 @@ import (
 	"github.com/millsmillsymills/protonmail-mcp/internal/testvcr"
 )
 
-func TestModeDefaultsToReplay(t *testing.T) {
-	t.Setenv("VCR_MODE", "")
-	if got := testvcr.Mode(); got != testvcr.ModeReplay {
-		t.Fatalf("default mode = %v, want replay", got)
+func TestModeFromEnv(t *testing.T) {
+	tests := []struct {
+		name    string
+		vcrMode string
+		want    testvcr.RecorderMode
+	}{
+		{"unset-defaults-to-replay", "", testvcr.ModeReplay},
+		{"record-mode", "record", testvcr.ModeRecord},
 	}
-}
-
-func TestModeRecord(t *testing.T) {
-	t.Setenv("VCR_MODE", "record")
-	if got := testvcr.Mode(); got != testvcr.ModeRecord {
-		t.Fatalf("mode = %v, want record", got)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("VCR_MODE", tc.vcrMode)
+			if got := testvcr.Mode(); got != tc.want {
+				t.Fatalf("Mode() = %v, want %v", got, tc.want)
+			}
+		})
 	}
 }
 

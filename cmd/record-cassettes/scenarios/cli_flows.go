@@ -15,7 +15,7 @@ import (
 
 const cliCassetteDir = "cmd/protonmail-mcp/testdata/cassettes"
 
-func init() {
+func registerCLIFlows() {
 	Register("status_logged_in", recordStatusLoggedIn)
 	Register("login_no_2fa", func(ctx context.Context) error {
 		return recordLogin(ctx, "login_no_2fa", cliCassetteDir)
@@ -32,8 +32,8 @@ func recordStatusLoggedIn(ctx context.Context) (retErr error) {
 		return err
 	}
 	defer func() {
-		if err := stop(); err != nil && retErr == nil {
-			retErr = err
+		if closeErr := stop(); closeErr != nil && retErr == nil {
+			retErr = closeErr
 		}
 	}()
 
@@ -61,8 +61,8 @@ func recordLogin(ctx context.Context, scenario, cassetteDir string) (retErr erro
 		return err
 	}
 	defer func() {
-		if err := stop(); err != nil && retErr == nil {
-			retErr = err
+		if closeErr := stop(); closeErr != nil && retErr == nil {
+			retErr = closeErr
 		}
 	}()
 
@@ -84,8 +84,8 @@ func recordLogin(ctx context.Context, scenario, cassetteDir string) (retErr erro
 		Username: email,
 		Password: password,
 	}
-	if err := sess.Login(ctx, in); err != nil {
-		return err
+	if loginErr := sess.Login(ctx, in); loginErr != nil {
+		return loginErr
 	}
 	return sess.Logout()
 }

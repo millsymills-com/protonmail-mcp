@@ -13,7 +13,7 @@ import (
 	"github.com/millsmillsymills/protonmail-mcp/internal/testvcr"
 )
 
-func init() {
+func registerServerBoot() {
 	Register("boot_dispatch", recordBootDispatch)
 }
 
@@ -27,8 +27,8 @@ func recordBootDispatch(ctx context.Context) (retErr error) {
 		return err
 	}
 	defer func() {
-		if err := stop(); err != nil && retErr == nil {
-			retErr = err
+		if closeErr := stop(); closeErr != nil && retErr == nil {
+			retErr = closeErr
 		}
 	}()
 
