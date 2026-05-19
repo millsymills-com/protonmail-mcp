@@ -1,11 +1,13 @@
 package session_test
 
 import (
+	"context"
 	"errors"
 	"testing"
 
 	"github.com/millsmillsymills/protonmail-mcp/internal/keychain"
 	"github.com/millsmillsymills/protonmail-mcp/internal/session"
+	"github.com/millsmillsymills/protonmail-mcp/internal/testvcr"
 	"github.com/zalando/go-keyring"
 )
 
@@ -137,5 +139,34 @@ func TestStatusPersistDegradedClearsOnLogout(t *testing.T) {
 	got := s.Status()
 	if got.PersistDegraded || got.PersistError != "" {
 		t.Fatalf("Status() = %+v, want zero after Logout", got)
+	}
+}
+
+func TestStatusPersistDegradedOnColdStart(t *testing.T) {
+	kc := &fakeKC{
+		seed: keychain.Session{
+			UID:          "REDACTED_UID_1",
+			AccessToken:  "REDACTED_ACCESSTOKEN_1",
+			RefreshToken: "REDACTED_REFRESHTOKEN_1",
+		},
+		saveErr: errors.New("save session: keychain locked"),
+	}
+	rt := testvcr.New(t, "token_rotation")
+	s := session.New("https://mail.proton.me/api", kc, session.WithTransport(rt))
+
+	c, err := s.Client(context.Background())
+	if err != nil {
+		t.Fatalf("Client: %v", err)
+	}
+	if _, err := c.GetUser(context.Background()); err != nil {
+		t.Fatalf("GetUser: %v", err)
+	}
+
+	got := s.Status()
+	if !got.PersistDegraded {
+		t.Fatalf("PersistDegraded = false, want true")
+	}
+	if got.PersistError != "save session: keychain locked" {
+		t.Fatalf("PersistError = %q, want %q", got.PersistError, "save session: keychain locked")
 	}
 }
