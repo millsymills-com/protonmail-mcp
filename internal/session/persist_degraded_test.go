@@ -120,7 +120,6 @@ func TestStatusPersistDegradedClearsOnNextRotationSuccess(t *testing.T) {
 }
 
 func TestStatusPersistDegradedClearsOnLogout(t *testing.T) {
-	keyring.MockInit()
 	kc := &fakeKC{
 		seed:    keychain.Session{UID: "u", AccessToken: "a", RefreshToken: "r"},
 		saveErr: errors.New("save session: keychain locked"),
