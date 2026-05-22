@@ -10,8 +10,10 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
+	"testing"
 
 	proton "github.com/ProtonMail/go-proton-api"
 	"github.com/go-resty/resty/v2"
@@ -94,7 +96,8 @@ func (s *Session) SetPersistDegradedForTest(reason string) {
 type Option func(*config)
 
 type config struct {
-	transport http.RoundTripper
+	transport       http.RoundTripper
+	skipProofVerify bool
 }
 
 // nil transport (default) falls back to http.DefaultTransport for both clients.
@@ -102,10 +105,32 @@ func WithTransport(rt http.RoundTripper) Option {
 	return func(c *config) { c.transport = rt }
 }
 
+// WithSkipProofVerificationForRecording disables the SRP ServerProof check
+// on the underlying proton.Manager. Test/recording-only: a login_no_2fa
+// cassette can't reproduce the same ServerProof on replay because the
+// client's ephemeral changes per run; without this, the replay client
+// rejects the recorded ServerProof and login fails. The verbose name is
+// intentional — calling this from production code disables a MITM check.
+func WithSkipProofVerificationForRecording() Option {
+	return func(c *config) { c.skipProofVerify = true }
+}
+
 func New(apiURL string, kc keychainStore, opts ...Option) *Session {
 	var cfg config
 	for _, o := range opts {
 		o(&cfg)
+	}
+	// Test hook: the login_no_2fa replay test sets
+	// PROTONMAIL_MCP_TEST_SKIP_PROOFS=1 to disable the SRP ServerProof check
+	// on the underlying Manager (the recorded ServerProof can't match the
+	// per-run client ephemeral). testing.Testing() gates the env-var read to
+	// `go test` binaries only, so a shipped production binary never honours
+	// the var — it can't be set by a misconfigured agent, leaked container
+	// env, or a curious user inspecting strings(1).
+	if !cfg.skipProofVerify && testing.Testing() &&
+		os.Getenv("PROTONMAIL_MCP_TEST_SKIP_PROOFS") != "" {
+		cfg.skipProofVerify = true
+		slog.Warn("session: SRP ServerProof verification disabled by test hook")
 	}
 	mgrOpts := []proton.Option{
 		proton.WithHostURL(apiURL),
@@ -113,6 +138,9 @@ func New(apiURL string, kc keychainStore, opts ...Option) *Session {
 	}
 	if cfg.transport != nil {
 		mgrOpts = append(mgrOpts, proton.WithTransport(cfg.transport))
+	}
+	if cfg.skipProofVerify {
+		mgrOpts = append(mgrOpts, proton.WithSkipVerifyProofs())
 	}
 	return &Session{
 		mgr: proton.New(mgrOpts...),

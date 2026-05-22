@@ -6,9 +6,9 @@ interactions:
         proto: HTTP/1.1
         proto_major: 1
         proto_minor: 1
-        content_length: 324
+        content_length: 344
         host: mail.proton.me
-        body: '{"GrantType":"refresh_token","RedirectURI":"https://protonmail.ch","RefreshToken":"REDACTED_REFRESHTOKEN_1","ResponseType":"token","State":"�[�<g�\u001c�@�T���\u000e���5�h��{�.7J\u0013-\u0014v","UID":"REDACTED_UID_1"}'
+        body: "{\"GrantType\":\"refresh_token\",\"RedirectURI\":\"https://protonmail.ch\",\"RefreshToken\":\"REDACTED_REFRESHTOKEN_1\",\"ResponseType\":\"token\",\"State\":\"\x7F��>m\\u0004����u�P�`��\\u001f�U\\u0002�H���\\u001e6��\\u0014�\",\"UID\":\"REDACTED_UID_1\"}"
         headers:
             Content-Type:
                 - application/json
@@ -24,7 +24,7 @@ interactions:
         proto_minor: 0
         content_length: -1
         uncompressed: true
-        body: '{"AccessToken":"REDACTED_ACCESSTOKEN_1","Code":1000,"ExpiresIn":86400,"LocalID":0,"RefreshCounter":7,"RefreshToken":"REDACTED_REFRESHTOKEN_1","Scope":"full self parent user loggedin paid nondelinquent mail verified settings","Scopes":["full","self","parent","user","loggedin","paid","nondelinquent","mail","verified","settings"],"TokenType":"Bearer","UID":"REDACTED_UID_1","Uid":"REDACTED_UID_2"}'
+        body: '{"AccessToken":"REDACTED_ACCESSTOKEN_1","Code":1000,"ExpiresIn":86400,"LocalID":0,"RefreshCounter":5,"RefreshToken":"REDACTED_REFRESHTOKEN_1","Scope":"full self parent user loggedin paid nondelinquent mail verified settings","Scopes":["full","self","parent","user","loggedin","paid","nondelinquent","mail","verified","settings"],"TokenType":"Bearer","UID":"REDACTED_UID_2","Uid":"REDACTED_UID_1"}'
         headers:
             Access:
                 - application/vnd.protonmail.api+json;apiversion=4
@@ -54,11 +54,13 @@ interactions:
                 - nosniff
             X-Permitted-Cross-Domain-Policies:
                 - none
+            X-Pm-Date:
+                - 20 May 2026 19:54:32 GMT
             X-Xss-Protection:
                 - "0"
         status: 200 OK
         code: 200
-        duration: 254.339833ms
+        duration: 272.776333ms
     - id: 1
       request:
         proto: HTTP/1.1
@@ -113,8 +115,10 @@ interactions:
                 - nosniff
             X-Permitted-Cross-Domain-Policies:
                 - none
+            X-Pm-Date:
+                - 20 May 2026 19:54:33 GMT
             X-Xss-Protection:
                 - "0"
         status: 200 OK
         code: 200
-        duration: 308.583292ms
+        duration: 925.918292ms

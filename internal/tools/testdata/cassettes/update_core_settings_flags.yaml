@@ -6,9 +6,9 @@ interactions:
         proto: HTTP/1.1
         proto_major: 1
         proto_minor: 1
-        content_length: 325
+        content_length: 330
         host: mail.proton.me
-        body: '{"GrantType":"refresh_token","RedirectURI":"https://protonmail.ch","RefreshToken":"REDACTED_REFRESHTOKEN_1","ResponseType":"token","State":"��>u��k�\r�b���w��V��l�E\u0004�&Z1\u0007�^k","UID":"REDACTED_UID_1"}'
+        body: '{"GrantType":"refresh_token","RedirectURI":"https://protonmail.ch","RefreshToken":"REDACTED_REFRESHTOKEN_1","ResponseType":"token","State":"]���\u001b/a`�\u001c\u0004*�ф����eV�g��\t������","UID":"REDACTED_UID_1"}'
         headers:
             Content-Type:
                 - application/json
@@ -24,7 +24,7 @@ interactions:
         proto_minor: 0
         content_length: -1
         uncompressed: true
-        body: '{"AccessToken":"REDACTED_ACCESSTOKEN_1","Code":1000,"ExpiresIn":86400,"LocalID":0,"RefreshCounter":12,"RefreshToken":"REDACTED_REFRESHTOKEN_1","Scope":"full self parent user loggedin paid nondelinquent mail verified settings","Scopes":["full","self","parent","user","loggedin","paid","nondelinquent","mail","verified","settings"],"TokenType":"Bearer","UID":"REDACTED_UID_1","Uid":"REDACTED_UID_2"}'
+        body: '{"AccessToken":"REDACTED_ACCESSTOKEN_1","Code":1000,"ExpiresIn":86399,"LocalID":0,"RefreshCounter":2,"RefreshToken":"REDACTED_REFRESHTOKEN_1","Scope":"full self parent user loggedin paid nondelinquent mail verified settings","Scopes":["full","self","parent","user","loggedin","paid","nondelinquent","mail","verified","settings"],"TokenType":"Bearer","UID":"REDACTED_UID_1","Uid":"REDACTED_UID_2"}'
         headers:
             Access:
                 - application/vnd.protonmail.api+json;apiversion=4
@@ -54,11 +54,13 @@ interactions:
                 - nosniff
             X-Permitted-Cross-Domain-Policies:
                 - none
+            X-Pm-Date:
+                - 20 May 2026 20:16:47 GMT
             X-Xss-Protection:
                 - "0"
         status: 200 OK
         code: 200
-        duration: 235.495125ms
+        duration: 561.300708ms
     - id: 1
       request:
         proto: HTTP/1.1
@@ -113,11 +115,13 @@ interactions:
                 - nosniff
             X-Permitted-Cross-Domain-Policies:
                 - none
+            X-Pm-Date:
+                - 20 May 2026 20:16:48 GMT
             X-Xss-Protection:
                 - "0"
         status: 200 OK
         code: 200
-        duration: 328.67025ms
+        duration: 704.5285ms
     - id: 2
       request:
         proto: HTTP/1.1
@@ -175,11 +179,13 @@ interactions:
                 - nosniff
             X-Permitted-Cross-Domain-Policies:
                 - none
+            X-Pm-Date:
+                - 20 May 2026 20:16:49 GMT
             X-Xss-Protection:
                 - "0"
         status: 200 OK
         code: 200
-        duration: 349.503291ms
+        duration: 866.728542ms
     - id: 3
       request:
         proto: HTTP/1.1
@@ -237,11 +243,13 @@ interactions:
                 - nosniff
             X-Permitted-Cross-Domain-Policies:
                 - none
+            X-Pm-Date:
+                - 20 May 2026 20:16:51 GMT
             X-Xss-Protection:
                 - "0"
         status: 200 OK
         code: 200
-        duration: 285.578458ms
+        duration: 724.524125ms
     - id: 4
       request:
         proto: HTTP/1.1
@@ -299,11 +307,13 @@ interactions:
                 - nosniff
             X-Permitted-Cross-Domain-Policies:
                 - none
+            X-Pm-Date:
+                - 20 May 2026 20:16:53 GMT
             X-Xss-Protection:
                 - "0"
         status: 200 OK
         code: 200
-        duration: 288.542041ms
+        duration: 825.079333ms
     - id: 5
       request:
         proto: HTTP/1.1
@@ -361,8 +371,10 @@ interactions:
                 - nosniff
             X-Permitted-Cross-Domain-Policies:
                 - none
+            X-Pm-Date:
+                - 20 May 2026 20:16:54 GMT
             X-Xss-Protection:
                 - "0"
         status: 200 OK
         code: 200
-        duration: 336.429208ms
+        duration: 804.259833ms
