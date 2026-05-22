@@ -11,6 +11,8 @@ import (
 	"fmt"
 
 	"github.com/go-resty/resty/v2"
+
+	"github.com/millsmillsymills/protonmail-mcp/internal/proterr"
 )
 
 // Doer is implemented by *session.rawClient. We don't import session to avoid
@@ -21,7 +23,14 @@ type Doer interface {
 
 func decode(resp *resty.Response, out any) error {
 	if resp.IsError() {
-		return fmt.Errorf("http %d: %s", resp.StatusCode(), resp.String())
+		// Return a typed proterr.HTTPError so proterr.Map can route by HTTP
+		// status (e.g. 404 -> proton/not_found). A plain fmt.Errorf would
+		// lose the status code and bucket every error as proton/upstream.
+		return &proterr.HTTPError{
+			Status:  resp.StatusCode(),
+			Headers: resp.Header(),
+			Body:    resp.String(),
+		}
 	}
 	var env struct {
 		Code  int    `json:"Code"`

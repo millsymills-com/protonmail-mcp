@@ -2,6 +2,7 @@ package testvcr
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -35,6 +36,26 @@ var sensitiveJSONKeys = map[string]bool{
 
 func isSensitiveJSONKey(k string) bool {
 	for sk := range sensitiveJSONKeys {
+		if strings.EqualFold(sk, k) {
+			return true
+		}
+	}
+	return false
+}
+
+// base64ValuedJSONKey reports whether a sensitive key holds a base64-encoded
+// value that consumer code will try to base64-decode at use. Their REDACTED
+// placeholder needs to round-trip through base64 (encode → decode) cleanly
+// or the consumer errors before any guard like WithSkipVerifyProofs runs.
+var base64ValuedKeys = map[string]bool{
+	"ServerProof":     true,
+	"ClientProof":     true,
+	"ClientEphemeral": true,
+	"Signature":       true,
+}
+
+func base64ValuedJSONKey(k string) bool {
+	for sk := range base64ValuedKeys {
 		if strings.EqualFold(sk, k) {
 			return true
 		}
@@ -168,12 +189,29 @@ func (s *bodyScrubber) walk(v any) {
 				}
 			}
 			if isSensitiveJSONKey(k) {
-				if _, ok := vv.(string); ok {
+				if str, ok := vv.(string); ok {
+					// Empty strings carry no secret and stay as-is — replacing
+					// them with a REDACTED_* placeholder would diverge from
+					// the consumer's request body (which sends "") and break
+					// cassette matching.
+					if str == "" {
+						continue
+					}
 					// Counter tracks per-key occurrences (canonical upper-case
 					// so "UID" and "Uid" share one REDACTED_UID_<N> sequence).
 					canonical := strings.ToUpper(k)
 					s.counters[canonical]++
-					t[k] = fmt.Sprintf("REDACTED_%s_%d", canonical, s.counters[canonical])
+					placeholder := fmt.Sprintf("REDACTED_%s_%d", canonical, s.counters[canonical])
+					if base64ValuedJSONKey(k) {
+						// The consumer code base64-decodes these values before
+						// using them (e.g. proton.Manager decodes ServerProof
+						// during refresh-on-401). A raw "REDACTED_*" string
+						// fails base64 validation; encode the placeholder so
+						// the decoded bytes still serve as a stable identifier
+						// without leaking the original.
+						placeholder = base64.StdEncoding.EncodeToString([]byte(placeholder))
+					}
+					t[k] = placeholder
 					continue
 				}
 			}
@@ -191,6 +229,11 @@ func (s *bodyScrubber) walk(v any) {
 // proton.Key.UnmarshalJSON can still parse them on cassette load; MESSAGE
 // and SIGNATURE blocks (e.g. RecoverySecretSignature) get REDACTED_PGP_*
 // since they don't round-trip through a crypto parser.
+//
+// The "Modulus" key is exempt because Proton's SRP modulus is a global
+// prime — the same signed value for every account, embedded as a public
+// fixture in go-srp itself — and replacing it with a placeholder would
+// break go-srp's signature verification at cassette replay.
 func (s *bodyScrubber) replacePGPArmor(k, v string) (string, bool) {
 	if !strings.HasPrefix(v, "-----BEGIN PGP ") {
 		return "", false
@@ -200,6 +243,8 @@ func (s *bodyScrubber) replacePGPArmor(k, v string) (string, bool) {
 		return fixturePrivateKey, true
 	case strings.HasPrefix(v, "-----BEGIN PGP PUBLIC KEY BLOCK"):
 		return fixturePublicKey, true
+	case strings.EqualFold(k, "Modulus") && strings.HasPrefix(v, "-----BEGIN PGP SIGNED MESSAGE"):
+		return v, true
 	default:
 		canonical := strings.ToUpper(k)
 		s.counters["PGP_"+canonical]++

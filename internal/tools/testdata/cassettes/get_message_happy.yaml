@@ -1,0 +1,190 @@
+---
+version: 2
+interactions:
+    - id: 0
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 320
+        host: mail.proton.me
+        body: '{"GrantType":"refresh_token","RedirectURI":"https://protonmail.ch","RefreshToken":"REDACTED_REFRESHTOKEN_1","ResponseType":"token","State":"/�-��g�\r\u0015��5|�\u0015B\u001d��1�c{�����C�''.","UID":"REDACTED_UID_1"}'
+        headers:
+            Content-Type:
+                - application/json
+            User-Agent:
+                - go-resty/2.10.0 (https://github.com/go-resty/resty)
+            X-Pm-Appversion:
+                - macos-bridge@3.24.1
+        url: https://mail.proton.me/api/auth/v4/refresh
+        method: POST
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: -1
+        uncompressed: true
+        body: '{"AccessToken":"REDACTED_ACCESSTOKEN_1","Code":1000,"ExpiresIn":86400,"LocalID":0,"RefreshCounter":8,"RefreshToken":"REDACTED_REFRESHTOKEN_1","Scope":"full self parent user loggedin paid nondelinquent mail verified settings","Scopes":["full","self","parent","user","loggedin","paid","nondelinquent","mail","verified","settings"],"TokenType":"Bearer","UID":"REDACTED_UID_1","Uid":"REDACTED_UID_2"}'
+        headers:
+            Access:
+                - application/vnd.protonmail.api+json;apiversion=4
+            Cache-Control:
+                - max-age=0, must-revalidate, no-cache, no-store, private
+            Content-Security-Policy:
+                - 'default-src ''self''; media-src ''self'' blob:; connect-src ''self'' blob: https://proton.me https://*.proton.me; script-src ''self'' ''wasm-unsafe-eval'' blob: ''sha256-eAhF1Kdccp0BTXM6nMW7SYBdV0c3fZwzcC177TQ692g=''; style-src ''self'' ''unsafe-inline''; img-src http: https: data: blob: cid:; frame-src ''self'' blob: https://mail-api.proton.me https://account.proton.me https://verify.proton.me https://calendar.proton.me https://drive.proton.me https://proton.me; object-src ''self'' blob:; child-src ''self'' data: blob:; report-uri https://reports.proton.me/reports/csp; frame-ancestors https://calendar.proton.me https://drive.proton.me;'
+            Content-Type:
+                - application/json
+            Date:
+                - Mon, 01 Jan 2001 00:00:00 GMT
+            Expect-Ct:
+                - max-age=2592000, enforce, report-uri="https://reports.proton.me/reports/tls"
+            Expires:
+                - Fri, 04 May 1984 22:15:00 GMT
+            Public-Key-Pins-Report-Only:
+                - pin-sha256="CT56BhOTmj5ZIPgb/xD5mH8rY3BLo/MlhP7oPyJUEDo="; pin-sha256="35Dx28/uzN3LeltkCBQ8RHK0tlNSa2kCpCRGNp34Gxc="; report-uri="https://reports.proton.me/reports/tls"
+            Referrer-Policy:
+                - strict-origin-when-cross-origin
+            Set-Cookie:
+                - REDACTED
+            Strict-Transport-Security:
+                - max-age=31536000; includeSubDomains; preload
+            Vary:
+                - Accept-Encoding
+            X-Content-Type-Options:
+                - nosniff
+            X-Permitted-Cross-Domain-Policies:
+                - none
+            X-Pm-Date:
+                - 20 May 2026 19:54:44 GMT
+            X-Xss-Protection:
+                - "0"
+        status: 200 OK
+        code: 200
+        duration: 709.09925ms
+    - id: 1
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 44
+        host: mail.proton.me
+        body: '{"Desc":1,"Page":0,"PageSize":1,"Sort":"ID"}'
+        headers:
+            Authorization:
+                - REDACTED
+            Content-Type:
+                - application/json
+            User-Agent:
+                - go-resty/2.10.0 (https://github.com/go-resty/resty)
+            X-Http-Method-Override:
+                - GET
+            X-Pm-Appversion:
+                - macos-bridge@3.24.1
+            X-Pm-Uid:
+                - REDACTED
+        url: https://mail.proton.me/api/mail/v4/messages
+        method: POST
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: -1
+        uncompressed: true
+        body: '{"Code":1000,"Limit":830,"Messages":[{"AddressID":"FLZjEknB7xrZs-yaNsNO2fuDzZe2vIfQ6Hy0hFWvVOqJn_kV_UnRm4j4E5sxK6ACjHXwbzxnsaZ2sePs_3Xf7w==","AttachmentInfo":{},"AttachmentsMetadata":[],"BCCList":[],"BimiSelector":null,"CCList":[],"CategoryID":"21","ConversationID":"IkWc8hcDPXhhm42wZN1xTP78h1QdyrvsiR0xKFntIrrdWxKSffiCJxdAnbKzVk2Ev2TUni6OYK4uc295tZnd5Q==","DisplaySenderImage":1,"DisplaySnoozedReminder":false,"ExpirationTime":0,"ExternalID":"2145625663l12246053l35793l0l0520170332@m56.criticalimpactinc.com","Flags":8388609,"ID":"Qv_TTqeF-g_Ujknt3H4WJv3JbpZg7G5b-8cnpZ-Aim3TDyccLnYKJGcbvt2sC2AZwCUP4VUZNuqxmtEOVvOYKQ==","IsEncrypted":2,"IsForwarded":0,"IsProton":0,"IsReplied":0,"IsRepliedAll":0,"LabelIDs":["0","5","15","21"],"NewsletterSubscriptionID":"pXLj4h5WEiHwKJzhIcby113CBA2AoXQ9fvjWLZ9xQlDZxvRSD-cDxSXGSbH3YxS8ImZakBEuZLj_krgwfp-uwQ==","NumAttachments":0,"Order":403895328710,"Sender":{"Address":"newsletter@ernieball.com","BimiSelector":null,"DisplaySenderImage":1,"IsProton":0,"IsSimpleLogin":0,"Name":"Ernie Ball"},"SenderAddress":"newsletter@ernieball.com","SenderName":"Ernie Ball","Size":4585,"SnoozeTime":0,"SpamScore":0,"Subject":"The All-New John Petrucci Majesty Premium Select is Here!","Time":1779296669,"ToList":[{"Address":"rclark@millsymills.com","Group":"","IsProton":0,"Name":""}],"Type":0,"Unread":1}],"Stale":0,"Total":830}'
+        headers:
+            Access:
+                - application/vnd.protonmail.api+json;apiversion=4
+            Cache-Control:
+                - max-age=0, must-revalidate, no-cache, no-store, private
+            Content-Security-Policy:
+                - 'default-src ''self''; media-src ''self'' blob:; connect-src ''self'' blob: https://proton.me https://*.proton.me; script-src ''self'' ''wasm-unsafe-eval'' blob: ''sha256-eAhF1Kdccp0BTXM6nMW7SYBdV0c3fZwzcC177TQ692g=''; style-src ''self'' ''unsafe-inline''; img-src http: https: data: blob: cid:; frame-src ''self'' blob: https://mail-api.proton.me https://account.proton.me https://verify.proton.me https://calendar.proton.me https://drive.proton.me https://proton.me; object-src ''self'' blob:; child-src ''self'' data: blob:; report-uri https://reports.proton.me/reports/csp; frame-ancestors https://calendar.proton.me https://drive.proton.me;'
+            Content-Type:
+                - application/json
+            Date:
+                - Mon, 01 Jan 2001 00:00:00 GMT
+            Expect-Ct:
+                - max-age=2592000, enforce, report-uri="https://reports.proton.me/reports/tls"
+            Expires:
+                - Fri, 04 May 1984 22:15:00 GMT
+            Public-Key-Pins-Report-Only:
+                - pin-sha256="CT56BhOTmj5ZIPgb/xD5mH8rY3BLo/MlhP7oPyJUEDo="; pin-sha256="35Dx28/uzN3LeltkCBQ8RHK0tlNSa2kCpCRGNp34Gxc="; report-uri="https://reports.proton.me/reports/tls"
+            Referrer-Policy:
+                - strict-origin-when-cross-origin
+            Set-Cookie:
+                - REDACTED
+            Strict-Transport-Security:
+                - max-age=31536000; includeSubDomains; preload
+            Vary:
+                - Accept-Encoding
+            X-Content-Type-Options:
+                - nosniff
+            X-Permitted-Cross-Domain-Policies:
+                - none
+            X-Pm-Date:
+                - 20 May 2026 19:54:45 GMT
+            X-Xss-Protection:
+                - "0"
+        status: 200 OK
+        code: 200
+        duration: 393.275833ms
+    - id: 2
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        host: mail.proton.me
+        headers:
+            Authorization:
+                - REDACTED
+            User-Agent:
+                - go-resty/2.10.0 (https://github.com/go-resty/resty)
+            X-Pm-Appversion:
+                - macos-bridge@3.24.1
+            X-Pm-Uid:
+                - REDACTED
+        url: https://mail.proton.me/api/mail/v4/messages/Qv_TTqeF-g_Ujknt3H4WJv3JbpZg7G5b-8cnpZ-Aim3TDyccLnYKJGcbvt2sC2AZwCUP4VUZNuqxmtEOVvOYKQ==
+        method: GET
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: -1
+        uncompressed: true
+        body: '{"Code":1000,"Message":{"AddressID":"FLZjEknB7xrZs-yaNsNO2fuDzZe2vIfQ6Hy0hFWvVOqJn_kV_UnRm4j4E5sxK6ACjHXwbzxnsaZ2sePs_3Xf7w==","AttachmentInfo":{},"Attachments":[],"AttachmentsMetadata":[],"BCCList":[],"BimiSelector":null,"Body":"REDACTED_PGP_BODY_1","CCList":[],"CategoryID":"21","ConversationID":"IkWc8hcDPXhhm42wZN1xTP78h1QdyrvsiR0xKFntIrrdWxKSffiCJxdAnbKzVk2Ev2TUni6OYK4uc295tZnd5Q==","DisplaySenderImage":1,"DisplaySnoozedReminder":false,"ExpirationTime":0,"ExternalID":"2145625663l12246053l35793l0l0520170332@m56.criticalimpactinc.com","Flags":8388609,"Header":"Return-Path: <12246053-2145625663-3-35793-0@m56.criticalimpactinc.com>\r\nX-Original-To: rclark@millsymills.com\r\nDelivered-To: mills@millsymills.com\r\nAuthentication-Results: mail.protonmail.ch; dkim=pass (Good 1024 bit\r\n    rsa-sha256 signature) header.d=ernieball.com\r\n    header.i=newsletter@ernieball.com header.a=rsa-sha256; dkim=pass (Good\r\n    1024 bit rsa-sha256 signature) header.d=criticalimpactinc.com\r\n    header.a=rsa-sha256\r\nAuthentication-Results: mail.protonmail.ch; dmarc=pass (p=none dis=none)\r\n header.from=ernieball.com\r\nAuthentication-Results: mail.protonmail.ch; spf=pass\r\n smtp.mailfrom=m56.criticalimpactinc.com\r\nAuthentication-Results: mail.protonmail.ch; arc=none smtp.remote-ip=199.167.224.156\r\nAuthentication-Results: mail.protonmail.ch; dkim=pass (1024-bit key)\r\n header.d=ernieball.com header.i=newsletter@ernieball.com header.b=\"UdTGIC37\"; dkim=pass\r\n (1024-bit key) header.d=criticalimpactinc.com header.i=@criticalimpactinc.com\r\n header.b=\"ns6KERNA\"\r\nReceived: from m56.criticalimpactinc.com (m56.criticalimpactinc.com [199.167.224.156])\r\n (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)\r\n  key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256) (No\r\n client certificate requested) by mailinzur1019.protonmail.ch (Postfix) with ESMTPS id\r\n 4gLHvd26M6z9vNWV for <rclark@millsymills.com>; Wed, 20 May 2026 17:04:29 +0000 (UTC)\r\nDkim-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; s=ci-ernieball; d=ernieball.com;\r\n h=Feedback-ID:MIME-Version:Message-ID:Content-Type:List-Unsubscribe-Post:\r\n List-Unsubscribe:List-ID:Subject:From:To:Date; i=newsletter@ernieball.com;\r\n bh=tihH2L2aqr6FDcmXb3XzUVuCmtloiFLrR5ekHF/90fg=;\r\n b=UdTGIC37npP3xdTIcVKHLdzunzFOtThGBquhfIp9tX/KHvfTlOvd6WOklZkgiTyHhmE95uEKWgKA\r\n   ejwTw1xeTlPDRFgoHXwnbIBLaXsEJZK6MSEO2PnoaQOQAKm70L6XN2rzBs6K+3esraiD6aODXpRo\r\n   6RBh/MZG2p93mbzxLSc=\r\nDkim-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; s=keyd; d=criticalimpactinc.com;\r\n h=Feedback-ID:MIME-Version:Message-ID:Content-Type:List-Unsubscribe-Post:\r\n List-Unsubscribe:List-ID:Subject:From:To:Date;\r\n bh=tihH2L2aqr6FDcmXb3XzUVuCmtloiFLrR5ekHF/90fg=;\r\n b=ns6KERNADessGTaR0uF4sLz9ulZKGgIEoGQu+V9Z1Tr2ZzpO6nnUtsAJ+Ht8euDD2oHMhFFB4u1g\r\n   M2kX/RkroibPu8F9ZmQ3XNnUvWKOCGZ3F3vF0dUeNRr82ILV1TjfHJo320adYcQNSDAnoAm1JVI+\r\n   uj1naiR6u5OPxC0PtmI=\r\nFeedback-Id: 199.167.224.156:CIMPACT\r\nMime-Version: 1.0\r\nMessage-Id: <2145625663l12246053l35793l0l0520170332@m56.criticalimpactinc.com>\r\nContent-Type: text/html\r\nX-Priority: 3 (Normal)\r\nList-Unsubscribe-Post: List-Unsubscribe=One-Click\r\nList-Unsubscribe: <https://ci.criticalimpact.com/unsubscribe-oc.cfm?&eid=115e4bd8ca48bf763a89ac0c84d83476&c=35793&jid=dea493117b27efd33947229f28c3afba>\r\nList-Id: dea493117b27efd33947229f28c3afba\r\n <dea493117b27efd33947229f28c3afba.list-id.criticalimpact.com>\r\nX-Cid: 35793\r\nX-Report-Abuse: Please report abuse by forwarding complete headers to\r\n abuse-report@criticalimpact.com\r\nX-Info: Please report abuse by forwarding complete headers to\r\n abuse-report@criticalimpact.com\r\nX-Jobid: dea493117b27efd33947229f28c3afba-115e4bd8ca48bf763a89ac0c84d83476-3-35793-0\r\nSubject: The All-New John Petrucci Majesty Premium Select is Here!\r\nFrom: \"Ernie Ball\" <newsletter@ernieball.com>\r\nTo: rclark@millsymills.com\r\nDate: Wed, 20 May 2026 13:04:29 -0400\r\nX-Virtual-Mta: mta56\r\nX-Rspamd-Queue-Id: 4gLHvd26M6z9vNWV\r\nX-Spamd-Result: default: False [-3.33 / 25.00]; BAYES_HAM(-2.42)[97.33%];\r\n DMARC_POLICY_ALLOW(-0.50)[ernieball.com,none];\r\n R_DKIM_ALLOW(-0.20)[ernieball.com:s=ci-ernieball,criticalimpactinc.com:s=keyd];\r\n R_SPF_ALLOW(-0.20)[+a]; ONCE_RECEIVED(0.10)[];\r\n MIME_GOOD(-0.10)[multipart/alternative,text/plain]; HAS_LIST_UNSUB(-0.01)[];\r\n MISSING_XM_UA(0.00)[]; TO_MATCH_ENVRCPT_ALL(0.00)[]; RCPT_COUNT_ONE(0.00)[1];\r\n SUBJECT_ENDS_EXCLAIM(0.00)[]; MIME_TRACE(0.00)[0:+,1:+,2:~]; FROM_HAS_DN(0.00)[];\r\n FROM_NEQ_ENVFROM(0.00)[newsletter@ernieball.com,12246053-2145625663-3-35793-0@m56.criticalimpactinc.com];\r\n RCVD_COUNT_ZERO(0.00)[0]; HAS_X_PRIO_THREE(0.00)[3]; TO_DN_NONE(0.00)[]; ARC_NA(0.00)[];\r\n NEURAL_HAM(-0.00)[-1.000]; DKIM_TRACE(0.00)[ernieball.com:+,criticalimpactinc.com:+]\r\nX-Rspamd-Action: no action\r\nX-Rspamd-Server: cp5-mailinzur1-019.plabs.ch\r\nX-Pm-Origin: external\r\nX-Pm-Transfer-Encryption: TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)\r\nX-Pm-Content-Encryption: on-delivery\r\nX-Pm-Spamscore: 0\r\nX-Pm-Spam-Action: dunno\r\nX-Pm-List-Identifier: dea493117b27efd33947229f28c3afba.list-id.criticalimpact.com@newsletter@ernieball.com\r\n","ID":"Qv_TTqeF-g_Ujknt3H4WJv3JbpZg7G5b-8cnpZ-Aim3TDyccLnYKJGcbvt2sC2AZwCUP4VUZNuqxmtEOVvOYKQ==","IsEncrypted":2,"IsForwarded":0,"IsProton":0,"IsReplied":0,"IsRepliedAll":0,"LabelIDs":["0","5","15","21"],"MIMEType":"text/html","NewsletterSubscriptionID":"pXLj4h5WEiHwKJzhIcby113CBA2AoXQ9fvjWLZ9xQlDZxvRSD-cDxSXGSbH3YxS8ImZakBEuZLj_krgwfp-uwQ==","NumAttachments":0,"Order":403895328710,"ParsedHeaders":{"Authentication-Results":["mail.protonmail.ch; dkim=pass (Good 1024 bit    rsa-sha256 signature) header.d=ernieball.com    header.i=newsletter@ernieball.com header.a=rsa-sha256; dkim=pass (Good    1024 bit rsa-sha256 signature) header.d=criticalimpactinc.com    header.a=rsa-sha256","mail.protonmail.ch; dmarc=pass (p=none dis=none) header.from=ernieball.com","mail.protonmail.ch; spf=pass smtp.mailfrom=m56.criticalimpactinc.com","mail.protonmail.ch; arc=none smtp.remote-ip=199.167.224.156","mail.protonmail.ch; dkim=pass (1024-bit key) header.d=ernieball.com header.i=newsletter@ernieball.com header.b=\"UdTGIC37\"; dkim=pass (1024-bit key) header.d=criticalimpactinc.com header.i=@criticalimpactinc.com header.b=\"ns6KERNA\""],"Content-Type":"text/html","Date":"Wed, 20 May 2026 13:04:29 -0400","Delivered-To":"mills@millsymills.com","Dkim-Signature":["v=1; a=rsa-sha256; c=relaxed/relaxed; s=ci-ernieball; d=ernieball.com; h=Feedback-ID:MIME-Version:Message-ID:Content-Type:List-Unsubscribe-Post: List-Unsubscribe:List-ID:Subject:From:To:Date; i=newsletter@ernieball.com; bh=tihH2L2aqr6FDcmXb3XzUVuCmtloiFLrR5ekHF/90fg=; b=UdTGIC37npP3xdTIcVKHLdzunzFOtThGBquhfIp9tX/KHvfTlOvd6WOklZkgiTyHhmE95uEKWgKA   ejwTw1xeTlPDRFgoHXwnbIBLaXsEJZK6MSEO2PnoaQOQAKm70L6XN2rzBs6K+3esraiD6aODXpRo   6RBh/MZG2p93mbzxLSc=","v=1; a=rsa-sha256; c=relaxed/relaxed; s=keyd; d=criticalimpactinc.com; h=Feedback-ID:MIME-Version:Message-ID:Content-Type:List-Unsubscribe-Post: List-Unsubscribe:List-ID:Subject:From:To:Date; bh=tihH2L2aqr6FDcmXb3XzUVuCmtloiFLrR5ekHF/90fg=; b=ns6KERNADessGTaR0uF4sLz9ulZKGgIEoGQu+V9Z1Tr2ZzpO6nnUtsAJ+Ht8euDD2oHMhFFB4u1g   M2kX/RkroibPu8F9ZmQ3XNnUvWKOCGZ3F3vF0dUeNRr82ILV1TjfHJo320adYcQNSDAnoAm1JVI+   uj1naiR6u5OPxC0PtmI="],"Feedback-Id":"199.167.224.156:CIMPACT","From":"\"Ernie Ball\" <newsletter@ernieball.com>","List-Id":"dea493117b27efd33947229f28c3afba <dea493117b27efd33947229f28c3afba.list-id.criticalimpact.com>","List-Unsubscribe":"<https://ci.criticalimpact.com/unsubscribe-oc.cfm?&eid=115e4bd8ca48bf763a89ac0c84d83476&c=35793&jid=dea493117b27efd33947229f28c3afba>","List-Unsubscribe-Post":"List-Unsubscribe=One-Click","Message-Id":"<2145625663l12246053l35793l0l0520170332@m56.criticalimpactinc.com>","Mime-Version":"1.0","Received":"from m56.criticalimpactinc.com (m56.criticalimpactinc.com [199.167.224.156]) (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)  key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256) (No client certificate requested) by mailinzur1019.protonmail.ch (Postfix) with ESMTPS id 4gLHvd26M6z9vNWV for <rclark@millsymills.com>; Wed, 20 May 2026 17:04:29 +0000 (UTC)","Return-Path":"<12246053-2145625663-3-35793-0@m56.criticalimpactinc.com>","Subject":"The All-New John Petrucci Majesty Premium Select is Here!","To":"rclark@millsymills.com","X-Cid":"35793","X-Info":"Please report abuse by forwarding complete headers to abuse-report@criticalimpact.com","X-Jobid":"dea493117b27efd33947229f28c3afba-115e4bd8ca48bf763a89ac0c84d83476-3-35793-0","X-Original-To":"rclark@millsymills.com","X-Pm-Content-Encryption":"on-delivery","X-Pm-List-Identifier":"dea493117b27efd33947229f28c3afba.list-id.criticalimpact.com@newsletter@ernieball.com","X-Pm-Origin":"external","X-Pm-Spam-Action":"dunno","X-Pm-Spamscore":"0","X-Pm-Transfer-Encryption":"TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)","X-Priority":"3 (Normal)","X-Report-Abuse":"Please report abuse by forwarding complete headers to abuse-report@criticalimpact.com","X-Rspamd-Action":"no action","X-Rspamd-Queue-Id":"4gLHvd26M6z9vNWV","X-Rspamd-Server":"cp5-mailinzur1-019.plabs.ch","X-Spamd-Result":"default: False [-3.33 / 25.00]; BAYES_HAM(-2.42)[97.33%]; DMARC_POLICY_ALLOW(-0.50)[ernieball.com,none]; R_DKIM_ALLOW(-0.20)[ernieball.com:s=ci-ernieball,criticalimpactinc.com:s=keyd]; R_SPF_ALLOW(-0.20)[+a]; ONCE_RECEIVED(0.10)[]; MIME_GOOD(-0.10)[multipart/alternative,text/plain]; HAS_LIST_UNSUB(-0.01)[]; MISSING_XM_UA(0.00)[]; TO_MATCH_ENVRCPT_ALL(0.00)[]; RCPT_COUNT_ONE(0.00)[1]; SUBJECT_ENDS_EXCLAIM(0.00)[]; MIME_TRACE(0.00)[0:+,1:+,2:~]; FROM_HAS_DN(0.00)[]; FROM_NEQ_ENVFROM(0.00)[newsletter@ernieball.com,12246053-2145625663-3-35793-0@m56.criticalimpactinc.com]; RCVD_COUNT_ZERO(0.00)[0]; HAS_X_PRIO_THREE(0.00)[3]; TO_DN_NONE(0.00)[]; ARC_NA(0.00)[]; NEURAL_HAM(-0.00)[-1.000]; DKIM_TRACE(0.00)[ernieball.com:+,criticalimpactinc.com:+]","X-Virtual-Mta":"mta56"},"ReplyTo":{"Address":"newsletter@ernieball.com","BimiSelector":null,"DisplaySenderImage":1,"IsProton":0,"IsSimpleLogin":0,"Name":"Ernie Ball"},"ReplyTos":[{"Address":"newsletter@ernieball.com","BimiSelector":null,"DisplaySenderImage":1,"IsProton":0,"IsSimpleLogin":0,"Name":"Ernie Ball"}],"Sender":{"Address":"newsletter@ernieball.com","BimiSelector":null,"DisplaySenderImage":1,"IsProton":0,"IsSimpleLogin":0,"Name":"Ernie Ball"},"SenderAddress":"newsletter@ernieball.com","SenderName":"Ernie Ball","Size":4585,"SnoozeTime":0,"SpamScore":0,"Subject":"The All-New John Petrucci Majesty Premium Select is Here!","Time":1779296669,"ToList":[{"Address":"rclark@millsymills.com","Group":"","IsProton":0,"Name":""}],"Type":0,"Unread":1,"UnsubscribeMethods":{"OneClick":"OneClick"}}}'
+        headers:
+            Access:
+                - application/vnd.protonmail.api+json;apiversion=4
+            Cache-Control:
+                - max-age=0, must-revalidate, no-cache, no-store, private
+            Content-Security-Policy:
+                - 'default-src ''self''; media-src ''self'' blob:; connect-src ''self'' blob: https://proton.me https://*.proton.me; script-src ''self'' ''wasm-unsafe-eval'' blob: ''sha256-eAhF1Kdccp0BTXM6nMW7SYBdV0c3fZwzcC177TQ692g=''; style-src ''self'' ''unsafe-inline''; img-src http: https: data: blob: cid:; frame-src ''self'' blob: https://mail-api.proton.me https://account.proton.me https://verify.proton.me https://calendar.proton.me https://drive.proton.me https://proton.me; object-src ''self'' blob:; child-src ''self'' data: blob:; report-uri https://reports.proton.me/reports/csp; frame-ancestors https://calendar.proton.me https://drive.proton.me;'
+            Content-Type:
+                - application/json
+            Date:
+                - Mon, 01 Jan 2001 00:00:00 GMT
+            Expect-Ct:
+                - max-age=2592000, enforce, report-uri="https://reports.proton.me/reports/tls"
+            Expires:
+                - Fri, 04 May 1984 22:15:00 GMT
+            Public-Key-Pins-Report-Only:
+                - pin-sha256="CT56BhOTmj5ZIPgb/xD5mH8rY3BLo/MlhP7oPyJUEDo="; pin-sha256="35Dx28/uzN3LeltkCBQ8RHK0tlNSa2kCpCRGNp34Gxc="; report-uri="https://reports.proton.me/reports/tls"
+            Referrer-Policy:
+                - strict-origin-when-cross-origin
+            Set-Cookie:
+                - REDACTED
+            Strict-Transport-Security:
+                - max-age=31536000; includeSubDomains; preload
+            Vary:
+                - Accept-Encoding
+            X-Content-Type-Options:
+                - nosniff
+            X-Permitted-Cross-Domain-Policies:
+                - none
+            X-Pm-Date:
+                - 20 May 2026 19:54:46 GMT
+            X-Xss-Protection:
+                - "0"
+        status: 200 OK
+        code: 200
+        duration: 1.008690084s
