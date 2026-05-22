@@ -7,9 +7,6 @@ import (
 	"fmt"
 
 	proton "github.com/ProtonMail/go-proton-api"
-
-	"github.com/millsmillsymills/protonmail-mcp/internal/protonraw"
-	"github.com/millsmillsymills/protonmail-mcp/internal/session"
 )
 
 func registerReadTools() {
@@ -110,28 +107,8 @@ func registerReadTools() {
 		})
 	})
 
-	Register("list_custom_domains_happy", func(ctx context.Context) error {
-		return recordRawTool(ctx, "list_custom_domains_happy", toolsCassetteDir, recordDomainList)
-	})
-
-	Register("get_custom_domain_happy", func(ctx context.Context) error {
-		return recordRawTool(ctx, "get_custom_domain_happy", toolsCassetteDir, recordDomainGet)
-	})
-}
-
-func recordDomainList(ctx context.Context, s *session.Session) error {
-	_, err := protonraw.ListCustomDomains(ctx, s.Raw(ctx))
-	return err
-}
-
-func recordDomainGet(ctx context.Context, s *session.Session) error {
-	domains, err := protonraw.ListCustomDomains(ctx, s.Raw(ctx))
-	if err != nil {
-		return err
-	}
-	if len(domains) == 0 {
-		return fmt.Errorf("test account has no custom domains; add one before recording")
-	}
-	_, err = protonraw.GetCustomDomain(ctx, s.Raw(ctx), domains[0].ID)
-	return err
+	// list_custom_domains_happy and get_custom_domain_happy are registered in
+	// custom_domain_lifecycle.go using injectors: the account's API token
+	// lacks the `organization` scope that real /core/v4/domains requests
+	// require, so the recorder synthesizes responses.
 }

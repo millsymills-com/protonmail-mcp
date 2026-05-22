@@ -14,18 +14,20 @@ import (
 )
 
 // opaqueIDSegment matches any path segment that looks like a Proton opaque ID:
-// 8+ characters from [A-Za-z0-9_-]. When this matches on both sides of a path
-// comparison, the two segments are treated as interchangeable so a replay with
-// a different ID still hits its recorded interaction.
+// 8+ characters from [A-Za-z0-9_\-=]. The `=` is included because real Proton
+// IDs are URL-safe base64 with `==` padding; without it, a recorded path with
+// a real ID never enters the ID-tolerant branch and a replay with a different
+// ID fails to match. When this regex matches on both sides of a path
+// comparison, the two segments are treated as interchangeable.
 //
 // Tolerance assumption: pathsMatch tries byte-equal comparison first and only
 // consults this regex on mismatched segments, so static API path segments
 // whose length happens to be >=8 are unaffected as long as they stay
 // byte-equal on both request and cassette. A future static segment that
 // differs by case or spelling between the two and is also alphanumeric/
-// underscore/hyphen-only would be silently tolerated — keep constant API
-// path strings in sync.
-var opaqueIDSegment = regexp.MustCompile(`^[A-Za-z0-9_\-]{8,}$`)
+// underscore/hyphen/equals-only would be silently tolerated — keep constant
+// API path strings in sync.
+var opaqueIDSegment = regexp.MustCompile(`^[A-Za-z0-9_\-=]{8,}$`)
 
 // BodyAwareMatcher matches an incoming request against a recorded interaction.
 // Order: method -> normalized path (ID-tolerant) -> sorted-query -> canonical JSON body.

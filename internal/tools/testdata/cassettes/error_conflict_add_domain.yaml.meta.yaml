@@ -1,0 +1,4 @@
+recorded_at: 2026-05-20T23:33:57Z
+go_proton_api_version: v0.4.1-0.20260424150947-6bf7f5a61eb8
+mcp_version: v0.1.0
+scenario: error_conflict_add_domain

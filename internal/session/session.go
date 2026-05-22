@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 
@@ -94,7 +95,8 @@ func (s *Session) SetPersistDegradedForTest(reason string) {
 type Option func(*config)
 
 type config struct {
-	transport http.RoundTripper
+	transport          http.RoundTripper
+	skipProofVerify    bool
 }
 
 // nil transport (default) falls back to http.DefaultTransport for both clients.
@@ -102,10 +104,27 @@ func WithTransport(rt http.RoundTripper) Option {
 	return func(c *config) { c.transport = rt }
 }
 
+// WithSkipProofVerification disables the SRP ServerProof check on the
+// underlying proton.Manager. Test-only: a recorded login_no_2fa cassette
+// can't reproduce the same ServerProof on replay because the client's
+// ephemeral changes per run; without this, the replay client rejects the
+// recorded ServerProof and login fails.
+func WithSkipProofVerification() Option {
+	return func(c *config) { c.skipProofVerify = true }
+}
+
 func New(apiURL string, kc keychainStore, opts ...Option) *Session {
 	var cfg config
 	for _, o := range opts {
 		o(&cfg)
+	}
+	// Test hook: the login_no_2fa cassette can't carry a matching ServerProof
+	// across re-records (the client's ephemeral changes per run), so the
+	// replay-side test sets PROTONMAIL_MCP_TEST_SKIP_PROOFS=1 to disable the
+	// SRP ServerProof check on the underlying Manager. Never set this in
+	// production — it removes a MITM check.
+	if !cfg.skipProofVerify && os.Getenv("PROTONMAIL_MCP_TEST_SKIP_PROOFS") != "" {
+		cfg.skipProofVerify = true
 	}
 	mgrOpts := []proton.Option{
 		proton.WithHostURL(apiURL),
@@ -113,6 +132,9 @@ func New(apiURL string, kc keychainStore, opts ...Option) *Session {
 	}
 	if cfg.transport != nil {
 		mgrOpts = append(mgrOpts, proton.WithTransport(cfg.transport))
+	}
+	if cfg.skipProofVerify {
+		mgrOpts = append(mgrOpts, proton.WithSkipVerifyProofs())
 	}
 	return &Session{
 		mgr: proton.New(mgrOpts...),

@@ -3,6 +3,7 @@ package server_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/zalando/go-keyring"
@@ -63,5 +64,56 @@ func TestBootRegistersToolsAndDispatches(t *testing.T) {
 	}
 	if res.IsError {
 		t.Fatalf("whoami returned error: %v", res.Content)
+	}
+}
+
+// TestRunWithOptionsHonoursCancelledContext exercises the RunWithOptions
+// entry point. A pre-cancelled context returns the cancellation error
+// without blocking on stdin, so coverage reaches the registration + Run
+// call without an integration harness.
+func TestRunWithOptionsHonoursCancelledContext(t *testing.T) {
+	keyring.MockInit()
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	done := make(chan error, 1)
+	go func() { done <- server.RunWithOptions(ctx, "https://mail.proton.me/api", nil) }()
+	select {
+	case err := <-done:
+		if err == nil {
+			t.Fatal("expected an error from a cancelled context")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("RunWithOptions did not return within 5s of context cancel")
+	}
+}
+
+// TestRunDefaultsExercise covers the Run wrapper (which delegates to
+// RunWithOptions with the default API URL).
+func TestRunDefaultsExercise(t *testing.T) {
+	keyring.MockInit()
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	done := make(chan error, 1)
+	go func() { done <- server.Run(ctx) }()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("Run did not return within 5s of context cancel")
+	}
+}
+
+// TestRunWithOptionsFallsBackToEnvAPIURL covers the env-fallback branch of
+// RunWithOptions (apiURL empty -> default -> PROTONMAIL_MCP_API_URL).
+func TestRunWithOptionsFallsBackToEnvAPIURL(t *testing.T) {
+	keyring.MockInit()
+	t.Setenv("PROTONMAIL_MCP_API_URL", "https://test-override.example.test/api")
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	done := make(chan error, 1)
+	go func() { done <- server.RunWithOptions(ctx, "", nil) }()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("RunWithOptions did not return within 5s of context cancel")
 	}
 }

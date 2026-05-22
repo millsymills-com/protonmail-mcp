@@ -91,6 +91,18 @@ func Scan(roots ...string) []Finding {
 				txt := s.Text()
 				for _, rule := range lintRules {
 					if m := rule.re.FindString(txt); m != "" {
+						if isScrubPlaceholderHit(m) {
+							continue
+						}
+						if rule.name == "pgp-proton" && isClearsignedModulus(txt) {
+							// The SRP login fixture (see
+							// cmd/record-cassettes/scenarios/srp_fixture.go)
+							// ships Proton's globally-published signed
+							// modulus, which embeds a SIGNATURE block carrying
+							// "Version: ProtonMail". That's the wrapper for a
+							// clearsigned modulus, not a leaked private key.
+							continue
+						}
 						out = append(out, Finding{Path: path, Line: line, Rule: rule.name, Hit: m})
 					}
 				}
@@ -99,6 +111,38 @@ func Scan(roots ...string) []Finding {
 		})
 	}
 	return out
+}
+
+// isClearsignedModulus reports whether the line contains a PGP clearsigned
+// message envelope. The Modulus value in /auth/v4/info responses is a
+// clearsigned block whose SIGNATURE section is innocuous (it's the public
+// proof Proton publishes for every account); pgp-proton would otherwise
+// flag the embedded "Version: ProtonMail" header.
+func isClearsignedModulus(line string) bool {
+	return strings.Contains(line, "BEGIN PGP SIGNED MESSAGE") &&
+		strings.Contains(line, `"Modulus"`)
+}
+
+// isScrubPlaceholderHit recognises a lint hit that matched a value already
+// scrubbed by [bodyScrubber]. The scrubber emits either a literal
+// "REDACTED_*" placeholder or, for keys whose consumer code base64-decodes
+// the value before use, the base64 of that placeholder (which begins with
+// "UkVEQUNURUQ" — base64("REDACTED")). The raw-value lint regexes use a
+// "[^R]" lead so they already skip the literal form; this catches the
+// base64 form too.
+func isScrubPlaceholderHit(hit string) bool {
+	// The matched string includes the JSON key prefix, e.g.
+	// `"ServerProof":"UkVEQUNURUQ..."`. Strip everything up to the quoted
+	// value to test the placeholder content alone.
+	q := strings.IndexByte(hit, ':')
+	if q < 0 {
+		return false
+	}
+	rest := strings.TrimSpace(hit[q+1:])
+	rest = strings.Trim(rest, `"`)
+	// base64.StdEncoding.EncodeToString([]byte("REDACTED_")) = "UkVEQUNURURf";
+	// all base64-encoded scrub placeholders begin with that prefix.
+	return strings.HasPrefix(rest, "REDACTED_") || strings.HasPrefix(rest, "UkVEQUNURURf")
 }
 
 // scanMeta parses a .meta.yaml sidecar and returns staleness/version-drift findings.
