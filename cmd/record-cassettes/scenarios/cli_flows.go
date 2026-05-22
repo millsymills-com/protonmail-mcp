@@ -4,7 +4,9 @@ package scenarios
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 
@@ -18,7 +20,10 @@ const cliCassetteDir = "cmd/protonmail-mcp/testdata/cassettes"
 func registerCLIFlows() {
 	Register("status_logged_in", recordStatusLoggedIn)
 	Register("login_no_2fa", func(ctx context.Context) error {
-		return recordLogin(ctx, "login_no_2fa", cliCassetteDir)
+		return recordLogin(ctx, "login_no_2fa", cliCassetteDir, false)
+	})
+	Register("login_with_2fa", func(ctx context.Context) error {
+		return recordLogin(ctx, "login_with_2fa", cliCassetteDir, true)
 	})
 }
 
@@ -51,7 +56,14 @@ func recordStatusLoggedIn(ctx context.Context) (retErr error) {
 	return err
 }
 
-func recordLogin(ctx context.Context, scenario, cassetteDir string) (retErr error) {
+// recordLogin records an SRP exchange against an in-process fake Proton
+// auth server (cmd/record-cassettes/scenarios/srp_fixture.go). The real
+// account is never touched: the fake server precomputes an SRP verifier
+// for the fixture password ("hunter2") and runs the server side of the
+// challenge via go-srp, so the proton library's client-side math succeeds
+// and the cassette captures a complete, deterministic /auth/v4/info +
+// /auth/v4 [+ /auth/v4/2fa] exchange that the consumer test can replay.
+func recordLogin(ctx context.Context, scenario, cassetteDir string, twoFA bool) (retErr error) {
 	target := filepath.Join(cassetteDir, scenario)
 	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 		return err
@@ -66,26 +78,49 @@ func recordLogin(ctx context.Context, scenario, cassetteDir string) (retErr erro
 		}
 	}()
 
-	email := os.Getenv("RECORD_EMAIL")
-	password := os.Getenv("RECORD_PASSWORD")
-	if email == "" || password == "" {
-		return fmt.Errorf("RECORD_EMAIL or RECORD_PASSWORD unset")
+	var fakeStart func() (*httptest.Server, error)
+	if twoFA {
+		fakeStart = newFakeProtonAuthServerTwoFA
+	} else {
+		fakeStart = newFakeProtonAuthServer
 	}
-	if os.Getenv("RECORD_TOTP_SECRET") != "" {
-		return fmt.Errorf(
-			"login_no_2fa: RECORD_TOTP_SECRET is set but this scenario expects 2FA OFF; " +
-				"clear the env var to record against a non-2FA account",
-		)
+	fake, err := fakeStart()
+	if err != nil {
+		return fmt.Errorf("start fake Proton server: %w", err)
 	}
+	defer fake.Close()
 
 	kc := keychain.New()
-	sess := session.New(defaultAPIURL(), kc, session.WithTransport(rt))
+	sess := session.New(fake.URL+"/api", kc,
+		session.WithTransport(rt),
+		session.WithSkipProofVerificationForRecording(),
+	)
+	// Always tear down the keychain after recording. The recorder may run
+	// against the host's real macOS keychain if built without `mockkc`, and
+	// without this Clear() the operator's keychain ends up holding the
+	// fixture creds (user@example.test / hunter2 / REDACTED_* tokens) until
+	// the next real `protonmail-mcp logout`.
+	defer func() {
+		if clearErr := kc.Clear(); clearErr != nil && retErr == nil {
+			retErr = fmt.Errorf("clear fixture keychain: %w", clearErr)
+		}
+	}()
 	in := session.LoginInput{
-		Username: email,
-		Password: password,
+		Username: loginFixtureEmail,
+		Password: loginFixturePassword,
 	}
-	if loginErr := sess.Login(ctx, in); loginErr != nil {
-		return loginErr
+	if twoFA {
+		// runLogin (the consumer-side CLI) calls sess.Login twice for the
+		// 2FA path: once without the TOTP code (yields ErrTOTPRequired),
+		// then again with the code after prompting the user. Each Login
+		// runs a fresh SRP exchange, so the cassette must contain the
+		// full info+v4 pair twice + the final /auth/v4/2fa request.
+		// Mirror that pattern here.
+		if loginErr := sess.Login(ctx, in); loginErr != nil &&
+			!errors.Is(loginErr, session.ErrTOTPRequired) {
+			return fmt.Errorf("priming login: %w", loginErr)
+		}
+		in.TOTPCode = loginFixture2FACode
 	}
-	return sess.Logout()
+	return sess.Login(ctx, in)
 }

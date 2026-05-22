@@ -1,0 +1,127 @@
+---
+version: 2
+interactions:
+    - id: 0
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 315
+        host: mail.proton.me
+        body: "{\"GrantType\":\"refresh_token\",\"RedirectURI\":\"https://protonmail.ch\",\"RefreshToken\":\"REDACTED_REFRESHTOKEN_1\",\"ResponseType\":\"token\",\"State\":\"f�\\u001fžf\\u0006\\u000e���y\x7F�h��~��\\u0017�2\\u0003�v\\n,�y�G\",\"UID\":\"REDACTED_UID_1\"}"
+        headers:
+            Content-Type:
+                - application/json
+            User-Agent:
+                - go-resty/2.10.0 (https://github.com/go-resty/resty)
+            X-Pm-Appversion:
+                - macos-bridge@3.24.1
+        url: https://mail.proton.me/api/auth/v4/refresh
+        method: POST
+      response:
+        proto: ""
+        proto_major: 0
+        proto_minor: 0
+        content_length: 0
+        body: '{"AccessToken":"REDACTED_ACCESSTOKEN_1","Code":1000,"ExpiresIn":86400,"RefreshToken":"REDACTED_REFRESHTOKEN_1","Scope":"full self parent user loggedin paid nondelinquent mail verified settings","Scopes":["full","self","parent","user","loggedin","paid","nondelinquent","mail","verified","settings"],"TokenType":"Bearer","UID":"REDACTED_UID_2","Uid":"REDACTED_UID_1"}'
+        headers:
+            Content-Type:
+                - application/json
+            Date:
+                - Mon, 01 Jan 2001 00:00:00 GMT
+        status: ""
+        code: 200
+        duration: 10.208µs
+    - id: 1
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        host: mail.proton.me
+        headers:
+            Authorization:
+                - REDACTED
+            User-Agent:
+                - go-resty/2.10.0 (https://github.com/go-resty/resty)
+            X-Pm-Appversion:
+                - macos-bridge@3.24.1
+            X-Pm-Uid:
+                - REDACTED
+        url: https://mail.proton.me/api/core/v4/users
+        method: GET
+      response:
+        proto: ""
+        proto_major: 0
+        proto_minor: 0
+        content_length: 0
+        body: '{"Code":401,"Error":"Access token expired"}'
+        headers:
+            Content-Type:
+                - application/json
+        status: ""
+        code: 401
+        duration: 5.584µs
+    - id: 2
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 364
+        host: mail.proton.me
+        body: '{"AccessToken":"REDACTED_ACCESSTOKEN_1","GrantType":"refresh_token","RedirectURI":"https://protonmail.ch","RefreshToken":"REDACTED_REFRESHTOKEN_1","ResponseType":"token","State":"�>�\u0016�-\u00057�\u001a��KV~�\u0016��]�\u001f��,��-�~s�","UID":"REDACTED_UID_1"}'
+        headers:
+            Content-Type:
+                - application/json
+            User-Agent:
+                - go-resty/2.10.0 (https://github.com/go-resty/resty)
+            X-Pm-Appversion:
+                - macos-bridge@3.24.1
+        url: https://mail.proton.me/api/auth/v4/refresh
+        method: POST
+      response:
+        proto: ""
+        proto_major: 0
+        proto_minor: 0
+        content_length: 0
+        body: '{"AccessToken":"REDACTED_ACCESSTOKEN_1","Code":1000,"ExpiresIn":86400,"RefreshToken":"REDACTED_REFRESHTOKEN_1","Scope":"full self parent user loggedin paid nondelinquent mail verified settings","Scopes":["full","self","parent","user","loggedin","paid","nondelinquent","mail","verified","settings"],"TokenType":"Bearer","UID":"REDACTED_UID_2","Uid":"REDACTED_UID_1"}'
+        headers:
+            Content-Type:
+                - application/json
+            Date:
+                - Mon, 01 Jan 2001 00:00:00 GMT
+        status: ""
+        code: 200
+        duration: 2.584µs
+    - id: 3
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        host: mail.proton.me
+        headers:
+            Authorization:
+                - REDACTED
+            User-Agent:
+                - go-resty/2.10.0 (https://github.com/go-resty/resty)
+            X-Pm-Appversion:
+                - macos-bridge@3.24.1
+            X-Pm-Uid:
+                - REDACTED
+        url: https://mail.proton.me/api/core/v4/users
+        method: GET
+      response:
+        proto: ""
+        proto_major: 0
+        proto_minor: 0
+        content_length: 0
+        body: '{"Code":1000,"User":{"Credit":0,"Currency":"USD","Delinquent":0,"DisplayName":"user","Email":"user@example.test","ID":"REDACTED_USERID_1","Keys":[],"MaxSpace":0,"MnemonicStatus":0,"Name":"user","Private":1,"Role":0,"Services":0,"Subscribed":0,"UsedSpace":0}}'
+        headers:
+            Content-Type:
+                - application/json
+            Date:
+                - Mon, 01 Jan 2001 00:00:00 GMT
+        status: ""
+        code: 200
+        duration: 2.25µs

@@ -162,6 +162,43 @@ func TestTOTPRoundsToSixDigits(t *testing.T) {
 	}
 }
 
+func TestTOTPAcceptsOtpauthURI(t *testing.T) {
+	code, err := session.GenerateTOTPForTest(
+		"otpauth://totp/Proton:alice?secret=GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ&issuer=Proton")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if len(code) != 6 {
+		t.Fatalf("want 6 digits, got %q", code)
+	}
+}
+
+func TestTOTPOtpauthMissingSecret(t *testing.T) {
+	_, err := session.GenerateTOTPForTest("otpauth://totp/Proton:alice?issuer=Proton")
+	if err == nil {
+		t.Fatal("expected error for missing secret in otpauth URI")
+	}
+}
+
+func TestTOTPInvalidBase32(t *testing.T) {
+	_, err := session.GenerateTOTPForTest("not-base32!!!")
+	if err == nil {
+		t.Fatal("expected error for invalid base32 seed")
+	}
+}
+
+func TestTOTPStripsSpaces(t *testing.T) {
+	// Same seed as TestTOTPRoundsToSixDigits but split with spaces; the
+	// implementation must strip whitespace before base32 decode.
+	code, err := session.GenerateTOTPForTest("GEZD GNBV GY3T QOJQ GEZD GNBV GY3T QOJQ")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if len(code) != 6 {
+		t.Fatalf("want 6 digits, got %q", code)
+	}
+}
+
 func TestTokenRotationOnExpiredAccess(t *testing.T) {
 	keyring.MockInit()
 	kc := keychain.New()
