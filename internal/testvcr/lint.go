@@ -114,13 +114,20 @@ func Scan(roots ...string) []Finding {
 }
 
 // isClearsignedModulus reports whether the line contains a PGP clearsigned
-// message envelope. The Modulus value in /auth/v4/info responses is a
-// clearsigned block whose SIGNATURE section is innocuous (it's the public
-// proof Proton publishes for every account); pgp-proton would otherwise
-// flag the embedded "Version: ProtonMail" header.
+// message envelope opened by the JSON "Modulus" key. The Modulus value in
+// /auth/v4/info responses is a clearsigned block whose SIGNATURE section is
+// innocuous (it's the public proof Proton publishes for every account);
+// pgp-proton would otherwise flag the embedded "Version: ProtonMail" header.
+//
+// Anchoring on the literal `"Modulus":"-----BEGIN PGP SIGNED MESSAGE`
+// sequence prevents an unrelated co-occurrence of the two substrings on the
+// same line (e.g. a future fixture inlining a multi-block message that
+// happens to mention "Modulus" elsewhere) from suppressing the rule.
+var clearsignedModulusPrefix = regexp.MustCompile(
+	`"Modulus":\s*"-----BEGIN PGP SIGNED MESSAGE`)
+
 func isClearsignedModulus(line string) bool {
-	return strings.Contains(line, "BEGIN PGP SIGNED MESSAGE") &&
-		strings.Contains(line, `"Modulus"`)
+	return clearsignedModulusPrefix.MatchString(line)
 }
 
 // isScrubPlaceholderHit recognises a lint hit that matched a value already

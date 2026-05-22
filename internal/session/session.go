@@ -13,6 +13,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"testing"
 
 	proton "github.com/ProtonMail/go-proton-api"
 	"github.com/go-resty/resty/v2"
@@ -104,12 +105,13 @@ func WithTransport(rt http.RoundTripper) Option {
 	return func(c *config) { c.transport = rt }
 }
 
-// WithSkipProofVerification disables the SRP ServerProof check on the
-// underlying proton.Manager. Test-only: a recorded login_no_2fa cassette
-// can't reproduce the same ServerProof on replay because the client's
-// ephemeral changes per run; without this, the replay client rejects the
-// recorded ServerProof and login fails.
-func WithSkipProofVerification() Option {
+// WithSkipProofVerificationForRecording disables the SRP ServerProof check
+// on the underlying proton.Manager. Test/recording-only: a login_no_2fa
+// cassette can't reproduce the same ServerProof on replay because the
+// client's ephemeral changes per run; without this, the replay client
+// rejects the recorded ServerProof and login fails. The verbose name is
+// intentional — calling this from production code disables a MITM check.
+func WithSkipProofVerificationForRecording() Option {
 	return func(c *config) { c.skipProofVerify = true }
 }
 
@@ -118,13 +120,17 @@ func New(apiURL string, kc keychainStore, opts ...Option) *Session {
 	for _, o := range opts {
 		o(&cfg)
 	}
-	// Test hook: the login_no_2fa cassette can't carry a matching ServerProof
-	// across re-records (the client's ephemeral changes per run), so the
-	// replay-side test sets PROTONMAIL_MCP_TEST_SKIP_PROOFS=1 to disable the
-	// SRP ServerProof check on the underlying Manager. Never set this in
-	// production — it removes a MITM check.
-	if !cfg.skipProofVerify && os.Getenv("PROTONMAIL_MCP_TEST_SKIP_PROOFS") != "" {
+	// Test hook: the login_no_2fa replay test sets
+	// PROTONMAIL_MCP_TEST_SKIP_PROOFS=1 to disable the SRP ServerProof check
+	// on the underlying Manager (the recorded ServerProof can't match the
+	// per-run client ephemeral). testing.Testing() gates the env-var read to
+	// `go test` binaries only, so a shipped production binary never honours
+	// the var — it can't be set by a misconfigured agent, leaked container
+	// env, or a curious user inspecting strings(1).
+	if !cfg.skipProofVerify && testing.Testing() &&
+		os.Getenv("PROTONMAIL_MCP_TEST_SKIP_PROOFS") != "" {
 		cfg.skipProofVerify = true
+		slog.Warn("session: SRP ServerProof verification disabled by test hook")
 	}
 	mgrOpts := []proton.Option{
 		proton.WithHostURL(apiURL),

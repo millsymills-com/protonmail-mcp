@@ -6,9 +6,9 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 
 	srp "github.com/ProtonMail/go-srp"
 )
@@ -124,8 +124,19 @@ func newFakeProtonAuthServerWithTwoFA(twoFA bool) (*httptest.Server, error) {
 			ClientProof     string
 			SRPSession      string
 		}
-		body, _ := readAll(r.Body)
-		_ = json.Unmarshal(body, &req)
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]any{
+				"Code": 2001, "Error": "read body: " + err.Error(),
+			})
+			return
+		}
+		if err := json.Unmarshal(body, &req); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]any{
+				"Code": 2001, "Error": "decode body: " + err.Error(),
+			})
+			return
+		}
 		clientEph, _ := base64.StdEncoding.DecodeString(req.ClientEphemeral)
 		clientProof, _ := base64.StdEncoding.DecodeString(req.ClientProof)
 		serverProof, err := srpSrv.VerifyProofs(clientEph, clientProof)
@@ -157,8 +168,19 @@ func newFakeProtonAuthServerWithTwoFA(twoFA bool) (*httptest.Server, error) {
 		var req struct {
 			TwoFactorCode string
 		}
-		body, _ := readAll(r.Body)
-		_ = json.Unmarshal(body, &req)
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]any{
+				"Code": 2001, "Error": "read body: " + err.Error(),
+			})
+			return
+		}
+		if err := json.Unmarshal(body, &req); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]any{
+				"Code": 2001, "Error": "decode body: " + err.Error(),
+			})
+			return
+		}
 		if !twoFA || req.TwoFactorCode != loginFixture2FACode {
 			writeJSON(w, http.StatusUnprocessableEntity, map[string]any{
 				"Code": 8002, "Error": "Incorrect 2FA code.",
@@ -203,17 +225,3 @@ func writeJSON(w http.ResponseWriter, status int, body any) {
 	_ = json.NewEncoder(w).Encode(body)
 }
 
-func readAll(r interface{ Read([]byte) (int, error) }) ([]byte, error) {
-	var sb strings.Builder
-	buf := make([]byte, 4096)
-	for {
-		n, err := r.Read(buf)
-		if n > 0 {
-			_, _ = sb.Write(buf[:n])
-		}
-		if err != nil {
-			break
-		}
-	}
-	return []byte(sb.String()), nil
-}

@@ -93,8 +93,18 @@ func recordLogin(ctx context.Context, scenario, cassetteDir string, twoFA bool) 
 	kc := keychain.New()
 	sess := session.New(fake.URL+"/api", kc,
 		session.WithTransport(rt),
-		session.WithSkipProofVerification(),
+		session.WithSkipProofVerificationForRecording(),
 	)
+	// Always tear down the keychain after recording. The recorder may run
+	// against the host's real macOS keychain if built without `mockkc`, and
+	// without this Clear() the operator's keychain ends up holding the
+	// fixture creds (user@example.test / hunter2 / REDACTED_* tokens) until
+	// the next real `protonmail-mcp logout`.
+	defer func() {
+		if clearErr := kc.Clear(); clearErr != nil && retErr == nil {
+			retErr = fmt.Errorf("clear fixture keychain: %w", clearErr)
+		}
+	}()
 	in := session.LoginInput{
 		Username: loginFixtureEmail,
 		Password: loginFixturePassword,

@@ -16,7 +16,6 @@ import (
 // stubTransport returns a fixed response (or error) for every request.
 type stubTransport struct {
 	status int
-	body   string
 	err    error
 }
 

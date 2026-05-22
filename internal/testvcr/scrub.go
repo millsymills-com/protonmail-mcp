@@ -243,7 +243,7 @@ func (s *bodyScrubber) replacePGPArmor(k, v string) (string, bool) {
 		return fixturePrivateKey, true
 	case strings.HasPrefix(v, "-----BEGIN PGP PUBLIC KEY BLOCK"):
 		return fixturePublicKey, true
-	case k == "Modulus":
+	case strings.EqualFold(k, "Modulus") && strings.HasPrefix(v, "-----BEGIN PGP SIGNED MESSAGE"):
 		return v, true
 	default:
 		canonical := strings.ToUpper(k)

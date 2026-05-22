@@ -5,6 +5,7 @@ package scenarios
 import (
 	"bytes"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 	"sync/atomic"
@@ -32,8 +33,14 @@ func (o *injectedResponse) RoundTrip(req *http.Request) (*http.Response, error) 
 		// Without this, go-vcr's recording layer above us never observes the
 		// body bytes and writes interactions with an empty request body —
 		// then replay can't match the consumer's POST whose body is non-empty.
+		// A drain error here defeats the very fix above; warn loudly so a
+		// future cassette divergence is debuggable.
 		if req.Body != nil {
-			drained, _ := io.ReadAll(req.Body)
+			drained, err := io.ReadAll(req.Body)
+			if err != nil {
+				slog.Warn("recorder: injector failed to drain request body — cassette may record empty body",
+					"target", o.targetSub, "err", err)
+			}
 			_ = req.Body.Close()
 			req.Body = io.NopCloser(bytes.NewReader(drained))
 		}
