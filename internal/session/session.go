@@ -95,8 +95,8 @@ func (s *Session) SetPersistDegradedForTest(reason string) {
 type Option func(*config)
 
 type config struct {
-	transport          http.RoundTripper
-	skipProofVerify    bool
+	transport       http.RoundTripper
+	skipProofVerify bool
 }
 
 // nil transport (default) falls back to http.DefaultTransport for both clients.
