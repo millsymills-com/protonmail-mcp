@@ -5,6 +5,7 @@ package keychain
 import (
 	"errors"
 	"fmt"
+	"os/exec"
 	"runtime"
 
 	"github.com/zalando/go-keyring"
@@ -130,14 +131,15 @@ func (k *Keychain) Clear() error {
 	return nil
 }
 
-// interactionNotAllowedStatus is the bare error go-keyring surfaces on macOS
-// for errSecInteractionNotAllowed (-25308): /usr/bin/security exits 36 and
-// go-keyring discards its stderr, so the caller sees only "exit status 36".
-const interactionNotAllowedStatus = "exit status 36"
+// interactionNotAllowedExitCode is the status /usr/bin/security exits with for
+// errSecInteractionNotAllowed (-25308): -25308 mod 256 = 36. go-keyring runs
+// `security` and surfaces its bare *exec.ExitError (stderr discarded), so a
+// locked or unreachable login keychain reaches the caller as this exit code.
+const interactionNotAllowedExitCode = 36
 
 // diagnoseKeychainErr augments the one opaque go-keyring error that has a known
-// macOS cause: errSecInteractionNotAllowed, which surfaces as a bare
-// "exit status 36" when the login keychain is locked or unreachable from the
+// macOS cause: errSecInteractionNotAllowed, which surfaces as an *exec.ExitError
+// with code 36 when the login keychain is locked or unreachable from the
 // current context (e.g. a non-GUI agent with no SecurityAgent connection). All
 // other errors — other exit statuses, non-darwin platforms, and go-keyring's
 // own typed errors (ErrNotFound, ErrSetDataTooBig, …) — pass through unchanged,
@@ -147,9 +149,13 @@ func diagnoseKeychainErr(cause error) error {
 }
 
 // diagnoseKeychainErrFor is the GOOS-parameterized core, split out so tests can
-// exercise both the darwin and non-darwin branches deterministically.
+// exercise both the darwin and non-darwin branches deterministically. The match
+// is structural (errors.As + ExitCode) rather than a stringified comparison so
+// it survives a future go-keyring wrapping the error or capturing stderr.
 func diagnoseKeychainErrFor(cause error, goos string) error {
-	if cause == nil || goos != "darwin" || cause.Error() != interactionNotAllowedStatus {
+	var exitErr *exec.ExitError
+	if cause == nil || goos != "darwin" || !errors.As(cause, &exitErr) ||
+		exitErr.ExitCode() != interactionNotAllowedExitCode {
 		return cause
 	}
 	return fmt.Errorf(
