@@ -1,6 +1,7 @@
 package testvcr
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"net/http"
 	"reflect"
@@ -265,6 +266,46 @@ func TestScrubCaseFoldsSensitiveKeys(t *testing.T) {
 	for key, val := range got {
 		if s, ok := val.(string); ok && !strings.HasPrefix(s, "REDACTED_") {
 			t.Fatalf("key %q value %q was not scrubbed", key, s)
+		}
+	}
+}
+
+// TestScrubBase64EncodesProofPlaceholders pins the base64-valued branch of
+// sensitiveJSONKeys. ServerProof/ClientProof/ClientEphemeral/Signature hold
+// values consumer code base64-decodes at use (e.g. proton.Manager decodes
+// ServerProof during refresh-on-401), so a raw "REDACTED_*" placeholder would
+// fail that decode before any WithSkipVerifyProofs guard runs. Each placeholder
+// must therefore round-trip through base64. Without this test a dropped base64
+// flag would pass silently.
+func TestScrubBase64EncodesProofPlaceholders(t *testing.T) {
+	body := `{"ServerProof":"c3A=","ClientProof":"Y3A=","ClientEphemeral":"Y2U=","Signature":"c2c="}`
+	i := &cassette.Interaction{
+		Response: cassette.Response{Body: body, Headers: http.Header{"Content-Type": []string{"application/json"}}},
+	}
+	if err := saveHook(i); err != nil {
+		t.Fatal(err)
+	}
+	var got map[string]any
+	if err := json.Unmarshal([]byte(i.Response.Body), &got); err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]string{
+		"ServerProof":     "REDACTED_SERVERPROOF_1",
+		"ClientProof":     "REDACTED_CLIENTPROOF_1",
+		"ClientEphemeral": "REDACTED_CLIENTEPHEMERAL_1",
+		"Signature":       "REDACTED_SIGNATURE_1",
+	}
+	for k, decoded := range want {
+		s, ok := got[k].(string)
+		if !ok {
+			t.Fatalf("%s missing or non-string: %v", k, got[k])
+		}
+		dec, err := base64.StdEncoding.DecodeString(s)
+		if err != nil {
+			t.Fatalf("%s placeholder %q is not valid base64: %v", k, s, err)
+		}
+		if string(dec) != decoded {
+			t.Fatalf("%s decoded = %q, want %q", k, dec, decoded)
 		}
 	}
 }
