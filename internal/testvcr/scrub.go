@@ -12,55 +12,45 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// sensitiveKey describes how a matched JSON key's value is redacted. base64
+// marks keys whose values consumer code base64-decodes at use (e.g.
+// proton.Manager decodes ServerProof during refresh-on-401), so their REDACTED
+// placeholder must itself round-trip through base64 cleanly — otherwise the
+// consumer errors before any guard like WithSkipVerifyProofs runs.
+type sensitiveKey struct{ base64 bool }
+
 // sensitiveJSONKeys are compared against incoming JSON keys via
 // strings.EqualFold so casing variations like "UID" vs "Uid" and
 // "accessToken" vs "AccessToken" are all caught. Proton returns both
 // "UID" and "Uid" in some payloads (e.g. /auth/v4/refresh) and a
 // case-sensitive lookup missed the lowercase form.
-var sensitiveJSONKeys = map[string]bool{
-	"AccessToken":     true,
-	"RefreshToken":    true,
-	"UID":             true,
-	"KeySalt":         true,
-	"PrivateKey":      true,
-	"Signature":       true,
-	"Token":           true,
-	"SrpSession":      true,
-	"ServerProof":     true,
-	"ClientProof":     true,
-	"ClientEphemeral": true,
-	"TwoFactorCode":   true,
-	"RecoverySecret":  true,
-	"Fingerprint":     true,
+var sensitiveJSONKeys = map[string]sensitiveKey{
+	"AccessToken":     {},
+	"RefreshToken":    {},
+	"UID":             {},
+	"KeySalt":         {},
+	"PrivateKey":      {},
+	"Signature":       {base64: true},
+	"Token":           {},
+	"SrpSession":      {},
+	"ServerProof":     {base64: true},
+	"ClientProof":     {base64: true},
+	"ClientEphemeral": {base64: true},
+	"TwoFactorCode":   {},
+	"RecoverySecret":  {},
+	"Fingerprint":     {},
 }
 
-func isSensitiveJSONKey(k string) bool {
-	for sk := range sensitiveJSONKeys {
+// lookupSensitiveJSONKey case-folds k against sensitiveJSONKeys, returning the
+// entry and whether it matched. A separate ok return is required because a
+// present non-base64 key and an absent key share the zero sensitiveKey value.
+func lookupSensitiveJSONKey(k string) (sensitiveKey, bool) {
+	for sk, meta := range sensitiveJSONKeys {
 		if strings.EqualFold(sk, k) {
-			return true
+			return meta, true
 		}
 	}
-	return false
-}
-
-// base64ValuedJSONKey reports whether a sensitive key holds a base64-encoded
-// value that consumer code will try to base64-decode at use. Their REDACTED
-// placeholder needs to round-trip through base64 (encode → decode) cleanly
-// or the consumer errors before any guard like WithSkipVerifyProofs runs.
-var base64ValuedKeys = map[string]bool{
-	"ServerProof":     true,
-	"ClientProof":     true,
-	"ClientEphemeral": true,
-	"Signature":       true,
-}
-
-func base64ValuedJSONKey(k string) bool {
-	for sk := range base64ValuedKeys {
-		if strings.EqualFold(sk, k) {
-			return true
-		}
-	}
-	return false
+	return sensitiveKey{}, false
 }
 
 var redactedHeaders = []string{"Authorization", "X-Pm-Uid", "Cookie", "Set-Cookie"}
@@ -188,7 +178,7 @@ func (s *bodyScrubber) walk(v any) {
 					continue
 				}
 			}
-			if isSensitiveJSONKey(k) {
+			if meta, ok := lookupSensitiveJSONKey(k); ok {
 				if str, ok := vv.(string); ok {
 					// Empty strings carry no secret and stay as-is — replacing
 					// them with a REDACTED_* placeholder would diverge from
@@ -202,13 +192,7 @@ func (s *bodyScrubber) walk(v any) {
 					canonical := strings.ToUpper(k)
 					s.counters[canonical]++
 					placeholder := fmt.Sprintf("REDACTED_%s_%d", canonical, s.counters[canonical])
-					if base64ValuedJSONKey(k) {
-						// The consumer code base64-decodes these values before
-						// using them (e.g. proton.Manager decodes ServerProof
-						// during refresh-on-401). A raw "REDACTED_*" string
-						// fails base64 validation; encode the placeholder so
-						// the decoded bytes still serve as a stable identifier
-						// without leaking the original.
+					if meta.base64 {
 						placeholder = base64.StdEncoding.EncodeToString([]byte(placeholder))
 					}
 					t[k] = placeholder
