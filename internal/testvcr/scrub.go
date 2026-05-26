@@ -129,14 +129,32 @@ type bodyScrubber struct {
 	email           string
 	domain          string
 	throwawayDomain string
+	localParts      []string
 }
 
+// newBodyScrubber reads the RECORD_* env the same way a live recording does.
+// localParts collects every address local part the account holds: the local
+// part of RECORD_EMAIL plus any comma-separated entries in RECORD_LOCAL_PARTS.
+// Proton accounts commonly own sibling aliases on a different local part (not
+// just a different TLD), and a Name/DisplayName or address carrying one of
+// those local parts would otherwise survive scrubbing.
 func newBodyScrubber() *bodyScrubber {
+	email := strings.TrimSpace(os.Getenv("RECORD_EMAIL"))
+	var localParts []string
+	if at := strings.IndexByte(email, '@'); at > 0 {
+		localParts = append(localParts, email[:at])
+	}
+	for _, lp := range strings.Split(os.Getenv("RECORD_LOCAL_PARTS"), ",") {
+		if lp = strings.TrimSpace(lp); lp != "" {
+			localParts = append(localParts, lp)
+		}
+	}
 	return &bodyScrubber{
 		counters:        map[string]int{},
-		email:           strings.TrimSpace(os.Getenv("RECORD_EMAIL")),
+		email:           email,
 		domain:          strings.TrimSpace(os.Getenv("RECORD_DOMAIN")),
 		throwawayDomain: strings.TrimSpace(os.Getenv("RECORD_THROWAWAY_DOMAIN")),
+		localParts:      localParts,
 	}
 }
 
@@ -168,6 +186,9 @@ func (s *bodyScrubber) walk(v any) {
 	switch t := v.(type) {
 	case map[string]any:
 		for k, vv := range t {
+			if s.scrubHeaderField(t, k, vv) {
+				continue
+			}
 			if str, ok := vv.(string); ok {
 				if replaced, did := s.replacePGPArmor(k, str); did {
 					t[k] = replaced
@@ -236,19 +257,92 @@ func (s *bodyScrubber) replacePGPArmor(k, v string) (string, bool) {
 	}
 }
 
-// matchesLocalPart reports whether v exactly equals the local part of
-// RECORD_EMAIL. Proton's Name/DisplayName fields hold the email local part
+// matchesLocalPart reports whether v exactly equals one of the account's
+// address local parts. Proton's Name/DisplayName fields hold a local part
 // standalone, so the full-string ReplaceAll in rewriteIdentifiers misses
 // them. Exact-match (not substring) avoids collateral on short local parts.
 func (s *bodyScrubber) matchesLocalPart(v string) bool {
-	if s.email == "" {
-		return false
+	for _, lp := range s.localParts {
+		if v == lp {
+			return true
+		}
 	}
-	at := strings.IndexByte(s.email, '@')
-	if at <= 0 || at >= len(s.email)-1 {
-		return false
+	return false
+}
+
+// rfc2822SafeHeaders lists RFC2822 header names (lower-cased) whose values are
+// structural MIME/format metadata carrying no per-message or per-account PII.
+// The scrubber keeps these and REDACTS every other header value. A denylist
+// would silently leak any sender-controlled header it failed to enumerate —
+// routing trail, List-Unsubscribe tracking tokens, X-Originating-IP, abuse
+// contacts, third-party addresses — so the safe default is redact-unless-listed.
+var rfc2822SafeHeaders = map[string]bool{
+	"mime-version":              true,
+	"content-type":              true,
+	"content-transfer-encoding": true,
+	"content-disposition":       true,
+	"content-id":                true,
+	"content-description":       true,
+	"content-language":          true,
+}
+
+// scrubHeaderField redacts the two shapes Proton uses to surface a message's
+// raw headers: a "Header" string holding a full RFC2822 block, and a
+// "ParsedHeaders" object keyed by header name. Returns true when it handled
+// (and thus consumed) the entry, so walk skips its generic processing.
+func (s *bodyScrubber) scrubHeaderField(t map[string]any, k string, vv any) bool {
+	switch {
+	case strings.EqualFold(k, "Header"):
+		if str, ok := vv.(string); ok {
+			t[k] = scrubRFC2822Headers(str)
+			return true
+		}
+	case strings.EqualFold(k, "ParsedHeaders"):
+		if m, ok := vv.(map[string]any); ok {
+			for hk := range m {
+				if !rfc2822SafeHeaders[strings.ToLower(hk)] {
+					m[hk] = "REDACTED"
+				}
+			}
+			return true
+		}
 	}
-	return v == s.email[:at]
+	return false
+}
+
+// scrubRFC2822Headers redacts the value of every header whose name is not in
+// rfc2822SafeHeaders, preserving the header name and the per-line terminator
+// (so a CRLF block stays CRLF) to keep the block syntactically intact. Folded
+// continuation lines (leading whitespace, e.g. a multi-line DKIM-Signature) of
+// a redacted header are dropped.
+func scrubRFC2822Headers(raw string) string {
+	lines := strings.Split(raw, "\n")
+	out := make([]string, 0, len(lines))
+	redacting := false
+	for _, line := range lines {
+		cr := ""
+		if strings.HasSuffix(line, "\r") {
+			cr = "\r"
+			line = line[:len(line)-1]
+		}
+		if line != "" && (line[0] == ' ' || line[0] == '\t') {
+			if !redacting {
+				out = append(out, line+cr)
+			}
+			continue
+		}
+		redacting = false
+		if idx := strings.IndexByte(line, ':'); idx > 0 {
+			name := strings.ToLower(strings.TrimSpace(line[:idx]))
+			if !rfc2822SafeHeaders[name] {
+				out = append(out, line[:idx]+": REDACTED"+cr)
+				redacting = true
+				continue
+			}
+		}
+		out = append(out, line+cr)
+	}
+	return strings.Join(out, "\n")
 }
 
 // protonAddressTLDs covers the Proton-issued address suffixes a single
@@ -261,11 +355,10 @@ func (s *bodyScrubber) rewriteIdentifiers(in string) string {
 	out := in
 	if s.email != "" {
 		out = strings.ReplaceAll(out, s.email, "user@example.test")
-		if at := strings.IndexByte(s.email, '@'); at > 0 && at < len(s.email)-1 {
-			local := s.email[:at]
-			for _, tld := range protonAddressTLDs {
-				out = strings.ReplaceAll(out, local+tld, "user@example.test")
-			}
+	}
+	for _, lp := range s.localParts {
+		for _, tld := range protonAddressTLDs {
+			out = strings.ReplaceAll(out, lp+tld, "user@example.test")
 		}
 	}
 	if s.throwawayDomain != "" {
