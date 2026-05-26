@@ -67,10 +67,10 @@ func TestRunUnknownSubcommand(t *testing.T) {
 	}
 }
 
-// TestRunNoArgsServerError covers the no-arg branch's error mapping
-// (main.go:78-81): a server startup failure surfaces as exit 1 with a
-// "server:" stderr prefix. The serverRun seam returns synchronously because
-// the real StdioTransport only returns nil on context cancel.
+// TestRunNoArgsServerError covers the no-arg branch's error mapping: a server
+// startup failure surfaces as exit 1 with a "server: " stderr prefix. The
+// serverRun seam returns the error synchronously, making the outcome
+// deterministic where the real StdioTransport's cancel behavior is racy.
 func TestRunNoArgsServerError(t *testing.T) {
 	orig := serverRun
 	t.Cleanup(func() { serverRun = orig })
@@ -88,9 +88,9 @@ func TestRunNoArgsServerError(t *testing.T) {
 }
 
 // TestRunNoArgsCleanExit covers the no-arg success path (return 0): a server
-// that returns nil (host disconnected cleanly) maps to exit 0. The real
-// StdioTransport never returns nil under a canceled context, so this path is
-// only reachable deterministically through the serverRun seam.
+// that returns nil (host disconnected cleanly) maps to exit 0. The serverRun
+// seam makes this deterministic — the real StdioTransport's nil-vs-cancel
+// outcome under a canceled context is a race.
 func TestRunNoArgsCleanExit(t *testing.T) {
 	orig := serverRun
 	t.Cleanup(func() { serverRun = orig })
@@ -102,10 +102,14 @@ func TestRunNoArgsCleanExit(t *testing.T) {
 	}
 }
 
-// TestRunNoArgsStartsServer covers the no-arg branch against the real
-// server.RunWithOptions (distinct from the serverRun-seam tests, which stub
-// it out): a pre-canceled context makes the real StdioTransport return an
-// error, which the branch maps to exit 1 with a "server:" stderr prefix.
+// TestRunNoArgsStartsServer exercises the no-arg branch against the real
+// server.RunWithOptions (distinct from the serverRun-seam tests, which stub it
+// out). Under a pre-canceled context the real StdioTransport races: ctx.Done()
+// may win (server.Run returns context.Canceled → exit 1) or a stdin EOF may
+// win first (clean shutdown → exit 0). Both are valid terminal states for this
+// wiring, so assert only that it returns promptly and that a non-zero exit
+// carries the "server: " prefix; deterministic exit-code coverage lives in the
+// serverRun-seam tests above.
 func TestRunNoArgsStartsServer(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -117,11 +121,11 @@ func TestRunNoArgsStartsServer(t *testing.T) {
 	}()
 	select {
 	case code := <-done:
-		if code != 1 {
-			t.Fatalf("exit = %d, want 1; stderr=%s", code, stderr.String())
+		if code != 0 && code != 1 {
+			t.Fatalf("exit = %d, want 0 or 1; stderr=%s", code, stderr.String())
 		}
-		if !strings.Contains(stderr.String(), "server: ") {
-			t.Fatalf("stderr = %q, want 'server: ' prefix", stderr.String())
+		if code == 1 && !strings.Contains(stderr.String(), "server: ") {
+			t.Fatalf("error exit missing 'server: ' prefix; stderr = %q", stderr.String())
 		}
 	case <-time.After(5 * time.Second):
 		t.Fatal("run did not return within 5s")
