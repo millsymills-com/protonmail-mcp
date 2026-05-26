@@ -309,3 +309,95 @@ func TestScrubBase64EncodesProofPlaceholders(t *testing.T) {
 		}
 	}
 }
+
+// TestScrubRewritesSiblingLocalParts covers RECORD_LOCAL_PARTS: an account
+// holds aliases on a different local part (not just a different TLD), e.g. the
+// "mills@" sibling that leaked in the get_message_happy cassette. Both the
+// standalone local part (Name field) and the full sibling address must scrub.
+func TestScrubRewritesSiblingLocalParts(t *testing.T) {
+	t.Setenv("RECORD_EMAIL", "overm1nd@pm.me")
+	t.Setenv("RECORD_LOCAL_PARTS", "mills, overm1nd")
+	body := `{"Name":"mills","Addresses":[{"Email":"mills@proton.me"},{"Email":"mills@pm.me"}]}`
+	i := &cassette.Interaction{
+		Response: cassette.Response{Body: body, Headers: http.Header{"Content-Type": []string{"application/json"}}},
+	}
+	if err := saveHook(i); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(i.Response.Body, "mills") {
+		t.Fatalf("sibling local part survived: %s", i.Response.Body)
+	}
+	var got map[string]any
+	if err := json.Unmarshal([]byte(i.Response.Body), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got["Name"] != "user" {
+		t.Fatalf("Name not rewritten: %v", got["Name"])
+	}
+}
+
+// TestScrubRedactsRawRFC2822Header covers the "Header" string field that
+// proton_get_message returns: a raw RFC2822 block whose From/To/Subject/
+// Message-Id/DKIM-Signature carry per-message PII. Header names are preserved;
+// values (including a folded multi-line DKIM-Signature) are redacted.
+func TestScrubRedactsRawRFC2822Header(t *testing.T) {
+	raw := "From: \"Andrew Mills\" <notifications@github.com>\n" +
+		"To: protonmail-mcp@noreply.github.com\n" +
+		"Subject: [millsymills-com/protonmail-mcp] PR run failed (69de588)\n" +
+		"Message-Id: <abc.123@github.com>\n" +
+		"DKIM-Signature: v=1; a=rsa-sha256;\n\tb=longsig==\n" +
+		"Content-Type: text/plain\n"
+	jsonBody, err := json.Marshal(map[string]any{"Header": raw})
+	if err != nil {
+		t.Fatal(err)
+	}
+	i := &cassette.Interaction{
+		Response: cassette.Response{Body: string(jsonBody), Headers: http.Header{"Content-Type": []string{"application/json"}}},
+	}
+	if err := saveHook(i); err != nil {
+		t.Fatal(err)
+	}
+	for _, leak := range []string{"notifications@github.com", "69de588", "abc.123", "longsig"} {
+		if strings.Contains(i.Response.Body, leak) {
+			t.Fatalf("leak %q survived header scrub: %s", leak, i.Response.Body)
+		}
+	}
+	var got map[string]any
+	if err := json.Unmarshal([]byte(i.Response.Body), &got); err != nil {
+		t.Fatal(err)
+	}
+	header, _ := got["Header"].(string)
+	if !strings.Contains(header, "Content-Type: text/plain") {
+		t.Fatalf("non-sensitive header dropped: %q", header)
+	}
+	if !strings.Contains(header, "Subject: REDACTED") {
+		t.Fatalf("Subject not redacted: %q", header)
+	}
+}
+
+// TestScrubRedactsParsedHeaders covers the "ParsedHeaders" object shape:
+// sensitive header keys are redacted, non-sensitive ones (e.g. X-Pm-Spam's
+// encrypted blob, Message-Id) gone while harmless keys stay.
+func TestScrubRedactsParsedHeaders(t *testing.T) {
+	body := `{"ParsedHeaders":{"X-Pm-Spam":"encrypted-blob","Message-Id":"<x@y>","Content-Type":"text/plain"}}`
+	i := &cassette.Interaction{
+		Response: cassette.Response{Body: body, Headers: http.Header{"Content-Type": []string{"application/json"}}},
+	}
+	if err := saveHook(i); err != nil {
+		t.Fatal(err)
+	}
+	var got map[string]any
+	if err := json.Unmarshal([]byte(i.Response.Body), &got); err != nil {
+		t.Fatal(err)
+	}
+	ph := got["ParsedHeaders"].(map[string]any)
+	if ph["X-Pm-Spam"] != "REDACTED" {
+		t.Fatalf("X-Pm-Spam not redacted: %v", ph["X-Pm-Spam"])
+	}
+	if ph["Message-Id"] != "REDACTED" {
+		t.Fatalf("Message-Id not redacted: %v", ph["Message-Id"])
+	}
+	if ph["Content-Type"] != "text/plain" {
+		t.Fatalf("harmless header altered: %v", ph["Content-Type"])
+	}
+}
