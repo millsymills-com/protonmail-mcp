@@ -5,11 +5,7 @@ package keychain
 import (
 	"errors"
 	"fmt"
-	"os"
-	"os/exec"
-	"path/filepath"
 	"runtime"
-	"strings"
 
 	"github.com/zalando/go-keyring"
 )
@@ -82,15 +78,15 @@ func (k *Keychain) SaveCreds(c Creds) error {
 func (k *Keychain) LoadCreds() (Creds, error) {
 	u, err := keyringGet(service, keyUsername)
 	if err != nil {
-		return Creds{}, fmt.Errorf("load username: %w", err)
+		return Creds{}, fmt.Errorf("load username: %w", diagnoseKeychainErr(err))
 	}
 	p, err := keyringGet(service, keyPassword)
 	if err != nil {
-		return Creds{}, fmt.Errorf("load password: %w", err)
+		return Creds{}, fmt.Errorf("load password: %w", diagnoseKeychainErr(err))
 	}
 	t, err := keyringGet(service, keyTOTPSecret)
 	if err != nil && !errors.Is(err, keyring.ErrNotFound) {
-		return Creds{}, fmt.Errorf("load totp: %w", err)
+		return Creds{}, fmt.Errorf("load totp: %w", diagnoseKeychainErr(err))
 	}
 	return Creds{Username: u, Password: p, TOTPSecret: t}, nil
 }
@@ -111,15 +107,15 @@ func (k *Keychain) SaveSession(s Session) error {
 func (k *Keychain) LoadSession() (Session, error) {
 	uid, err := keyringGet(service, keyUID)
 	if err != nil {
-		return Session{}, fmt.Errorf("load uid: %w", err)
+		return Session{}, fmt.Errorf("load uid: %w", diagnoseKeychainErr(err))
 	}
 	at, err := keyringGet(service, keyAccessToken)
 	if err != nil {
-		return Session{}, fmt.Errorf("load access token: %w", err)
+		return Session{}, fmt.Errorf("load access token: %w", diagnoseKeychainErr(err))
 	}
 	rt, err := keyringGet(service, keyRefreshToken)
 	if err != nil {
-		return Session{}, fmt.Errorf("load refresh token: %w", err)
+		return Session{}, fmt.Errorf("load refresh token: %w", diagnoseKeychainErr(err))
 	}
 	return Session{UID: uid, AccessToken: at, RefreshToken: rt}, nil
 }
@@ -134,47 +130,31 @@ func (k *Keychain) Clear() error {
 	return nil
 }
 
-// diagnoseKeychainErr augments opaque "exit status N" errors from go-keyring
-// with the underlying /usr/bin/security message. go-keyring discards stderr
-// from its shellout, so an errSecInteractionNotAllowed (-25308, exit 36) on a
-// locked login keychain surfaces as "exit status 36" with no clue what to do.
-//
-// On macOS, we re-probe `security show-keychain-info` to grab the real reason
-// without re-attempting the failed write (which could partially succeed and
-// leave keychain state inconsistent).
-//
-// On other platforms, or when the diagnostic probe finds nothing useful, the
-// original error is returned unchanged.
+// interactionNotAllowedStatus is the bare error go-keyring surfaces on macOS
+// for errSecInteractionNotAllowed (-25308): /usr/bin/security exits 36 and
+// go-keyring discards its stderr, so the caller sees only "exit status 36".
+const interactionNotAllowedStatus = "exit status 36"
+
+// diagnoseKeychainErr augments the one opaque go-keyring error that has a known
+// macOS cause: errSecInteractionNotAllowed, which surfaces as a bare
+// "exit status 36" when the login keychain is locked or unreachable from the
+// current context (e.g. a non-GUI agent with no SecurityAgent connection). All
+// other errors — other exit statuses, non-darwin platforms, and go-keyring's
+// own typed errors (ErrNotFound, ErrSetDataTooBig, …) — pass through unchanged,
+// since they already carry an actionable message.
 func diagnoseKeychainErr(cause error) error {
-	if cause == nil || runtime.GOOS != "darwin" {
+	return diagnoseKeychainErrFor(cause, runtime.GOOS)
+}
+
+// diagnoseKeychainErrFor is the GOOS-parameterized core, split out so tests can
+// exercise both the darwin and non-darwin branches deterministically.
+func diagnoseKeychainErrFor(cause error, goos string) error {
+	if cause == nil || goos != "darwin" || cause.Error() != interactionNotAllowedStatus {
 		return cause
 	}
-	// Only augment opaque exec errors; ErrNotFound, ErrSetDataTooBig, etc.
-	// from go-keyring already carry a useful message.
-	msg := cause.Error()
-	if !strings.HasPrefix(msg, "exit status ") {
-		return cause
-	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return cause
-	}
-	probe := exec.Command(
-		"/usr/bin/security",
-		"show-keychain-info",
-		filepath.Join(home, "Library", "Keychains", "login.keychain-db"),
-	)
-	out, _ := probe.CombinedOutput()
-	probeMsg := strings.TrimSpace(string(out))
-	if strings.Contains(probeMsg, "User interaction is not allowed") {
-		return fmt.Errorf(
-			"%w (login keychain is locked or unreachable from this shell — "+
-				"unlock via Keychain Access.app, or run `security unlock-keychain "+
-				"~/Library/Keychains/login.keychain-db` in a Terminal.app session "+
-				"that has a SecurityAgent connection)", cause)
-	}
-	if probeMsg != "" {
-		return fmt.Errorf("%w (keychain probe: %s)", cause, probeMsg)
-	}
-	return cause
+	return fmt.Errorf(
+		"%w (login keychain is locked or unreachable from this context — "+
+			"unlock via Keychain Access.app, or run `security unlock-keychain "+
+			"~/Library/Keychains/login.keychain-db` in a Terminal.app session "+
+			"that has a SecurityAgent connection)", cause)
 }

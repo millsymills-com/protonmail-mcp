@@ -2,18 +2,9 @@ package keychain
 
 import (
 	"errors"
-	"runtime"
 	"strings"
 	"testing"
 )
-
-func TestDiagnoseKeychainErrNonExitStatusPassesThrough(t *testing.T) {
-	in := errors.New("some other backend error")
-	out := diagnoseKeychainErr(in)
-	if out.Error() != in.Error() {
-		t.Fatalf("expected pass-through, got %q", out.Error())
-	}
-}
 
 func TestDiagnoseKeychainErrNilPassesThrough(t *testing.T) {
 	if got := diagnoseKeychainErr(nil); got != nil {
@@ -21,20 +12,50 @@ func TestDiagnoseKeychainErrNilPassesThrough(t *testing.T) {
 	}
 }
 
-func TestDiagnoseKeychainErrExitStatusAugmentsOnDarwin(t *testing.T) {
-	if runtime.GOOS != "darwin" {
-		t.Skip("darwin-only behavior")
+func TestDiagnoseKeychainErrFor(t *testing.T) {
+	interaction := errors.New(interactionNotAllowedStatus)
+	otherStatus := errors.New("exit status 37")
+	backend := errors.New("some other backend error")
+
+	tests := []struct {
+		name        string
+		cause       error
+		goos        string
+		wantAugment bool
+	}{
+		{"darwin interaction-not-allowed augments", interaction, "darwin", true},
+		{"darwin other exit status passes through", otherStatus, "darwin", false},
+		{"darwin non-exit error passes through", backend, "darwin", false},
+		{"linux interaction-not-allowed passes through", interaction, "linux", false},
+		{"linux backend error passes through", backend, "linux", false},
+		{"nil darwin", nil, "darwin", false},
+		{"nil linux", nil, "linux", false},
 	}
-	// We can't deterministically force the keychain into a locked state
-	// from a test, but the probe must always either pass-through unchanged
-	// or augment with a non-empty wrapper — never panic, never lose the
-	// original.
-	in := errors.New("exit status 36")
-	out := diagnoseKeychainErr(in)
-	if !errors.Is(out, in) {
-		t.Fatalf("wrapped error must Is the original; got %v", out)
-	}
-	if !strings.Contains(out.Error(), "exit status 36") {
-		t.Fatalf("wrapped error must preserve original message; got %q", out.Error())
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := diagnoseKeychainErrFor(tc.cause, tc.goos)
+
+			if tc.cause == nil {
+				if got != nil {
+					t.Fatalf("expected nil, got %v", got)
+				}
+				return
+			}
+			if !errors.Is(got, tc.cause) {
+				t.Fatalf("result must wrap the original cause; got %v", got)
+			}
+			if !strings.Contains(got.Error(), tc.cause.Error()) {
+				t.Fatalf("result must preserve original message; got %q", got.Error())
+			}
+
+			augmented := got.Error() != tc.cause.Error()
+			if augmented != tc.wantAugment {
+				t.Fatalf("augmented=%v, want %v (got %q)", augmented, tc.wantAugment, got.Error())
+			}
+			if tc.wantAugment && !strings.Contains(got.Error(), "unlock-keychain") {
+				t.Fatalf("augmented error must carry the unlock hint; got %q", got.Error())
+			}
+		})
 	}
 }
