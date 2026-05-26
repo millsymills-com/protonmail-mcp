@@ -32,7 +32,10 @@ func loggedInSession(t *testing.T) {
 
 // failUsersTransport replays everything via inner except the user-fetch,
 // which it forces to a 500 so the status command's GetUser call fails after
-// a successful cold-start refresh.
+// a successful cold-start refresh. Wrapping the replay transport (rather than
+// testvcr.WithRealTransport) is safe here because testvcr.New is replay-only:
+// WithRealTransport exists for the recording path, and go-vcr replay does not
+// error on the now-unconsumed /core/v4/users interaction.
 type failUsersTransport struct{ inner http.RoundTripper }
 
 func (t failUsersTransport) RoundTrip(req *http.Request) (*http.Response, error) {
