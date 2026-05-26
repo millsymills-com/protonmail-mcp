@@ -71,9 +71,8 @@ func (k *Keychain) LoadCreds() (Creds, error) {
 	if err != nil {
 		return Creds{}, fmt.Errorf("load username: %w", err)
 	}
-	// go-keyring mock fails all ops or none — intermediate failures untestable.
 	p, err := keyring.Get(service, keyPassword)
-	if err != nil { //nolint:gocover
+	if err != nil {
 		return Creds{}, fmt.Errorf("load password: %w", err)
 	}
 	t, err := keyring.Get(service, keyTOTPSecret)
@@ -104,14 +103,12 @@ func (k *Keychain) LoadSession() (Session, error) {
 	if err != nil {
 		return Session{}, fmt.Errorf("load uid: %w", err)
 	}
-	// go-keyring mock fails all ops or none — intermediate failures untestable.
 	at, err := keyring.Get(service, keyAccessToken)
-	if err != nil { //nolint:gocover
+	if err != nil {
 		return Session{}, fmt.Errorf("load access token: %w", err)
 	}
-	// go-keyring mock fails all ops or none — intermediate failures untestable.
 	rt, err := keyring.Get(service, keyRefreshToken)
-	if err != nil { //nolint:gocover
+	if err != nil {
 		return Session{}, fmt.Errorf("load refresh token: %w", err)
 	}
 	return Session{UID: uid, AccessToken: at, RefreshToken: rt}, nil
