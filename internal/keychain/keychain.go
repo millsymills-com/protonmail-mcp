@@ -35,79 +35,84 @@ type Session struct {
 	RefreshToken string
 }
 
+// keyring operations are indirected through package vars so tests can
+// substitute a provider that fails on a chosen call ordinal. go-keyring's
+// mock is all-or-nothing (every op fails or none do), so a later op failing
+// after earlier ones succeed — e.g. the password Set in SaveCreds — is
+// otherwise unreachable.
+var (
+	keyringSet    = keyring.Set
+	keyringGet    = keyring.Get
+	keyringDelete = keyring.Delete
+)
+
 // Keychain is the typed wrapper. Construct with New().
 type Keychain struct{}
 
 func New() *Keychain { return &Keychain{} }
 
 func (k *Keychain) SaveCreds(c Creds) error {
-	if err := keyring.Set(service, keyUsername, c.Username); err != nil {
+	if err := keyringSet(service, keyUsername, c.Username); err != nil {
 		return fmt.Errorf("save username: %w", err)
 	}
-	// go-keyring mock fails all ops or none — intermediate failures untestable.
-	if err := keyring.Set(service, keyPassword, c.Password); err != nil { //nolint:gocover
+	if err := keyringSet(service, keyPassword, c.Password); err != nil {
 		return fmt.Errorf("save password: %w", err)
 	}
 	// TOTP secret is optional. When the caller supplies an empty string, drop
 	// any pre-existing entry so a stale secret from a prior login can't bleed
 	// through. Tolerate ErrNotFound (no entry to delete).
 	if c.TOTPSecret == "" {
-		// go-keyring mock fails all ops or none — intermediate failures untestable.
-		if err := keyring.Delete(service, keyTOTPSecret); err != nil && //nolint:gocover
+		if err := keyringDelete(service, keyTOTPSecret); err != nil &&
 			!errors.Is(err, keyring.ErrNotFound) {
 			return fmt.Errorf("clear stale totp: %w", err)
 		}
 		return nil
 	}
-	// go-keyring mock fails all ops or none — intermediate failures untestable.
-	if err := keyring.Set(service, keyTOTPSecret, c.TOTPSecret); err != nil { //nolint:gocover
+	if err := keyringSet(service, keyTOTPSecret, c.TOTPSecret); err != nil {
 		return fmt.Errorf("save totp: %w", err)
 	}
 	return nil
 }
 
 func (k *Keychain) LoadCreds() (Creds, error) {
-	u, err := keyring.Get(service, keyUsername)
+	u, err := keyringGet(service, keyUsername)
 	if err != nil {
 		return Creds{}, fmt.Errorf("load username: %w", err)
 	}
-	p, err := keyring.Get(service, keyPassword)
+	p, err := keyringGet(service, keyPassword)
 	if err != nil {
 		return Creds{}, fmt.Errorf("load password: %w", err)
 	}
-	t, err := keyring.Get(service, keyTOTPSecret)
-	// go-keyring mock fails all ops or none — intermediate failures untestable.
-	if err != nil && !errors.Is(err, keyring.ErrNotFound) { //nolint:gocover
+	t, err := keyringGet(service, keyTOTPSecret)
+	if err != nil && !errors.Is(err, keyring.ErrNotFound) {
 		return Creds{}, fmt.Errorf("load totp: %w", err)
 	}
 	return Creds{Username: u, Password: p, TOTPSecret: t}, nil
 }
 
 func (k *Keychain) SaveSession(s Session) error {
-	if err := keyring.Set(service, keyUID, s.UID); err != nil {
+	if err := keyringSet(service, keyUID, s.UID); err != nil {
 		return fmt.Errorf("save uid: %w", err)
 	}
-	// go-keyring mock fails all ops or none — intermediate failures untestable.
-	if err := keyring.Set(service, keyAccessToken, s.AccessToken); err != nil { //nolint:gocover
+	if err := keyringSet(service, keyAccessToken, s.AccessToken); err != nil {
 		return fmt.Errorf("save access token: %w", err)
 	}
-	// go-keyring mock fails all ops or none — intermediate failures untestable.
-	if err := keyring.Set(service, keyRefreshToken, s.RefreshToken); err != nil { //nolint:gocover
+	if err := keyringSet(service, keyRefreshToken, s.RefreshToken); err != nil {
 		return fmt.Errorf("save refresh token: %w", err)
 	}
 	return nil
 }
 
 func (k *Keychain) LoadSession() (Session, error) {
-	uid, err := keyring.Get(service, keyUID)
+	uid, err := keyringGet(service, keyUID)
 	if err != nil {
 		return Session{}, fmt.Errorf("load uid: %w", err)
 	}
-	at, err := keyring.Get(service, keyAccessToken)
+	at, err := keyringGet(service, keyAccessToken)
 	if err != nil {
 		return Session{}, fmt.Errorf("load access token: %w", err)
 	}
-	rt, err := keyring.Get(service, keyRefreshToken)
+	rt, err := keyringGet(service, keyRefreshToken)
 	if err != nil {
 		return Session{}, fmt.Errorf("load refresh token: %w", err)
 	}
@@ -117,7 +122,7 @@ func (k *Keychain) LoadSession() (Session, error) {
 func (k *Keychain) Clear() error {
 	keys := []string{keyUsername, keyPassword, keyTOTPSecret, keyUID, keyAccessToken, keyRefreshToken}
 	for _, key := range keys {
-		if err := keyring.Delete(service, key); err != nil && !errors.Is(err, keyring.ErrNotFound) {
+		if err := keyringDelete(service, key); err != nil && !errors.Is(err, keyring.ErrNotFound) {
 			return fmt.Errorf("delete %s: %w", key, err)
 		}
 	}
