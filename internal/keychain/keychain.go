@@ -5,6 +5,11 @@ package keychain
 import (
 	"errors"
 	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
+	"strings"
 
 	"github.com/zalando/go-keyring"
 )
@@ -53,10 +58,10 @@ func New() *Keychain { return &Keychain{} }
 
 func (k *Keychain) SaveCreds(c Creds) error {
 	if err := keyringSet(service, keyUsername, c.Username); err != nil {
-		return fmt.Errorf("save username: %w", err)
+		return fmt.Errorf("save username: %w", diagnoseKeychainErr(err))
 	}
 	if err := keyringSet(service, keyPassword, c.Password); err != nil {
-		return fmt.Errorf("save password: %w", err)
+		return fmt.Errorf("save password: %w", diagnoseKeychainErr(err))
 	}
 	// TOTP secret is optional. When the caller supplies an empty string, drop
 	// any pre-existing entry so a stale secret from a prior login can't bleed
@@ -64,12 +69,12 @@ func (k *Keychain) SaveCreds(c Creds) error {
 	if c.TOTPSecret == "" {
 		if err := keyringDelete(service, keyTOTPSecret); err != nil &&
 			!errors.Is(err, keyring.ErrNotFound) {
-			return fmt.Errorf("clear stale totp: %w", err)
+			return fmt.Errorf("clear stale totp: %w", diagnoseKeychainErr(err))
 		}
 		return nil
 	}
 	if err := keyringSet(service, keyTOTPSecret, c.TOTPSecret); err != nil {
-		return fmt.Errorf("save totp: %w", err)
+		return fmt.Errorf("save totp: %w", diagnoseKeychainErr(err))
 	}
 	return nil
 }
@@ -92,13 +97,13 @@ func (k *Keychain) LoadCreds() (Creds, error) {
 
 func (k *Keychain) SaveSession(s Session) error {
 	if err := keyringSet(service, keyUID, s.UID); err != nil {
-		return fmt.Errorf("save uid: %w", err)
+		return fmt.Errorf("save uid: %w", diagnoseKeychainErr(err))
 	}
 	if err := keyringSet(service, keyAccessToken, s.AccessToken); err != nil {
-		return fmt.Errorf("save access token: %w", err)
+		return fmt.Errorf("save access token: %w", diagnoseKeychainErr(err))
 	}
 	if err := keyringSet(service, keyRefreshToken, s.RefreshToken); err != nil {
-		return fmt.Errorf("save refresh token: %w", err)
+		return fmt.Errorf("save refresh token: %w", diagnoseKeychainErr(err))
 	}
 	return nil
 }
@@ -123,8 +128,53 @@ func (k *Keychain) Clear() error {
 	keys := []string{keyUsername, keyPassword, keyTOTPSecret, keyUID, keyAccessToken, keyRefreshToken}
 	for _, key := range keys {
 		if err := keyringDelete(service, key); err != nil && !errors.Is(err, keyring.ErrNotFound) {
-			return fmt.Errorf("delete %s: %w", key, err)
+			return fmt.Errorf("delete %s: %w", key, diagnoseKeychainErr(err))
 		}
 	}
 	return nil
+}
+
+// diagnoseKeychainErr augments opaque "exit status N" errors from go-keyring
+// with the underlying /usr/bin/security message. go-keyring discards stderr
+// from its shellout, so an errSecInteractionNotAllowed (-25308, exit 36) on a
+// locked login keychain surfaces as "exit status 36" with no clue what to do.
+//
+// On macOS, we re-probe `security show-keychain-info` to grab the real reason
+// without re-attempting the failed write (which could partially succeed and
+// leave keychain state inconsistent).
+//
+// On other platforms, or when the diagnostic probe finds nothing useful, the
+// original error is returned unchanged.
+func diagnoseKeychainErr(cause error) error {
+	if cause == nil || runtime.GOOS != "darwin" {
+		return cause
+	}
+	// Only augment opaque exec errors; ErrNotFound, ErrSetDataTooBig, etc.
+	// from go-keyring already carry a useful message.
+	msg := cause.Error()
+	if !strings.HasPrefix(msg, "exit status ") {
+		return cause
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return cause
+	}
+	probe := exec.Command(
+		"/usr/bin/security",
+		"show-keychain-info",
+		filepath.Join(home, "Library", "Keychains", "login.keychain-db"),
+	)
+	out, _ := probe.CombinedOutput()
+	probeMsg := strings.TrimSpace(string(out))
+	if strings.Contains(probeMsg, "User interaction is not allowed") {
+		return fmt.Errorf(
+			"%w (login keychain is locked or unreachable from this shell — "+
+				"unlock via Keychain Access.app, or run `security unlock-keychain "+
+				"~/Library/Keychains/login.keychain-db` in a Terminal.app session "+
+				"that has a SecurityAgent connection)", cause)
+	}
+	if probeMsg != "" {
+		return fmt.Errorf("%w (keychain probe: %s)", cause, probeMsg)
+	}
+	return cause
 }
