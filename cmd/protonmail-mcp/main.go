@@ -34,10 +34,10 @@ func main() {
 }
 
 // serverRun is the no-arg server entrypoint. A package var so tests can
-// substitute a stub that returns an error synchronously to exercise the
-// error-mapping branch in run; the real StdioTransport blocks on os.Stdin
-// and only returns nil on context cancel, so the error path is otherwise
-// unreachable from a test.
+// substitute a stub that returns deterministically: the real StdioTransport
+// blocks on os.Stdin and, under a canceled context, races between returning
+// context.Canceled and a clean nil on stdin EOF — so neither the error nor
+// the clean-exit branch is deterministically reachable through it.
 var serverRun = server.RunWithOptions
 
 // run is the testable entrypoint. transport is normally nil; tests pass a
