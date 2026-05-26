@@ -270,33 +270,20 @@ func (s *bodyScrubber) matchesLocalPart(v string) bool {
 	return false
 }
 
-// rfc2822RedactHeaders lists RFC2822 header names (lower-cased) whose values
-// carry per-message or per-account identifying data — sender/recipient,
-// routing trail, DKIM/ARC signatures, the message id, and Proton's encrypted
-// X-Pm-Spam analysis blob. The scrubber replaces their values with REDACTED
-// rather than rewriting field-by-field, which would require re-serialising
-// arbitrary structured header syntax.
-var rfc2822RedactHeaders = map[string]bool{
-	"date":                       true,
-	"from":                       true,
-	"to":                         true,
-	"cc":                         true,
-	"bcc":                        true,
-	"reply-to":                   true,
-	"return-path":                true,
-	"delivered-to":               true,
-	"x-original-to":              true,
-	"subject":                    true,
-	"message-id":                 true,
-	"references":                 true,
-	"in-reply-to":                true,
-	"received":                   true,
-	"dkim-signature":             true,
-	"authentication-results":     true,
-	"arc-seal":                   true,
-	"arc-message-signature":      true,
-	"arc-authentication-results": true,
-	"x-pm-spam":                  true,
+// rfc2822SafeHeaders lists RFC2822 header names (lower-cased) whose values are
+// structural MIME/format metadata carrying no per-message or per-account PII.
+// The scrubber keeps these and REDACTS every other header value. A denylist
+// would silently leak any sender-controlled header it failed to enumerate —
+// routing trail, List-Unsubscribe tracking tokens, X-Originating-IP, abuse
+// contacts, third-party addresses — so the safe default is redact-unless-listed.
+var rfc2822SafeHeaders = map[string]bool{
+	"mime-version":              true,
+	"content-type":              true,
+	"content-transfer-encoding": true,
+	"content-disposition":       true,
+	"content-id":                true,
+	"content-description":       true,
+	"content-language":          true,
 }
 
 // scrubHeaderField redacts the two shapes Proton uses to surface a message's
@@ -313,7 +300,7 @@ func (s *bodyScrubber) scrubHeaderField(t map[string]any, k string, vv any) bool
 	case strings.EqualFold(k, "ParsedHeaders"):
 		if m, ok := vv.(map[string]any); ok {
 			for hk := range m {
-				if rfc2822RedactHeaders[strings.ToLower(hk)] {
+				if !rfc2822SafeHeaders[strings.ToLower(hk)] {
 					m[hk] = "REDACTED"
 				}
 			}
@@ -323,31 +310,37 @@ func (s *bodyScrubber) scrubHeaderField(t map[string]any, k string, vv any) bool
 	return false
 }
 
-// scrubRFC2822Headers redacts the values of sensitive headers in a raw RFC2822
-// block, preserving each header name so the block stays syntactically intact.
-// Folded continuation lines (leading whitespace, e.g. a multi-line
-// DKIM-Signature) of a redacted header are dropped.
+// scrubRFC2822Headers redacts the value of every header whose name is not in
+// rfc2822SafeHeaders, preserving the header name and the per-line terminator
+// (so a CRLF block stays CRLF) to keep the block syntactically intact. Folded
+// continuation lines (leading whitespace, e.g. a multi-line DKIM-Signature) of
+// a redacted header are dropped.
 func scrubRFC2822Headers(raw string) string {
 	lines := strings.Split(raw, "\n")
 	out := make([]string, 0, len(lines))
 	redacting := false
 	for _, line := range lines {
+		cr := ""
+		if strings.HasSuffix(line, "\r") {
+			cr = "\r"
+			line = line[:len(line)-1]
+		}
 		if line != "" && (line[0] == ' ' || line[0] == '\t') {
 			if !redacting {
-				out = append(out, line)
+				out = append(out, line+cr)
 			}
 			continue
 		}
 		redacting = false
 		if idx := strings.IndexByte(line, ':'); idx > 0 {
 			name := strings.ToLower(strings.TrimSpace(line[:idx]))
-			if rfc2822RedactHeaders[name] {
-				out = append(out, line[:idx]+": REDACTED")
+			if !rfc2822SafeHeaders[name] {
+				out = append(out, line[:idx]+": REDACTED"+cr)
 				redacting = true
 				continue
 			}
 		}
-		out = append(out, line)
+		out = append(out, line+cr)
 	}
 	return strings.Join(out, "\n")
 }

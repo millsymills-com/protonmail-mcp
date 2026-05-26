@@ -339,7 +339,8 @@ func TestScrubRewritesSiblingLocalParts(t *testing.T) {
 // TestScrubRedactsRawRFC2822Header covers the "Header" string field that
 // proton_get_message returns: a raw RFC2822 block whose From/To/Subject/
 // Message-Id/DKIM-Signature carry per-message PII. Header names are preserved;
-// values (including a folded multi-line DKIM-Signature) are redacted.
+// every value whose name is not on the structural allowlist (Content-Type
+// here) is redacted, including a folded multi-line DKIM-Signature.
 func TestScrubRedactsRawRFC2822Header(t *testing.T) {
 	raw := "From: \"Andrew Mills\" <notifications@github.com>\n" +
 		"To: protonmail-mcp@noreply.github.com\n" +
@@ -375,9 +376,9 @@ func TestScrubRedactsRawRFC2822Header(t *testing.T) {
 	}
 }
 
-// TestScrubRedactsParsedHeaders covers the "ParsedHeaders" object shape:
-// sensitive header keys are redacted, non-sensitive ones (e.g. X-Pm-Spam's
-// encrypted blob, Message-Id) gone while harmless keys stay.
+// TestScrubRedactsParsedHeaders covers the "ParsedHeaders" object shape: every
+// key not on the structural allowlist is redacted (e.g. X-Pm-Spam's encrypted
+// blob, Message-Id), while an allowlisted key (Content-Type) stays.
 func TestScrubRedactsParsedHeaders(t *testing.T) {
 	body := `{"ParsedHeaders":{"X-Pm-Spam":"encrypted-blob","Message-Id":"<x@y>","Content-Type":"text/plain"}}`
 	i := &cassette.Interaction{
@@ -399,5 +400,83 @@ func TestScrubRedactsParsedHeaders(t *testing.T) {
 	}
 	if ph["Content-Type"] != "text/plain" {
 		t.Fatalf("harmless header altered: %v", ph["Content-Type"])
+	}
+}
+
+// TestScrubRawHeaderRedactsSenderControlled guards the allowlist against the
+// denylist gap it replaced: sender-controlled headers (List-Unsubscribe
+// tracking token, third-party Sender, X-Originating-IP) that no denylist
+// enumerated must still be redacted because they are not on the structural
+// allowlist. Uses CRLF line endings like real Proton cassettes, and asserts
+// the terminator is preserved on kept lines and a folded continuation of a
+// redacted header is dropped.
+func TestScrubRawHeaderRedactsSenderControlled(t *testing.T) {
+	raw := "List-Unsubscribe: <https://track.example.com/u?token=SECRET123>\r\n" +
+		"Sender: \"Ernie Ball\" <newsletter@ernieball.com>\r\n" +
+		"X-Originating-IP: 199.167.224.156\r\n" +
+		"DKIM-Signature: v=1; a=rsa-sha256;\r\n\tb=foldedsig==\r\n" +
+		"MIME-Version: 1.0\r\n" +
+		"Content-Type: text/html\r\n"
+	jsonBody, err := json.Marshal(map[string]any{"Header": raw})
+	if err != nil {
+		t.Fatal(err)
+	}
+	i := &cassette.Interaction{
+		Response: cassette.Response{Body: string(jsonBody), Headers: http.Header{"Content-Type": []string{"application/json"}}},
+	}
+	if err := saveHook(i); err != nil {
+		t.Fatal(err)
+	}
+	for _, leak := range []string{"SECRET123", "newsletter@ernieball.com", "199.167.224.156", "foldedsig"} {
+		if strings.Contains(i.Response.Body, leak) {
+			t.Fatalf("leak %q survived allowlist scrub: %s", leak, i.Response.Body)
+		}
+	}
+	var got map[string]any
+	if err := json.Unmarshal([]byte(i.Response.Body), &got); err != nil {
+		t.Fatal(err)
+	}
+	header, _ := got["Header"].(string)
+	for _, kept := range []string{"MIME-Version: 1.0\r\n", "Content-Type: text/html\r\n"} {
+		if !strings.Contains(header, kept) {
+			t.Fatalf("structural header dropped or CRLF lost; want %q in %q", kept, header)
+		}
+	}
+	if !strings.Contains(header, "List-Unsubscribe: REDACTED\r\n") {
+		t.Fatalf("List-Unsubscribe not redacted with CRLF preserved: %q", header)
+	}
+}
+
+// TestScrubParsedHeadersRedactsSenderControlled covers the same allowlist gap
+// in the "ParsedHeaders" object shape, including an array-valued header
+// (Authentication-Results) as Proton emits — a non-allowlisted key is replaced
+// regardless of whether its value is a string or array.
+func TestScrubParsedHeadersRedactsSenderControlled(t *testing.T) {
+	body := `{"ParsedHeaders":{"List-Unsubscribe":"<https://track.example.com/u?token=SECRET456>",` +
+		`"Sender":"newsletter@ernieball.com","Authentication-Results":["dkim=pass d=ernieball.com","spf=pass"],` +
+		`"X-Originating-IP":"199.167.224.156","Content-Type":"text/html","MIME-Version":"1.0"}}`
+	i := &cassette.Interaction{
+		Response: cassette.Response{Body: body, Headers: http.Header{"Content-Type": []string{"application/json"}}},
+	}
+	if err := saveHook(i); err != nil {
+		t.Fatal(err)
+	}
+	for _, leak := range []string{"SECRET456", "newsletter@ernieball.com", "199.167.224.156", "dkim=pass"} {
+		if strings.Contains(i.Response.Body, leak) {
+			t.Fatalf("leak %q survived parsed-header scrub: %s", leak, i.Response.Body)
+		}
+	}
+	var got map[string]any
+	if err := json.Unmarshal([]byte(i.Response.Body), &got); err != nil {
+		t.Fatal(err)
+	}
+	ph := got["ParsedHeaders"].(map[string]any)
+	for _, redacted := range []string{"List-Unsubscribe", "Sender", "Authentication-Results", "X-Originating-IP"} {
+		if ph[redacted] != "REDACTED" {
+			t.Fatalf("%s not redacted: %v", redacted, ph[redacted])
+		}
+	}
+	if ph["Content-Type"] != "text/html" || ph["MIME-Version"] != "1.0" {
+		t.Fatalf("structural header altered: Content-Type=%v MIME-Version=%v", ph["Content-Type"], ph["MIME-Version"])
 	}
 }
