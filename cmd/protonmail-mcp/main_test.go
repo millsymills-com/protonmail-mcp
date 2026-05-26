@@ -3,7 +3,9 @@ package main
 import (
 	"bytes"
 	"context"
+	"errors"
 	"log/slog"
+	"net/http"
 	"strings"
 	"testing"
 	"time"
@@ -62,6 +64,41 @@ func TestRunUnknownSubcommand(t *testing.T) {
 	}
 	if !strings.Contains(stderr.String(), "unknown subcommand oops") {
 		t.Fatalf("stderr = %q", stderr.String())
+	}
+}
+
+// TestRunNoArgsServerError covers the no-arg branch's error mapping
+// (main.go:78-81): a server startup failure surfaces as exit 1 with a
+// "server:" stderr prefix. The serverRun seam returns synchronously because
+// the real StdioTransport only returns nil on context cancel.
+func TestRunNoArgsServerError(t *testing.T) {
+	orig := serverRun
+	t.Cleanup(func() { serverRun = orig })
+	serverRun = func(context.Context, string, http.RoundTripper) error {
+		return errors.New("startup boom")
+	}
+	stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
+	code := run(context.Background(), nil, nil, strings.NewReader(""), stdout, stderr, nil)
+	if code != 1 {
+		t.Fatalf("exit = %d, want 1; stderr=%s", code, stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "server: startup boom") {
+		t.Fatalf("stderr = %q, want 'server: startup boom'", stderr.String())
+	}
+}
+
+// TestRunNoArgsCleanExit covers the no-arg success path (return 0): a server
+// that returns nil (host disconnected cleanly) maps to exit 0. The real
+// StdioTransport never returns nil under a canceled context, so this path is
+// only reachable deterministically through the serverRun seam.
+func TestRunNoArgsCleanExit(t *testing.T) {
+	orig := serverRun
+	t.Cleanup(func() { serverRun = orig })
+	serverRun = func(context.Context, string, http.RoundTripper) error { return nil }
+	stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
+	code := run(context.Background(), nil, nil, strings.NewReader(""), stdout, stderr, nil)
+	if code != 0 {
+		t.Fatalf("exit = %d, want 0; stderr=%s", code, stderr.String())
 	}
 }
 
