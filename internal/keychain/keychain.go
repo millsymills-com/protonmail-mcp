@@ -5,6 +5,7 @@ package keychain
 import (
 	"errors"
 	"fmt"
+	"runtime"
 
 	"github.com/zalando/go-keyring"
 )
@@ -53,10 +54,10 @@ func New() *Keychain { return &Keychain{} }
 
 func (k *Keychain) SaveCreds(c Creds) error {
 	if err := keyringSet(service, keyUsername, c.Username); err != nil {
-		return fmt.Errorf("save username: %w", err)
+		return fmt.Errorf("save username: %w", diagnoseKeychainErr(err))
 	}
 	if err := keyringSet(service, keyPassword, c.Password); err != nil {
-		return fmt.Errorf("save password: %w", err)
+		return fmt.Errorf("save password: %w", diagnoseKeychainErr(err))
 	}
 	// TOTP secret is optional. When the caller supplies an empty string, drop
 	// any pre-existing entry so a stale secret from a prior login can't bleed
@@ -64,12 +65,12 @@ func (k *Keychain) SaveCreds(c Creds) error {
 	if c.TOTPSecret == "" {
 		if err := keyringDelete(service, keyTOTPSecret); err != nil &&
 			!errors.Is(err, keyring.ErrNotFound) {
-			return fmt.Errorf("clear stale totp: %w", err)
+			return fmt.Errorf("clear stale totp: %w", diagnoseKeychainErr(err))
 		}
 		return nil
 	}
 	if err := keyringSet(service, keyTOTPSecret, c.TOTPSecret); err != nil {
-		return fmt.Errorf("save totp: %w", err)
+		return fmt.Errorf("save totp: %w", diagnoseKeychainErr(err))
 	}
 	return nil
 }
@@ -77,28 +78,28 @@ func (k *Keychain) SaveCreds(c Creds) error {
 func (k *Keychain) LoadCreds() (Creds, error) {
 	u, err := keyringGet(service, keyUsername)
 	if err != nil {
-		return Creds{}, fmt.Errorf("load username: %w", err)
+		return Creds{}, fmt.Errorf("load username: %w", diagnoseKeychainErr(err))
 	}
 	p, err := keyringGet(service, keyPassword)
 	if err != nil {
-		return Creds{}, fmt.Errorf("load password: %w", err)
+		return Creds{}, fmt.Errorf("load password: %w", diagnoseKeychainErr(err))
 	}
 	t, err := keyringGet(service, keyTOTPSecret)
 	if err != nil && !errors.Is(err, keyring.ErrNotFound) {
-		return Creds{}, fmt.Errorf("load totp: %w", err)
+		return Creds{}, fmt.Errorf("load totp: %w", diagnoseKeychainErr(err))
 	}
 	return Creds{Username: u, Password: p, TOTPSecret: t}, nil
 }
 
 func (k *Keychain) SaveSession(s Session) error {
 	if err := keyringSet(service, keyUID, s.UID); err != nil {
-		return fmt.Errorf("save uid: %w", err)
+		return fmt.Errorf("save uid: %w", diagnoseKeychainErr(err))
 	}
 	if err := keyringSet(service, keyAccessToken, s.AccessToken); err != nil {
-		return fmt.Errorf("save access token: %w", err)
+		return fmt.Errorf("save access token: %w", diagnoseKeychainErr(err))
 	}
 	if err := keyringSet(service, keyRefreshToken, s.RefreshToken); err != nil {
-		return fmt.Errorf("save refresh token: %w", err)
+		return fmt.Errorf("save refresh token: %w", diagnoseKeychainErr(err))
 	}
 	return nil
 }
@@ -106,15 +107,15 @@ func (k *Keychain) SaveSession(s Session) error {
 func (k *Keychain) LoadSession() (Session, error) {
 	uid, err := keyringGet(service, keyUID)
 	if err != nil {
-		return Session{}, fmt.Errorf("load uid: %w", err)
+		return Session{}, fmt.Errorf("load uid: %w", diagnoseKeychainErr(err))
 	}
 	at, err := keyringGet(service, keyAccessToken)
 	if err != nil {
-		return Session{}, fmt.Errorf("load access token: %w", err)
+		return Session{}, fmt.Errorf("load access token: %w", diagnoseKeychainErr(err))
 	}
 	rt, err := keyringGet(service, keyRefreshToken)
 	if err != nil {
-		return Session{}, fmt.Errorf("load refresh token: %w", err)
+		return Session{}, fmt.Errorf("load refresh token: %w", diagnoseKeychainErr(err))
 	}
 	return Session{UID: uid, AccessToken: at, RefreshToken: rt}, nil
 }
@@ -123,8 +124,37 @@ func (k *Keychain) Clear() error {
 	keys := []string{keyUsername, keyPassword, keyTOTPSecret, keyUID, keyAccessToken, keyRefreshToken}
 	for _, key := range keys {
 		if err := keyringDelete(service, key); err != nil && !errors.Is(err, keyring.ErrNotFound) {
-			return fmt.Errorf("delete %s: %w", key, err)
+			return fmt.Errorf("delete %s: %w", key, diagnoseKeychainErr(err))
 		}
 	}
 	return nil
+}
+
+// interactionNotAllowedStatus is the bare error go-keyring surfaces on macOS
+// for errSecInteractionNotAllowed (-25308): /usr/bin/security exits 36 and
+// go-keyring discards its stderr, so the caller sees only "exit status 36".
+const interactionNotAllowedStatus = "exit status 36"
+
+// diagnoseKeychainErr augments the one opaque go-keyring error that has a known
+// macOS cause: errSecInteractionNotAllowed, which surfaces as a bare
+// "exit status 36" when the login keychain is locked or unreachable from the
+// current context (e.g. a non-GUI agent with no SecurityAgent connection). All
+// other errors — other exit statuses, non-darwin platforms, and go-keyring's
+// own typed errors (ErrNotFound, ErrSetDataTooBig, …) — pass through unchanged,
+// since they already carry an actionable message.
+func diagnoseKeychainErr(cause error) error {
+	return diagnoseKeychainErrFor(cause, runtime.GOOS)
+}
+
+// diagnoseKeychainErrFor is the GOOS-parameterized core, split out so tests can
+// exercise both the darwin and non-darwin branches deterministically.
+func diagnoseKeychainErrFor(cause error, goos string) error {
+	if cause == nil || goos != "darwin" || cause.Error() != interactionNotAllowedStatus {
+		return cause
+	}
+	return fmt.Errorf(
+		"%w (login keychain is locked or unreachable from this context — "+
+			"unlock via Keychain Access.app, or run `security unlock-keychain "+
+			"~/Library/Keychains/login.keychain-db` in a Terminal.app session "+
+			"that has a SecurityAgent connection)", cause)
 }
