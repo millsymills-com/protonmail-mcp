@@ -102,9 +102,10 @@ func TestRunNoArgsCleanExit(t *testing.T) {
 	}
 }
 
-// TestRunNoArgsStartsServer covers the no-arg branch that delegates to
-// server.RunWithOptions. Context cancel returns from server.Run; an error
-// from the server bubbles up as exit=1.
+// TestRunNoArgsStartsServer covers the no-arg branch against the real
+// server.RunWithOptions (distinct from the serverRun-seam tests, which stub
+// it out): a pre-canceled context makes the real StdioTransport return an
+// error, which the branch maps to exit 1 with a "server:" stderr prefix.
 func TestRunNoArgsStartsServer(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -115,7 +116,13 @@ func TestRunNoArgsStartsServer(t *testing.T) {
 			strings.NewReader(""), stdout, stderr, nil)
 	}()
 	select {
-	case <-done:
+	case code := <-done:
+		if code != 1 {
+			t.Fatalf("exit = %d, want 1; stderr=%s", code, stderr.String())
+		}
+		if !strings.Contains(stderr.String(), "server: ") {
+			t.Fatalf("stderr = %q, want 'server: ' prefix", stderr.String())
+		}
 	case <-time.After(5 * time.Second):
 		t.Fatal("run did not return within 5s")
 	}
