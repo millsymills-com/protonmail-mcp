@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/millsmillsymills/protonmail-mcp/internal/keychain"
 	"github.com/millsmillsymills/protonmail-mcp/internal/session"
 	"github.com/millsmillsymills/protonmail-mcp/internal/tools"
 	"github.com/millsmillsymills/protonmail-mcp/internal/version"
@@ -42,7 +41,11 @@ func RunWithOptions(ctx context.Context, apiURL string, transport http.RoundTrip
 	if v := os.Getenv("PROTONMAIL_MCP_API_URL"); v != "" && apiURL == defaultAPIURL {
 		apiURL = v
 	}
-	sess := session.New(apiURL, keychain.New(), session.WithTransport(transport))
+	store, err := session.SelectStore(os.Getenv)
+	if err != nil {
+		return fmt.Errorf("credential backend: %w", err)
+	}
+	sess := session.New(apiURL, store, session.WithTransport(transport))
 	srv := mcp.NewServer(&mcp.Implementation{Name: serverName, Version: version.MCP}, nil)
 	tools.Register(srv, tools.Deps{Session: sess})
 

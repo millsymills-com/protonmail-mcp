@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 
-	"github.com/millsmillsymills/protonmail-mcp/internal/keychain"
 	"github.com/millsmillsymills/protonmail-mcp/internal/session"
 )
 
@@ -32,7 +32,11 @@ func runStatusWithHook(
 	if apiURL == "" {
 		apiURL = "https://mail.proton.me/api"
 	}
-	sess := session.New(apiURL, keychain.New(), session.WithTransport(transport))
+	store, err := session.SelectStore(os.Getenv)
+	if err != nil {
+		return fmt.Errorf("credential backend: %w", err)
+	}
+	sess := session.New(apiURL, store, session.WithTransport(transport))
 	c, err := sess.Client(ctx)
 	if err != nil {
 		if hook != nil {

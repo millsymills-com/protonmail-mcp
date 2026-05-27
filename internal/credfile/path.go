@@ -10,10 +10,10 @@ import (
 
 const dirName = "protonmail-mcp"
 
-// resolveStateDir picks the credentials directory: explicit override, then the
+// ResolveStateDir picks the credentials directory: explicit override, then the
 // systemd StateDirectory, then XDG, then the home fallback. getenv is injected
 // for tests.
-func resolveStateDir(getenv func(string) string) (string, error) {
+func ResolveStateDir(getenv func(string) string) (string, error) {
 	if v := getenv("PROTONMAIL_MCP_STATE_DIR"); v != "" {
 		return v, nil
 	}

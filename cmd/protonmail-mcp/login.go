@@ -12,7 +12,6 @@ import (
 
 	"golang.org/x/term"
 
-	"github.com/millsmillsymills/protonmail-mcp/internal/keychain"
 	"github.com/millsmillsymills/protonmail-mcp/internal/proterr"
 	"github.com/millsmillsymills/protonmail-mcp/internal/session"
 )
@@ -27,7 +26,11 @@ func runLogin(
 	if apiURL == "" {
 		apiURL = "https://mail.proton.me/api"
 	}
-	sess := session.New(apiURL, keychain.New(), session.WithTransport(transport))
+	store, err := session.SelectStore(os.Getenv)
+	if err != nil {
+		return fmt.Errorf("credential backend: %w", err)
+	}
+	sess := session.New(apiURL, store, session.WithTransport(transport))
 
 	reader := bufio.NewReader(stdin)
 	username, err := promptReader(stdout, reader, "Proton email: ")
