@@ -61,7 +61,7 @@ func (s *Store) save(d doc) error {
 		return fmt.Errorf("credfile temp: %w", err)
 	}
 	tmpName := tmp.Name()
-	defer os.Remove(tmpName) // no-op once renamed; cleans up on any error path
+	defer func() { _ = os.Remove(tmpName) }() // no-op once renamed; cleans up on any error path
 	if err := tmp.Chmod(0o600); err != nil {
 		_ = tmp.Close()
 		return fmt.Errorf("credfile chmod: %w", err)
@@ -101,6 +101,9 @@ func (s *Store) SaveCreds(c keychain.Creds) error {
 
 func (s *Store) LoadCreds() (keychain.Creds, error) {
 	d, err := s.load()
+	if errors.Is(err, os.ErrNotExist) || (err == nil && d.Creds.Username == "") {
+		return keychain.Creds{}, fmt.Errorf("credfile load creds %s: %w", s.path(), keychain.ErrNotFound)
+	}
 	if err != nil {
 		return keychain.Creds{}, err
 	}
@@ -113,6 +116,9 @@ func (s *Store) SaveSession(sess keychain.Session) error {
 
 func (s *Store) LoadSession() (keychain.Session, error) {
 	d, err := s.load()
+	if errors.Is(err, os.ErrNotExist) || (err == nil && d.Session.UID == "") {
+		return keychain.Session{}, fmt.Errorf("credfile load session %s: %w", s.path(), keychain.ErrNotFound)
+	}
 	if err != nil {
 		return keychain.Session{}, err
 	}

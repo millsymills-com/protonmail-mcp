@@ -74,8 +74,8 @@ func TestPermissions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := s.SaveSession(keychain.Session{UID: "x"}); err != nil {
-		t.Fatal(err)
+	if serr := s.SaveSession(keychain.Session{UID: "x"}); serr != nil {
+		t.Fatal(serr)
 	}
 	di, err := os.Stat(inner)
 	if err != nil {
@@ -95,33 +95,91 @@ func TestPermissions(t *testing.T) {
 
 func TestLoadAbsentIsNotFound(t *testing.T) {
 	s := newTmp(t)
-	if _, err := s.LoadSession(); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("expected ErrNotExist, got %v", err)
+	if _, err := s.LoadSession(); !errors.Is(err, keychain.ErrNotFound) {
+		t.Fatalf("LoadSession: want keychain.ErrNotFound, got %v", err)
 	}
-	if _, err := s.LoadCreds(); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("expected ErrNotExist, got %v", err)
+	if _, err := s.LoadCreds(); !errors.Is(err, keychain.ErrNotFound) {
+		t.Fatalf("LoadCreds: want keychain.ErrNotFound, got %v", err)
 	}
 }
 
-func TestCorruptFileSurfacesError(t *testing.T) {
+// A file holding only one bundle must report the absent bundle as ErrNotFound
+// (matching the keychain backend), not as a zero-valued success — otherwise
+// session.Client would refresh with an empty UID and get an opaque API error.
+func TestLoadEmptyBundleIsNotFound(t *testing.T) {
+	s := newTmp(t)
+	if err := s.SaveCreds(keychain.Creds{Username: "u@example.test", Password: "pw"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.LoadSession(); !errors.Is(err, keychain.ErrNotFound) {
+		t.Fatalf("LoadSession with only creds stored: want keychain.ErrNotFound, got %v", err)
+	}
+	if _, err := s.LoadCreds(); err != nil {
+		t.Fatalf("LoadCreds with creds stored: %v", err)
+	}
+}
+
+func TestCorruptFileLoadSurfacesError(t *testing.T) {
 	dir := t.TempDir()
 	s, err := New(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
+	if err := os.WriteFile(filepath.Join(dir, "credentials.json"), []byte("{not json"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name string
+		load func() error
+	}{
+		{"LoadSession", func() error { _, e := s.LoadSession(); return e }},
+		{"LoadCreds", func() error { _, e := s.LoadCreds(); return e }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.load()
+			if err == nil {
+				t.Fatal("expected parse error on corrupt file")
+			}
+			// A parse failure is not "not logged in" — it must not be mistaken
+			// for ErrNotFound, or session.Client would tell the user to log in
+			// instead of naming the corrupt file.
+			if errors.Is(err, keychain.ErrNotFound) {
+				t.Fatalf("corrupt file misreported as not-found: %v", err)
+			}
+		})
+	}
+}
+
+func TestCorruptFileSaveDoesNotClobber(t *testing.T) {
 	garbage := []byte("{not json")
-	if err := os.WriteFile(filepath.Join(dir, "credentials.json"), garbage, 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if err := s.SaveCreds(keychain.Creds{Username: "u"}); err == nil {
-		t.Fatal("expected SaveCreds to surface parse error on corrupt file")
-	}
-	got, err := os.ReadFile(filepath.Join(dir, "credentials.json"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if string(got) != string(garbage) {
-		t.Fatalf("corrupt file was overwritten: got %q want %q", got, garbage)
+	for _, tc := range []struct {
+		name string
+		save func(*Store) error
+	}{
+		{"SaveCreds", func(s *Store) error { return s.SaveCreds(keychain.Creds{Username: "u"}) }},
+		{"SaveSession", func(s *Store) error { return s.SaveSession(keychain.Session{UID: "x"}) }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			s, err := New(dir)
+			if err != nil {
+				t.Fatal(err)
+			}
+			path := filepath.Join(dir, "credentials.json")
+			if werr := os.WriteFile(path, garbage, 0o600); werr != nil {
+				t.Fatal(werr)
+			}
+			if serr := tc.save(s); serr == nil {
+				t.Fatal("expected save to surface parse error on corrupt file")
+			}
+			got, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(got) != string(garbage) {
+				t.Fatalf("corrupt file was overwritten: got %q want %q", got, garbage)
+			}
+		})
 	}
 }
 
