@@ -2,6 +2,7 @@ package keychain
 
 import (
 	"errors"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -119,5 +120,21 @@ func TestLoadCredsTOTPGetError(t *testing.T) {
 	_, err := New().LoadCreds()
 	if err == nil || !strings.Contains(err.Error(), "load totp") {
 		t.Fatalf("want load-totp error, got %v", err)
+	}
+}
+
+// TestLoadCredsInteractionNotAllowedHint locks in that the read path is wired to
+// diagnoseKeychainErr. A locked-keychain secret read surfaces *exec.ExitError
+// code 36 just like the write path, so the first Get failing with code 36 must
+// reach the caller as a load error that, on darwin, carries the unlock hint.
+func TestLoadCredsInteractionNotAllowedHint(t *testing.T) {
+	f := failOnNth{failGetN: 1, failErr: exitErrWithCode(t, interactionNotAllowedExitCode)}
+	installFailOnNth(t, &f)
+	_, err := New().LoadCreds()
+	if err == nil || !strings.Contains(err.Error(), "load username") {
+		t.Fatalf("want load-username error, got %v", err)
+	}
+	if runtime.GOOS == "darwin" && !strings.Contains(err.Error(), "unlock-keychain") {
+		t.Fatalf("darwin load failure should carry the unlock hint, got %v", err)
 	}
 }
