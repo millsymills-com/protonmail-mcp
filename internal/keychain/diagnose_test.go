@@ -2,6 +2,8 @@ package keychain
 
 import (
 	"errors"
+	"fmt"
+	"os/exec"
 	"strings"
 	"testing"
 )
@@ -12,9 +14,27 @@ func TestDiagnoseKeychainErrNilPassesThrough(t *testing.T) {
 	}
 }
 
+// exitErrWithCode runs a child process that exits with the given code and
+// returns the resulting *exec.ExitError, mirroring what go-keyring surfaces
+// when /usr/bin/security exits non-zero. Using a real exec error (rather than
+// errors.New) exercises the structural errors.As path the diagnosis relies on.
+func exitErrWithCode(t *testing.T, code int) *exec.ExitError {
+	t.Helper()
+	err := exec.Command("sh", "-c", fmt.Sprintf("exit %d", code)).Run()
+	var exitErr *exec.ExitError
+	if !errors.As(err, &exitErr) {
+		t.Fatalf("expected *exec.ExitError from exit %d, got %T: %v", code, err, err)
+	}
+	if exitErr.ExitCode() != code {
+		t.Fatalf("expected exit code %d, got %d", code, exitErr.ExitCode())
+	}
+	return exitErr
+}
+
 func TestDiagnoseKeychainErrFor(t *testing.T) {
-	interaction := errors.New(interactionNotAllowedStatus)
-	otherStatus := errors.New("exit status 37")
+	interaction := exitErrWithCode(t, interactionNotAllowedExitCode)
+	wrapped := fmt.Errorf("set password: %w", exitErrWithCode(t, interactionNotAllowedExitCode))
+	otherStatus := exitErrWithCode(t, 37)
 	backend := errors.New("some other backend error")
 
 	tests := []struct {
@@ -24,6 +44,7 @@ func TestDiagnoseKeychainErrFor(t *testing.T) {
 		wantAugment bool
 	}{
 		{"darwin interaction-not-allowed augments", interaction, "darwin", true},
+		{"darwin wrapped interaction-not-allowed augments", wrapped, "darwin", true},
 		{"darwin other exit status passes through", otherStatus, "darwin", false},
 		{"darwin non-exit error passes through", backend, "darwin", false},
 		{"linux interaction-not-allowed passes through", interaction, "linux", false},
