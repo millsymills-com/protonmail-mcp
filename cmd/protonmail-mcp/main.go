@@ -55,23 +55,24 @@ func run(
 	slog.SetDefault(logger)
 
 	apiURL := envLookup(env, "PROTONMAIL_MCP_API_URL")
+	getenv := func(k string) string { return envLookup(env, k) }
 
 	if len(args) > 0 {
 		switch args[0] {
 		case "login":
-			if err := runLogin(ctx, apiURL, transport, stdin, stdout, stderr); err != nil {
+			if err := runLogin(ctx, getenv, apiURL, transport, stdin, stdout, stderr); err != nil {
 				_, _ = stderr.Write([]byte("login: " + err.Error() + "\n"))
 				return 1
 			}
 			return 0
 		case "logout":
-			if err := runLogout(ctx, apiURL, transport, stderr); err != nil {
+			if err := runLogout(ctx, getenv, apiURL, transport, stderr); err != nil {
 				_, _ = stderr.Write([]byte("logout: " + err.Error() + "\n"))
 				return 1
 			}
 			return 0
 		case "status":
-			if err := runStatus(ctx, apiURL, transport, stdout); err != nil {
+			if err := runStatus(ctx, getenv, apiURL, transport, stdout); err != nil {
 				_, _ = stderr.Write([]byte("status: " + err.Error() + "\n"))
 				return 1
 			}
@@ -103,7 +104,8 @@ func runWithSessionHook(
 ) int {
 	if len(args) > 0 && args[0] == "status" {
 		apiURL := envLookup(env, "PROTONMAIL_MCP_API_URL")
-		if err := runStatusWithHook(ctx, apiURL, transport, stdout, statusHook); err != nil {
+		getenv := func(k string) string { return envLookup(env, k) }
+		if err := runStatusWithHook(ctx, getenv, apiURL, transport, stdout, statusHook); err != nil {
 			_, _ = stderr.Write([]byte("status: " + err.Error() + "\n"))
 			return 1
 		}

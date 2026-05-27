@@ -5,15 +5,15 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 
 	"github.com/millsmillsymills/protonmail-mcp/internal/session"
 )
 
 func runStatus(
-	ctx context.Context, apiURL string, transport http.RoundTripper, out io.Writer,
+	ctx context.Context, getenv func(string) string, apiURL string,
+	transport http.RoundTripper, out io.Writer,
 ) error {
-	return runStatusWithHook(ctx, apiURL, transport, out, nil)
+	return runStatusWithHook(ctx, getenv, apiURL, transport, out, nil)
 }
 
 // runStatusWithHook is the test-injectable variant of runStatus. When
@@ -24,15 +24,22 @@ func runStatus(
 // SaveSession set/clear logic.
 func runStatusWithHook(
 	ctx context.Context,
+	getenv func(string) string,
 	apiURL string,
 	transport http.RoundTripper,
 	out io.Writer,
 	hook func(*session.Session),
 ) error {
+	backend := getenv("PROTONMAIL_MCP_CREDENTIAL_BACKEND")
+	if backend == "" {
+		backend = "keychain"
+	}
+	_, _ = fmt.Fprintf(out, "backend: %s\n", backend)
+
 	if apiURL == "" {
 		apiURL = "https://mail.proton.me/api"
 	}
-	store, err := session.SelectStore(os.Getenv)
+	store, err := session.SelectStore(getenv)
 	if err != nil {
 		return fmt.Errorf("credential backend: %w", err)
 	}
@@ -63,6 +70,6 @@ func writePersistWarning(out io.Writer, st session.Status) {
 		return
 	}
 	_, _ = fmt.Fprintf(out,
-		"warning: token persistence degraded — rotated tokens not saved to keychain (%q). Re-run `protonmail-mcp login` to restore.\n",
+		"warning: token persistence degraded — rotated tokens not saved to credential store (%q). Re-run `protonmail-mcp login` to restore.\n",
 		st.PersistError)
 }

@@ -18,6 +18,7 @@ import (
 
 func runLogin(
 	ctx context.Context,
+	getenv func(string) string,
 	apiURL string,
 	transport http.RoundTripper,
 	stdin io.Reader,
@@ -26,7 +27,7 @@ func runLogin(
 	if apiURL == "" {
 		apiURL = "https://mail.proton.me/api"
 	}
-	store, err := session.SelectStore(os.Getenv)
+	store, err := session.SelectStore(getenv)
 	if err != nil {
 		return fmt.Errorf("credential backend: %w", err)
 	}
