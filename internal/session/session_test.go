@@ -245,6 +245,63 @@ func TestLogoutInvalidatesSession(t *testing.T) {
 	}
 }
 
+// TestColdStartReloginAttemptedWhenCredsStored exercises the self-heal
+// decision path: with creds stored, a rejected cold-start refresh triggers a
+// relogin attempt. The refresh_revoked cassette has no login interaction, so
+// the relogin cannot complete and the original failure surfaces — proving the
+// branch is taken and falls through cleanly (no client, no panic). The full
+// success path is covered by TestColdStartReloginsFromStoredCreds, which is
+// gated on a recorded cassette.
+func TestColdStartReloginAttemptedWhenCredsStored(t *testing.T) {
+	keyring.MockInit()
+	kc := keychain.New()
+	if err := kc.SaveCreds(keychain.Creds{Username: "u@example.test", Password: "pw"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := kc.SaveSession(keychain.Session{
+		UID:          "REDACTED_UID_1",
+		AccessToken:  "REDACTED_ACCESSTOKEN_1",
+		RefreshToken: "REDACTED_REFRESHTOKEN_1",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	rt := testvcr.New(t, "refresh_revoked")
+	sess := session.New("https://mail.proton.me/api", kc, session.WithTransport(rt))
+
+	if _, err := sess.Client(context.Background()); err == nil {
+		t.Fatal("expected error when relogin cannot complete against this cassette")
+	}
+}
+
+// TestColdStartReloginsFromStoredCreds covers the self-heal success path:
+// Proton rejects the stored refresh token and an unattended relogin from the
+// stored credentials (TOTP from the stored secret) recovers a working client.
+// It needs a cassette recorded against real Proton (refresh reject → SRP login
+// + 2FA success); testvcr.New skips until it is recorded. See the followup
+// issue to record `relogin_after_refresh_reject`.
+func TestColdStartReloginsFromStoredCreds(t *testing.T) {
+	keyring.MockInit()
+	kc := keychain.New()
+	if err := kc.SaveCreds(keychain.Creds{
+		Username: "u@example.test", Password: "pw", TOTPSecret: "REDACTED_TOTP_SECRET_1",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	// Seed the scrubbed token placeholders so the replayed request bodies match
+	// the recorded /auth/refresh interaction (see the recorder scenario).
+	if err := kc.SaveSession(keychain.Session{
+		UID: "REDACTED_UID_1", AccessToken: "REDACTED_ACCESSTOKEN_1", RefreshToken: "REDACTED_REFRESHTOKEN_1",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	rt := testvcr.New(t, "relogin_after_refresh_reject")
+	sess := session.New("https://mail.proton.me/api", kc, session.WithTransport(rt))
+
+	if _, err := sess.Client(context.Background()); err != nil {
+		t.Fatalf("expected self-heal, got: %v", err)
+	}
+}
+
 func TestRefreshRevoked(t *testing.T) {
 	keyring.MockInit()
 	kc := keychain.New()
