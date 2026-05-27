@@ -19,17 +19,20 @@ func TestTransportConfigFromEnv(t *testing.T) {
 		{name: "default stdio", env: nil, want: transportConfig{kind: "stdio"}},
 		{
 			name: "sse with host and port",
-			env:  map[string]string{"PROTONMAIL_MCP_TRANSPORT": "sse", "PROTONMAIL_MCP_PORT": "8770"},
-			want: transportConfig{kind: "sse", host: "127.0.0.1", port: 8770},
+			env:  map[string]string{"PROTONMAIL_MCP_TRANSPORT": "sse", "PROTONMAIL_MCP_PORT": "8770", "PROTONMAIL_MCP_SSE_TOKEN": "secret"},
+			want: transportConfig{kind: "sse", host: "127.0.0.1", port: 8770, token: "secret"},
 		},
 		{
 			name: "sse custom host",
-			env:  map[string]string{"PROTONMAIL_MCP_TRANSPORT": "sse", "PROTONMAIL_MCP_HOST": "0.0.0.0", "PROTONMAIL_MCP_PORT": "9000"},
-			want: transportConfig{kind: "sse", host: "0.0.0.0", port: 9000},
+			env:  map[string]string{"PROTONMAIL_MCP_TRANSPORT": "sse", "PROTONMAIL_MCP_HOST": "0.0.0.0", "PROTONMAIL_MCP_PORT": "9000", "PROTONMAIL_MCP_SSE_TOKEN": "secret"},
+			want: transportConfig{kind: "sse", host: "0.0.0.0", port: 9000, token: "secret"},
 		},
 		{name: "sse missing port", env: map[string]string{"PROTONMAIL_MCP_TRANSPORT": "sse"}, wantErr: "PROTONMAIL_MCP_PORT is required"},
+		{name: "sse missing token", env: map[string]string{"PROTONMAIL_MCP_TRANSPORT": "sse", "PROTONMAIL_MCP_PORT": "8770"}, wantErr: "PROTONMAIL_MCP_SSE_TOKEN is required"},
 		{name: "invalid transport", env: map[string]string{"PROTONMAIL_MCP_TRANSPORT": "grpc"}, wantErr: `invalid PROTONMAIL_MCP_TRANSPORT "grpc"`},
 		{name: "invalid port", env: map[string]string{"PROTONMAIL_MCP_TRANSPORT": "sse", "PROTONMAIL_MCP_PORT": "nope"}, wantErr: "PROTONMAIL_MCP_PORT"},
+		{name: "port zero", env: map[string]string{"PROTONMAIL_MCP_TRANSPORT": "sse", "PROTONMAIL_MCP_PORT": "0"}, wantErr: "PROTONMAIL_MCP_PORT"},
+		{name: "port above range", env: map[string]string{"PROTONMAIL_MCP_TRANSPORT": "sse", "PROTONMAIL_MCP_PORT": "99999"}, wantErr: "PROTONMAIL_MCP_PORT"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
