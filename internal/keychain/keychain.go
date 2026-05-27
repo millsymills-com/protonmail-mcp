@@ -135,6 +135,9 @@ func (k *Keychain) Clear() error {
 // errSecInteractionNotAllowed (-25308): -25308 mod 256 = 36. go-keyring runs
 // `security` and surfaces its bare *exec.ExitError (stderr discarded), so a
 // locked or unreachable login keychain reaches the caller as this exit code.
+// Both the write path (`add-generic-password`) and the secret-read path
+// (`find-generic-password -w`) exit 36 when no SecurityAgent can prompt, so the
+// Load* methods get the hint as well as the Save* methods.
 const interactionNotAllowedExitCode = 36
 
 // diagnoseKeychainErr augments the one opaque go-keyring error that has a known
