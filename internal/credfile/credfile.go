@@ -12,8 +12,9 @@ import (
 
 const fileName = "credentials.json"
 
-// Store is a file-backed credential store satisfying session.Store. Both
-// bundles live in one 0600 JSON document under dir (0700).
+// Store is a file-backed credential store: both bundles in one 0600 JSON
+// document under dir (0700). It satisfies the credential-store interface
+// consumed by package session.
 type Store struct{ dir string }
 
 type doc struct {
@@ -35,7 +36,7 @@ func (s *Store) path() string { return filepath.Join(s.dir, fileName) }
 func (s *Store) load() (doc, error) {
 	b, err := os.ReadFile(s.path())
 	if err != nil {
-		return doc{}, err // absent file → wraps os.ErrNotExist; callers check via errors.Is
+		return doc{}, err
 	}
 	var d doc
 	if err := json.Unmarshal(b, &d); err != nil {
@@ -47,6 +48,9 @@ func (s *Store) load() (doc, error) {
 func (s *Store) save(d doc) error {
 	if err := os.MkdirAll(s.dir, 0o700); err != nil {
 		return fmt.Errorf("credfile mkdir %s: %w", s.dir, err)
+	}
+	if err := os.Chmod(s.dir, 0o700); err != nil {
+		return fmt.Errorf("credfile chmod dir %s: %w", s.dir, err)
 	}
 	b, err := json.Marshal(d)
 	if err != nil {

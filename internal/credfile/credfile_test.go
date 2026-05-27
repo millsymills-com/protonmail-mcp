@@ -1,6 +1,7 @@
 package credfile
 
 import (
+	"errors"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -94,11 +95,33 @@ func TestPermissions(t *testing.T) {
 
 func TestLoadAbsentIsNotFound(t *testing.T) {
 	s := newTmp(t)
-	if _, err := s.LoadSession(); err == nil {
-		t.Fatal("expected error loading absent session")
+	if _, err := s.LoadSession(); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("expected ErrNotExist, got %v", err)
 	}
-	if _, err := s.LoadCreds(); err == nil {
-		t.Fatal("expected error loading absent creds")
+	if _, err := s.LoadCreds(); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("expected ErrNotExist, got %v", err)
+	}
+}
+
+func TestCorruptFileSurfacesError(t *testing.T) {
+	dir := t.TempDir()
+	s, err := New(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	garbage := []byte("{not json")
+	if err := os.WriteFile(filepath.Join(dir, "credentials.json"), garbage, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SaveCreds(keychain.Creds{Username: "u"}); err == nil {
+		t.Fatal("expected SaveCreds to surface parse error on corrupt file")
+	}
+	got, err := os.ReadFile(filepath.Join(dir, "credentials.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != string(garbage) {
+		t.Fatalf("corrupt file was overwritten: got %q want %q", got, garbage)
 	}
 }
 
