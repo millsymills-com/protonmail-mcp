@@ -10,7 +10,10 @@ import (
 	"github.com/millsmillsymills/protonmail-mcp/internal/keychain"
 )
 
-const fileName = "credentials.json"
+const (
+	fileName = "credentials.json"
+	lockName = "credentials.lock"
+)
 
 // Store is a file-backed credential store: both bundles in one 0600 JSON
 // document under dir (0700). It satisfies the credential-store interface
@@ -52,6 +55,9 @@ func (s *Store) save(d doc) error {
 	if err := os.Chmod(s.dir, 0o700); err != nil {
 		return fmt.Errorf("credfile chmod dir %s: %w", s.dir, err)
 	}
+	if err := ensureDirSafe(s.dir); err != nil {
+		return err
+	}
 	b, err := json.Marshal(d)
 	if err != nil {
 		return fmt.Errorf("credfile marshal: %w", err)
@@ -83,16 +89,65 @@ func (s *Store) save(d doc) error {
 	return nil
 }
 
-// merge loads the current doc, applies fn, and saves. An absent file starts
-// from an empty doc; a parse/permission error on an existing file is surfaced
-// rather than silently overwritten.
+// merge loads the current doc, applies fn, and saves under an exclusive file
+// lock so two concurrent writers (e.g. the daemon's token rotation and a
+// manual `status` invocation in another process) can't lose an update via the
+// read-modify-write. An absent file starts from an empty doc; a parse or
+// permission error on an existing file is surfaced rather than overwritten.
 func (s *Store) merge(fn func(*doc)) error {
+	unlock, err := s.lock()
+	if err != nil {
+		return err
+	}
+	defer unlock()
 	d, err := s.load()
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
 	fn(&d)
 	return s.save(d)
+}
+
+// lock acquires an exclusive advisory lock on a sidecar lock file, serializing
+// merges across goroutines and processes that share the state dir. The
+// returned func releases the lock.
+func (s *Store) lock() (func(), error) {
+	if err := os.MkdirAll(s.dir, 0o700); err != nil {
+		return nil, fmt.Errorf("credfile mkdir %s: %w", s.dir, err)
+	}
+	f, err := os.OpenFile(filepath.Join(s.dir, lockName), os.O_CREATE|os.O_RDWR, 0o600)
+	if err != nil {
+		return nil, fmt.Errorf("credfile lock open: %w", err)
+	}
+	if err := flockExclusive(f.Fd()); err != nil {
+		_ = f.Close()
+		return nil, fmt.Errorf("credfile flock: %w", err)
+	}
+	return func() {
+		_ = flockUnlock(f.Fd())
+		_ = f.Close()
+	}, nil
+}
+
+// ensureDirSafe refuses to write secrets into a state dir that is a symlink
+// (an attacker could swap the target), is group/other-accessible, or is owned
+// by another user. Called after the dir is created/chmod'd, so the happy path
+// (0700, owned by us) passes.
+func ensureDirSafe(dir string) error {
+	fi, err := os.Lstat(dir)
+	if err != nil {
+		return fmt.Errorf("credfile stat dir %s: %w", dir, err)
+	}
+	if fi.Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("credfile state dir %s is a symlink; refusing to store credentials there", dir)
+	}
+	if perm := fi.Mode().Perm(); perm&0o077 != 0 {
+		return fmt.Errorf("credfile state dir %s is group/other-accessible (mode %o); restrict it to 0700", dir, perm)
+	}
+	if !ownedByCurrentUser(fi) {
+		return fmt.Errorf("credfile state dir %s is not owned by the current user", dir)
+	}
+	return nil
 }
 
 func (s *Store) SaveCreds(c keychain.Creds) error {

@@ -5,6 +5,8 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync"
 	"testing"
 
 	"github.com/millsmillsymills/protonmail-mcp/internal/keychain"
@@ -180,6 +182,57 @@ func TestCorruptFileSaveDoesNotClobber(t *testing.T) {
 				t.Fatalf("corrupt file was overwritten: got %q want %q", got, garbage)
 			}
 		})
+	}
+}
+
+func TestSaveRejectsSymlinkedStateDir(t *testing.T) {
+	base := t.TempDir()
+	real := filepath.Join(base, "real")
+	if err := os.MkdirAll(real, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(base, "link")
+	if err := os.Symlink(real, link); err != nil {
+		t.Fatal(err)
+	}
+	s, err := New(link)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = s.SaveSession(keychain.Session{UID: "x"})
+	if err == nil {
+		t.Fatal("expected save to refuse a symlinked state dir")
+	}
+	if !strings.Contains(err.Error(), "symlink") {
+		t.Fatalf("want symlink error, got %v", err)
+	}
+}
+
+// Concurrent SaveCreds and SaveSession must not lose either update: the file
+// lock serializes the read-modify-write so the final doc holds both bundles.
+func TestConcurrentMergeNoLostUpdate(t *testing.T) {
+	s := newTmp(t)
+	var wg sync.WaitGroup
+	for i := 0; i < 50; i++ {
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			_ = s.SaveCreds(keychain.Creds{Username: "u", Password: "p"})
+		}()
+		go func() {
+			defer wg.Done()
+			_ = s.SaveSession(keychain.Session{UID: "x", AccessToken: "a", RefreshToken: "r"})
+		}()
+	}
+	wg.Wait()
+
+	c, err := s.LoadCreds()
+	if err != nil || c.Username != "u" {
+		t.Fatalf("creds lost under concurrency: %+v err=%v", c, err)
+	}
+	sess, err := s.LoadSession()
+	if err != nil || sess.UID != "x" {
+		t.Fatalf("session lost under concurrency: %+v err=%v", sess, err)
 	}
 }
 
