@@ -2,6 +2,14 @@
 
 Run `protonmail-mcp` as a loopback SSE service with a file credential backend.
 
+The SSE endpoint exposes the authenticated Proton session, so it always
+requires a bearer token (`PROTONMAIL_MCP_SSE_TOKEN`). Generate one and keep it
+secret — every MCP client must send it as `Authorization: Bearer <token>`:
+
+```bash
+openssl rand -hex 32   # use the output as PROTONMAIL_MCP_SSE_TOKEN
+```
+
 ## 1. One-time bootstrap (interactive, on the box)
 
 Run `login` once as the service user, writing to the file backend. **At the 2FA
@@ -31,6 +39,8 @@ Environment=PROTONMAIL_MCP_TRANSPORT=sse
 Environment=PROTONMAIL_MCP_HOST=127.0.0.1
 Environment=PROTONMAIL_MCP_PORT=8770
 Environment=PROTONMAIL_MCP_CREDENTIAL_BACKEND=file
+# Keep the token out of the unit file; load it from a 0600 file owned by root.
+EnvironmentFile=/etc/protonmail-mcp/sse-token.env
 ExecStart=/usr/local/bin/protonmail-mcp
 Restart=on-failure
 

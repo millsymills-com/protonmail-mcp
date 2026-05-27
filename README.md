@@ -75,6 +75,7 @@ PROTONMAIL_MCP_ENABLE_WRITES=1 ./protonmail-mcp
 | `PROTONMAIL_MCP_TRANSPORT` | `stdio` \| `sse` | `stdio` | always |
 | `PROTONMAIL_MCP_HOST` | listen address | `127.0.0.1` | sse only |
 | `PROTONMAIL_MCP_PORT` | listen port | required when sse | sse only |
+| `PROTONMAIL_MCP_SSE_TOKEN` | bearer token clients must send | required when sse | sse only |
 | `PROTONMAIL_MCP_CREDENTIAL_BACKEND` | `keychain` \| `file` | `keychain` | always |
 | `PROTONMAIL_MCP_STATE_DIR` | credentials dir | `$STATE_DIRECTORY` → `$XDG_STATE_HOME/protonmail-mcp` → `~/.local/state/protonmail-mcp` | file only |
 | `PROTONMAIL_MCP_ENABLE_WRITES` | `1`/`true`/`yes` registers mutating tools | unset (reads only) | always |
@@ -107,7 +108,7 @@ See spec §8. tl;dr:
 - Credentials and refresh tokens stored in the macOS Keychain (default) or a 0600 state file (`file` backend for headless Linux deployments).
 - Logs redact any field name containing `password`, `passphrase`, `token`, `secret`, `totp`, `key`.
 - Writes opt-in via env flag — Claude Code's per-tool permission UI provides defense-in-depth.
-- Defaults to stdio — no network listener. An optional SSE transport (`PROTONMAIL_MCP_TRANSPORT=sse`) binds a loopback HTTP listener on `PROTONMAIL_MCP_HOST`/`PROTONMAIL_MCP_PORT` (`127.0.0.1` by default) with DNS-rebinding protection; only enable it for headless deployments.
+- Defaults to stdio — no network listener. An optional SSE transport (`PROTONMAIL_MCP_TRANSPORT=sse`) binds an HTTP listener on `PROTONMAIL_MCP_HOST`/`PROTONMAIL_MCP_PORT` (`127.0.0.1` by default) with DNS-rebinding protection. The endpoint requires a bearer token (`PROTONMAIL_MCP_SSE_TOKEN`); clients send `Authorization: Bearer <token>`. Authentication is enforced regardless of bind address, so even a loopback listener is not reachable by other local users without the token. The connection is plain HTTP — terminate TLS at a reverse proxy if you bind a non-loopback address.
 - Sends `x-pm-appversion: macos-bridge@3.24.1` because Proton's API rejects unknown product names with code 2064. We impersonate proton-bridge (live-tested 2026-04-26 against `mail.proton.me`) — if Proton tightens the minimum (codes 5002/5003), bump the version in `internal/session/appversion.go` to whatever proton-bridge has tagged latest.
 
 ## Development
