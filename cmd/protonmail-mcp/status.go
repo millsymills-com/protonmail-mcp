@@ -2,12 +2,18 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 
 	"github.com/millsmillsymills/protonmail-mcp/internal/session"
 )
+
+// errStatusDegraded signals that status printed its output but token
+// persistence is degraded. run maps it to a distinct non-zero exit so a
+// headless monitor can detect the fault from $? without parsing stdout.
+var errStatusDegraded = errors.New("token persistence degraded")
 
 func runStatus(
 	ctx context.Context, getenv func(string) string, apiURL string,
@@ -46,8 +52,7 @@ func runStatusWithHook(
 			hook(sess)
 		}
 		_, _ = fmt.Fprintln(out, "not logged in")
-		writePersistWarning(out, sess.Status())
-		return nil
+		return statusResult(out, sess.Status())
 	}
 	if hook != nil {
 		hook(sess)
@@ -57,7 +62,17 @@ func runStatusWithHook(
 		return err
 	}
 	_, _ = fmt.Fprintf(out, "%s — %d / %d bytes\n", u.Email, u.UsedSpace, u.MaxSpace)
-	writePersistWarning(out, sess.Status())
+	return statusResult(out, sess.Status())
+}
+
+// statusResult prints any persistence warning and returns errStatusDegraded
+// when persistence is degraded, so the caller can exit non-zero after the
+// human-readable output has already been written.
+func statusResult(out io.Writer, st session.Status) error {
+	writePersistWarning(out, st)
+	if st.PersistDegraded {
+		return errStatusDegraded
+	}
 	return nil
 }
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"os"
@@ -72,11 +73,7 @@ func run(
 			}
 			return 0
 		case "status":
-			if err := runStatus(ctx, getenv, apiURL, transport, stdout); err != nil {
-				_, _ = stderr.Write([]byte("status: " + err.Error() + "\n"))
-				return 1
-			}
-			return 0
+			return statusExitCode(runStatus(ctx, getenv, apiURL, transport, stdout), stderr)
 		default:
 			_, _ = stderr.Write([]byte("unknown subcommand " + args[0] + "\n"))
 			return 2
@@ -105,13 +102,24 @@ func runWithSessionHook(
 	if len(args) > 0 && args[0] == "status" {
 		apiURL := envLookup(env, "PROTONMAIL_MCP_API_URL")
 		getenv := func(k string) string { return envLookup(env, k) }
-		if err := runStatusWithHook(ctx, getenv, apiURL, transport, stdout, statusHook); err != nil {
-			_, _ = stderr.Write([]byte("status: " + err.Error() + "\n"))
-			return 1
-		}
-		return 0
+		return statusExitCode(runStatusWithHook(ctx, getenv, apiURL, transport, stdout, statusHook), stderr)
 	}
 	return run(ctx, args, env, stdin, stdout, stderr, transport)
+}
+
+// statusExitCode maps a status result to a process exit code: 0 on success, 3
+// when persistence is degraded (output already printed; surfaced for headless
+// monitors), 1 for any other error after writing it to stderr.
+func statusExitCode(err error, stderr io.Writer) int {
+	switch {
+	case err == nil:
+		return 0
+	case errors.Is(err, errStatusDegraded):
+		return 3
+	default:
+		_, _ = stderr.Write([]byte("status: " + err.Error() + "\n"))
+		return 1
+	}
 }
 
 func envLookup(env []string, key string) string {
