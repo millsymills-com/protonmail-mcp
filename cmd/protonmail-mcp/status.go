@@ -30,11 +30,7 @@ func runStatusWithHook(
 	out io.Writer,
 	hook func(*session.Session),
 ) error {
-	backend := getenv("PROTONMAIL_MCP_CREDENTIAL_BACKEND")
-	if backend == "" {
-		backend = "keychain"
-	}
-	_, _ = fmt.Fprintf(out, "backend: %s\n", backend)
+	_, _ = fmt.Fprintf(out, "backend: %s\n", session.BackendName(getenv))
 
 	if apiURL == "" {
 		apiURL = "https://mail.proton.me/api"

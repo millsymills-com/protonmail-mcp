@@ -13,6 +13,7 @@ func TestResolveStateDir(t *testing.T) {
 	}{
 		{"explicit override wins", map[string]string{"PROTONMAIL_MCP_STATE_DIR": "/srv/p", "STATE_DIRECTORY": "/var/lib/x"}, "/srv/p"},
 		{"systemd StateDirectory", map[string]string{"STATE_DIRECTORY": "/var/lib/protonmail-mcp"}, "/var/lib/protonmail-mcp"},
+		{"systemd StateDirectory colon list", map[string]string{"STATE_DIRECTORY": "/var/lib/a:/var/lib/b"}, "/var/lib/a"},
 		{"xdg state home", map[string]string{"XDG_STATE_HOME": "/home/u/.local/state"}, filepath.Join("/home/u/.local/state", "protonmail-mcp")},
 	}
 	for _, tc := range tests {

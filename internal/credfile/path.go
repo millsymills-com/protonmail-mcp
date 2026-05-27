@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 const dirName = "protonmail-mcp"
@@ -18,7 +19,10 @@ func ResolveStateDir(getenv func(string) string) (string, error) {
 		return v, nil
 	}
 	if v := getenv("STATE_DIRECTORY"); v != "" {
-		return v, nil
+		// systemd sets STATE_DIRECTORY to a colon-separated list when the unit
+		// declares multiple StateDirectory= entries; take the first so the path
+		// isn't mistaken for one literal directory named "a:b".
+		return strings.SplitN(v, ":", 2)[0], nil
 	}
 	if v := getenv("XDG_STATE_HOME"); v != "" {
 		return filepath.Join(v, dirName), nil
