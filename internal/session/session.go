@@ -210,20 +210,24 @@ func (s *Session) Client(ctx context.Context) (*proton.Client, error) {
 	}
 	c, refreshed, err := s.mgr.NewClientWithRefresh(ctx, sess.UID, sess.RefreshToken)
 	if err != nil {
-		// Cold-start refresh failed: Proton rejected or revoked the stored
-		// refresh token. Attempt unattended self-heal from stored credentials
-		// before surfacing the error — a headless deployment has no operator on
-		// hand to re-run login. reloginLocked sets s.client/current/raw on
-		// success; we already hold s.mu.
-		if healed, captcha := s.reloginLocked(ctx); healed != nil {
-			return healed, nil
-		} else if captcha != nil {
-			return nil, captcha
+		pe := proterr.Map(err)
+		// Only a rejected/revoked refresh token warrants an unattended relogin.
+		// Proton returns 401 (auth_required) or 422 (validation, e.g. code
+		// 10013 "refresh token revoked") for that. A transport error, a 5xx,
+		// or a 429 must NOT trigger relogin: re-login can't fix Proton being
+		// down, and repeated SRP attempts risk tripping Proton's anti-abuse
+		// lockout (~10 logins/min). reloginLocked sets s.client on success; we
+		// already hold s.mu.
+		if isRefreshRejected(pe) {
+			if healed, captcha := s.reloginLocked(ctx); healed != nil {
+				return healed, nil
+			} else if captcha != nil {
+				return nil, captcha
+			}
 		}
-		// No stored creds (or relogin itself failed): forward a stable
-		// proton/auth_required code + hint when Proton classified it that way,
-		// otherwise the wrapped refresh error.
-		if pe := proterr.Map(err); pe != nil && pe.Code == "proton/auth_required" {
+		// No relogin, or it failed: forward a stable auth_required code + hint
+		// when Proton classified it that way, otherwise the wrapped error.
+		if pe != nil && pe.Code == "proton/auth_required" {
 			return nil, pe
 		}
 		return nil, fmt.Errorf("refresh session: %w", err)
@@ -329,6 +333,13 @@ func (s *Session) Login(ctx context.Context, in LoginInput) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.loginLocked(ctx, in)
+}
+
+// isRefreshRejected reports whether a mapped refresh error means Proton
+// rejected the refresh token itself (so a relogin can recover), as opposed to
+// a transient/availability failure where relogin is futile and risky.
+func isRefreshRejected(pe *proterr.Error) bool {
+	return pe != nil && (pe.Code == "proton/auth_required" || pe.Code == "proton/validation")
 }
 
 // reloginLocked attempts unattended self-heal after a cold-start refresh
