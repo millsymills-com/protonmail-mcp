@@ -45,6 +45,14 @@ func RunWithOptions(ctx context.Context, apiURL string, transport http.RoundTrip
 	sess := session.New(apiURL, keychain.New(), session.WithTransport(transport))
 	srv := mcp.NewServer(&mcp.Implementation{Name: serverName, Version: version.MCP}, nil)
 	tools.Register(srv, tools.Deps{Session: sess})
+
+	cfg, err := transportConfigFromEnv(os.Getenv)
+	if err != nil {
+		return fmt.Errorf("transport config: %w", err)
+	}
+	if cfg.kind == "sse" {
+		return serveSSE(ctx, cfg, srv)
+	}
 	if err := srv.Run(ctx, &mcp.StdioTransport{}); err != nil {
 		return fmt.Errorf("mcp server: %w", err)
 	}
