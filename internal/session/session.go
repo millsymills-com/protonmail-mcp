@@ -21,9 +21,9 @@ import (
 	"github.com/millsmillsymills/protonmail-mcp/internal/proterr"
 )
 
-// keychainStore is the minimal persistence surface Session needs.
-// *keychain.Keychain satisfies it; tests inject failure-injecting wrappers.
-type keychainStore interface {
+// Store is the persistence surface a Session needs. *keychain.Keychain and
+// *credfile.Store both satisfy it; tests inject failure-injecting wrappers.
+type Store interface {
 	SaveCreds(keychain.Creds) error
 	LoadCreds() (keychain.Creds, error)
 	SaveSession(keychain.Session) error
@@ -36,7 +36,7 @@ type Session struct {
 	mgr     *proton.Manager
 	client  *proton.Client
 	raw     *rawClient
-	kc      keychainStore
+	kc      Store
 	current keychain.Session
 	// poisoned indicates the in-process Session and the keychain are known
 	// to be in inconsistent states because a Login persist rollback's Clear
@@ -85,7 +85,7 @@ func (s *Session) Status() Status {
 }
 
 // SetPersistDegradedForTest injects degraded state for tests that hold
-// only a *Session and cannot drive a keychainStore failure directly.
+// only a *Session and cannot drive a Store failure directly.
 func (s *Session) SetPersistDegradedForTest(reason string) {
 	s.mu.Lock()
 	s.persistDegraded = reason != ""
@@ -115,7 +115,7 @@ func WithSkipProofVerificationForRecording() Option {
 	return func(c *config) { c.skipProofVerify = true }
 }
 
-func New(apiURL string, kc keychainStore, opts ...Option) *Session {
+func New(apiURL string, kc Store, opts ...Option) *Session {
 	var cfg config
 	for _, o := range opts {
 		o(&cfg)
