@@ -1,6 +1,9 @@
 package server
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func env(m map[string]string) func(string) string {
 	return func(k string) string { return m[k] }
@@ -32,7 +35,7 @@ func TestTransportConfigFromEnv(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			got, err := transportConfigFromEnv(env(tc.env))
 			if tc.wantErr != "" {
-				if err == nil || !tcContains(err.Error(), tc.wantErr) {
+				if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
 					t.Fatalf("err = %v, want containing %q", err, tc.wantErr)
 				}
 				return
@@ -45,17 +48,4 @@ func TestTransportConfigFromEnv(t *testing.T) {
 			}
 		})
 	}
-}
-
-func tcContains(s, sub string) bool {
-	return len(sub) == 0 || (len(s) >= len(sub) && tcStringIndex(s, sub) >= 0)
-}
-
-func tcStringIndex(s, sub string) int {
-	for i := 0; i+len(sub) <= len(s); i++ {
-		if s[i:i+len(sub)] == sub {
-			return i
-		}
-	}
-	return -1
 }

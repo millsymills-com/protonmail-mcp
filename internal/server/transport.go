@@ -1,4 +1,3 @@
-// transport.go: transport selection from the environment.
 package server
 
 import (
