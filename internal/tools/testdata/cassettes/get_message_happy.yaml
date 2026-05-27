@@ -1,0 +1,190 @@
+---
+version: 2
+interactions:
+    - id: 0
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 320
+        host: mail.proton.me
+        body: '{"GrantType":"refresh_token","RedirectURI":"https://protonmail.ch","RefreshToken":"REDACTED_REFRESHTOKEN_1","ResponseType":"token","State":"/�-��g�\r\u0015��5|�\u0015B\u001d��1�c{�����C�''.","UID":"REDACTED_UID_1"}'
+        headers:
+            Content-Type:
+                - application/json
+            User-Agent:
+                - go-resty/2.10.0 (https://github.com/go-resty/resty)
+            X-Pm-Appversion:
+                - macos-bridge@3.24.1
+        url: https://mail.proton.me/api/auth/v4/refresh
+        method: POST
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: -1
+        uncompressed: true
+        body: '{"AccessToken":"REDACTED_ACCESSTOKEN_1","Code":1000,"ExpiresIn":86400,"LocalID":0,"RefreshCounter":8,"RefreshToken":"REDACTED_REFRESHTOKEN_1","Scope":"full self parent user loggedin paid nondelinquent mail verified settings","Scopes":["full","self","parent","user","loggedin","paid","nondelinquent","mail","verified","settings"],"TokenType":"Bearer","UID":"REDACTED_UID_1","Uid":"REDACTED_UID_2"}'
+        headers:
+            Access:
+                - application/vnd.protonmail.api+json;apiversion=4
+            Cache-Control:
+                - max-age=0, must-revalidate, no-cache, no-store, private
+            Content-Security-Policy:
+                - 'default-src ''self''; media-src ''self'' blob:; connect-src ''self'' blob: https://proton.me https://*.proton.me; script-src ''self'' ''wasm-unsafe-eval'' blob: ''sha256-eAhF1Kdccp0BTXM6nMW7SYBdV0c3fZwzcC177TQ692g=''; style-src ''self'' ''unsafe-inline''; img-src http: https: data: blob: cid:; frame-src ''self'' blob: https://mail-api.proton.me https://account.proton.me https://verify.proton.me https://calendar.proton.me https://drive.proton.me https://proton.me; object-src ''self'' blob:; child-src ''self'' data: blob:; report-uri https://reports.proton.me/reports/csp; frame-ancestors https://calendar.proton.me https://drive.proton.me;'
+            Content-Type:
+                - application/json
+            Date:
+                - Mon, 01 Jan 2001 00:00:00 GMT
+            Expect-Ct:
+                - max-age=2592000, enforce, report-uri="https://reports.proton.me/reports/tls"
+            Expires:
+                - Fri, 04 May 1984 22:15:00 GMT
+            Public-Key-Pins-Report-Only:
+                - pin-sha256="CT56BhOTmj5ZIPgb/xD5mH8rY3BLo/MlhP7oPyJUEDo="; pin-sha256="35Dx28/uzN3LeltkCBQ8RHK0tlNSa2kCpCRGNp34Gxc="; report-uri="https://reports.proton.me/reports/tls"
+            Referrer-Policy:
+                - strict-origin-when-cross-origin
+            Set-Cookie:
+                - REDACTED
+            Strict-Transport-Security:
+                - max-age=31536000; includeSubDomains; preload
+            Vary:
+                - Accept-Encoding
+            X-Content-Type-Options:
+                - nosniff
+            X-Permitted-Cross-Domain-Policies:
+                - none
+            X-Pm-Date:
+                - 20 May 2026 19:54:44 GMT
+            X-Xss-Protection:
+                - "0"
+        status: 200 OK
+        code: 200
+        duration: 709.09925ms
+    - id: 1
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 44
+        host: mail.proton.me
+        body: '{"Desc":1,"Page":0,"PageSize":1,"Sort":"ID"}'
+        headers:
+            Authorization:
+                - REDACTED
+            Content-Type:
+                - application/json
+            User-Agent:
+                - go-resty/2.10.0 (https://github.com/go-resty/resty)
+            X-Http-Method-Override:
+                - GET
+            X-Pm-Appversion:
+                - macos-bridge@3.24.1
+            X-Pm-Uid:
+                - REDACTED
+        url: https://mail.proton.me/api/mail/v4/messages
+        method: POST
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: -1
+        uncompressed: true
+        body: '{"Code":1000,"Limit":830,"Messages":[{"AddressID":"FLZjEknB7xrZs-yaNsNO2fuDzZe2vIfQ6Hy0hFWvVOqJn_kV_UnRm4j4E5sxK6ACjHXwbzxnsaZ2sePs_3Xf7w==","AttachmentInfo":{},"AttachmentsMetadata":[],"BCCList":[],"BimiSelector":null,"CCList":[],"CategoryID":"21","ConversationID":"IkWc8hcDPXhhm42wZN1xTP78h1QdyrvsiR0xKFntIrrdWxKSffiCJxdAnbKzVk2Ev2TUni6OYK4uc295tZnd5Q==","DisplaySenderImage":1,"DisplaySnoozedReminder":false,"ExpirationTime":0,"ExternalID":"noreply@esp.example","Flags":8388609,"ID":"Qv_TTqeF-g_Ujknt3H4WJv3JbpZg7G5b-8cnpZ-Aim3TDyccLnYKJGcbvt2sC2AZwCUP4VUZNuqxmtEOVvOYKQ==","IsEncrypted":2,"IsForwarded":0,"IsProton":0,"IsReplied":0,"IsRepliedAll":0,"LabelIDs":["0","5","15","21"],"NewsletterSubscriptionID":"pXLj4h5WEiHwKJzhIcby113CBA2AoXQ9fvjWLZ9xQlDZxvRSD-cDxSXGSbH3YxS8ImZakBEuZLj_krgwfp-uwQ==","NumAttachments":0,"Order":403895328710,"Sender":{"Address":"sender@example.com","BimiSelector":null,"DisplaySenderImage":1,"IsProton":0,"IsSimpleLogin":0,"Name":"Example Sender"},"SenderAddress":"sender@example.com","SenderName":"Example Sender","Size":4585,"SnoozeTime":0,"SpamScore":0,"Subject":"The All-New John Petrucci Majesty Premium Select is Here!","Time":1779296669,"ToList":[{"Address":"user@example.test","Group":"","IsProton":0,"Name":""}],"Type":0,"Unread":1}],"Stale":0,"Total":830}'
+        headers:
+            Access:
+                - application/vnd.protonmail.api+json;apiversion=4
+            Cache-Control:
+                - max-age=0, must-revalidate, no-cache, no-store, private
+            Content-Security-Policy:
+                - 'default-src ''self''; media-src ''self'' blob:; connect-src ''self'' blob: https://proton.me https://*.proton.me; script-src ''self'' ''wasm-unsafe-eval'' blob: ''sha256-eAhF1Kdccp0BTXM6nMW7SYBdV0c3fZwzcC177TQ692g=''; style-src ''self'' ''unsafe-inline''; img-src http: https: data: blob: cid:; frame-src ''self'' blob: https://mail-api.proton.me https://account.proton.me https://verify.proton.me https://calendar.proton.me https://drive.proton.me https://proton.me; object-src ''self'' blob:; child-src ''self'' data: blob:; report-uri https://reports.proton.me/reports/csp; frame-ancestors https://calendar.proton.me https://drive.proton.me;'
+            Content-Type:
+                - application/json
+            Date:
+                - Mon, 01 Jan 2001 00:00:00 GMT
+            Expect-Ct:
+                - max-age=2592000, enforce, report-uri="https://reports.proton.me/reports/tls"
+            Expires:
+                - Fri, 04 May 1984 22:15:00 GMT
+            Public-Key-Pins-Report-Only:
+                - pin-sha256="CT56BhOTmj5ZIPgb/xD5mH8rY3BLo/MlhP7oPyJUEDo="; pin-sha256="35Dx28/uzN3LeltkCBQ8RHK0tlNSa2kCpCRGNp34Gxc="; report-uri="https://reports.proton.me/reports/tls"
+            Referrer-Policy:
+                - strict-origin-when-cross-origin
+            Set-Cookie:
+                - REDACTED
+            Strict-Transport-Security:
+                - max-age=31536000; includeSubDomains; preload
+            Vary:
+                - Accept-Encoding
+            X-Content-Type-Options:
+                - nosniff
+            X-Permitted-Cross-Domain-Policies:
+                - none
+            X-Pm-Date:
+                - 20 May 2026 19:54:45 GMT
+            X-Xss-Protection:
+                - "0"
+        status: 200 OK
+        code: 200
+        duration: 393.275833ms
+    - id: 2
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        host: mail.proton.me
+        headers:
+            Authorization:
+                - REDACTED
+            User-Agent:
+                - go-resty/2.10.0 (https://github.com/go-resty/resty)
+            X-Pm-Appversion:
+                - macos-bridge@3.24.1
+            X-Pm-Uid:
+                - REDACTED
+        url: https://mail.proton.me/api/mail/v4/messages/Qv_TTqeF-g_Ujknt3H4WJv3JbpZg7G5b-8cnpZ-Aim3TDyccLnYKJGcbvt2sC2AZwCUP4VUZNuqxmtEOVvOYKQ==
+        method: GET
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: -1
+        uncompressed: true
+        body: '{"Code":1000,"Message":{"AddressID":"FLZjEknB7xrZs-yaNsNO2fuDzZe2vIfQ6Hy0hFWvVOqJn_kV_UnRm4j4E5sxK6ACjHXwbzxnsaZ2sePs_3Xf7w==","AttachmentInfo":{},"Attachments":[],"AttachmentsMetadata":[],"BCCList":[],"BimiSelector":null,"Body":"REDACTED_PGP_BODY_1","CCList":[],"CategoryID":"21","ConversationID":"IkWc8hcDPXhhm42wZN1xTP78h1QdyrvsiR0xKFntIrrdWxKSffiCJxdAnbKzVk2Ev2TUni6OYK4uc295tZnd5Q==","DisplaySenderImage":1,"DisplaySnoozedReminder":false,"ExpirationTime":0,"ExternalID":"noreply@esp.example","Flags":8388609,"Header":"From: \"Example Sender\" <sender@example.com>\r\nTo: user@example.test\r\nSubject: Example Subject\r\nMessage-Id: <synthetic@example.com>\r\nContent-Type: text/html\r\n","ID":"Qv_TTqeF-g_Ujknt3H4WJv3JbpZg7G5b-8cnpZ-Aim3TDyccLnYKJGcbvt2sC2AZwCUP4VUZNuqxmtEOVvOYKQ==","IsEncrypted":2,"IsForwarded":0,"IsProton":0,"IsReplied":0,"IsRepliedAll":0,"LabelIDs":["0","5","15","21"],"MIMEType":"text/html","NewsletterSubscriptionID":"pXLj4h5WEiHwKJzhIcby113CBA2AoXQ9fvjWLZ9xQlDZxvRSD-cDxSXGSbH3YxS8ImZakBEuZLj_krgwfp-uwQ==","NumAttachments":0,"Order":403895328710,"ParsedHeaders":{"From":"\"Example Sender\" <sender@example.com>","To":"user@example.test","Subject":"Example Subject","Message-Id":"<synthetic@example.com>","Content-Type":"text/html"},"ReplyTo":{"Address":"sender@example.com","BimiSelector":null,"DisplaySenderImage":1,"IsProton":0,"IsSimpleLogin":0,"Name":"Example Sender"},"ReplyTos":[{"Address":"sender@example.com","BimiSelector":null,"DisplaySenderImage":1,"IsProton":0,"IsSimpleLogin":0,"Name":"Example Sender"}],"Sender":{"Address":"sender@example.com","BimiSelector":null,"DisplaySenderImage":1,"IsProton":0,"IsSimpleLogin":0,"Name":"Example Sender"},"SenderAddress":"sender@example.com","SenderName":"Example Sender","Size":4585,"SnoozeTime":0,"SpamScore":0,"Subject":"The All-New John Petrucci Majesty Premium Select is Here!","Time":1779296669,"ToList":[{"Address":"user@example.test","Group":"","IsProton":0,"Name":""}],"Type":0,"Unread":1,"UnsubscribeMethods":{"OneClick":"OneClick"}}}'
+        headers:
+            Access:
+                - application/vnd.protonmail.api+json;apiversion=4
+            Cache-Control:
+                - max-age=0, must-revalidate, no-cache, no-store, private
+            Content-Security-Policy:
+                - 'default-src ''self''; media-src ''self'' blob:; connect-src ''self'' blob: https://proton.me https://*.proton.me; script-src ''self'' ''wasm-unsafe-eval'' blob: ''sha256-eAhF1Kdccp0BTXM6nMW7SYBdV0c3fZwzcC177TQ692g=''; style-src ''self'' ''unsafe-inline''; img-src http: https: data: blob: cid:; frame-src ''self'' blob: https://mail-api.proton.me https://account.proton.me https://verify.proton.me https://calendar.proton.me https://drive.proton.me https://proton.me; object-src ''self'' blob:; child-src ''self'' data: blob:; report-uri https://reports.proton.me/reports/csp; frame-ancestors https://calendar.proton.me https://drive.proton.me;'
+            Content-Type:
+                - application/json
+            Date:
+                - Mon, 01 Jan 2001 00:00:00 GMT
+            Expect-Ct:
+                - max-age=2592000, enforce, report-uri="https://reports.proton.me/reports/tls"
+            Expires:
+                - Fri, 04 May 1984 22:15:00 GMT
+            Public-Key-Pins-Report-Only:
+                - pin-sha256="CT56BhOTmj5ZIPgb/xD5mH8rY3BLo/MlhP7oPyJUEDo="; pin-sha256="35Dx28/uzN3LeltkCBQ8RHK0tlNSa2kCpCRGNp34Gxc="; report-uri="https://reports.proton.me/reports/tls"
+            Referrer-Policy:
+                - strict-origin-when-cross-origin
+            Set-Cookie:
+                - REDACTED
+            Strict-Transport-Security:
+                - max-age=31536000; includeSubDomains; preload
+            Vary:
+                - Accept-Encoding
+            X-Content-Type-Options:
+                - nosniff
+            X-Permitted-Cross-Domain-Policies:
+                - none
+            X-Pm-Date:
+                - 20 May 2026 19:54:46 GMT
+            X-Xss-Protection:
+                - "0"
+        status: 200 OK
+        code: 200
+        duration: 1.008690084s
