@@ -112,8 +112,10 @@ func TestStatusReportsPersistDegraded(t *testing.T) {
 		rt,
 		preboot,
 	)
-	if code != 0 {
-		t.Fatalf("exit = %d, stderr=%s", code, stderr.String())
+	// Degraded persistence exits 3 (output still printed) so headless monitors
+	// can detect the fault from $? without parsing stdout.
+	if code != 3 {
+		t.Fatalf("exit = %d, want 3; stderr=%s", code, stderr.String())
 	}
 	out := stdout.String()
 	if !strings.Contains(out, "user@example.test") {

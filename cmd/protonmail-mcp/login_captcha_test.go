@@ -5,6 +5,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
@@ -33,7 +34,7 @@ func TestRunLoginSurfacesCaptchaError(t *testing.T) {
 
 	stdin := strings.NewReader("user@example.test\nhunter2\n")
 	stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
-	err := runLogin(context.Background(), srv.URL, nil, stdin, stdout, stderr)
+	err := runLogin(context.Background(), os.Getenv, srv.URL, nil, stdin, stdout, stderr)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -58,7 +59,7 @@ func TestRunLoginPasswordAuthFailure(t *testing.T) {
 
 	stdin := strings.NewReader("user@example.test\nwrong\n")
 	stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
-	err := runLogin(context.Background(), srv.URL, nil, stdin, stdout, stderr)
+	err := runLogin(context.Background(), os.Getenv, srv.URL, nil, stdin, stdout, stderr)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}

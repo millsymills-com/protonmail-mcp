@@ -2,18 +2,24 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 
-	"github.com/millsmillsymills/protonmail-mcp/internal/keychain"
 	"github.com/millsmillsymills/protonmail-mcp/internal/session"
 )
 
+// errStatusDegraded signals that status printed its output but token
+// persistence is degraded. run maps it to a distinct non-zero exit so a
+// headless monitor can detect the fault from $? without parsing stdout.
+var errStatusDegraded = errors.New("token persistence degraded")
+
 func runStatus(
-	ctx context.Context, apiURL string, transport http.RoundTripper, out io.Writer,
+	ctx context.Context, getenv func(string) string, apiURL string,
+	transport http.RoundTripper, out io.Writer,
 ) error {
-	return runStatusWithHook(ctx, apiURL, transport, out, nil)
+	return runStatusWithHook(ctx, getenv, apiURL, transport, out, nil)
 }
 
 // runStatusWithHook is the test-injectable variant of runStatus. When
@@ -24,23 +30,29 @@ func runStatus(
 // SaveSession set/clear logic.
 func runStatusWithHook(
 	ctx context.Context,
+	getenv func(string) string,
 	apiURL string,
 	transport http.RoundTripper,
 	out io.Writer,
 	hook func(*session.Session),
 ) error {
+	_, _ = fmt.Fprintf(out, "backend: %s\n", session.BackendName(getenv))
+
 	if apiURL == "" {
 		apiURL = "https://mail.proton.me/api"
 	}
-	sess := session.New(apiURL, keychain.New(), session.WithTransport(transport))
+	store, err := session.SelectStore(getenv)
+	if err != nil {
+		return fmt.Errorf("credential backend: %w", err)
+	}
+	sess := session.New(apiURL, store, session.WithTransport(transport))
 	c, err := sess.Client(ctx)
 	if err != nil {
 		if hook != nil {
 			hook(sess)
 		}
 		_, _ = fmt.Fprintln(out, "not logged in")
-		writePersistWarning(out, sess.Status())
-		return nil
+		return statusResult(out, sess.Status())
 	}
 	if hook != nil {
 		hook(sess)
@@ -50,7 +62,17 @@ func runStatusWithHook(
 		return err
 	}
 	_, _ = fmt.Fprintf(out, "%s — %d / %d bytes\n", u.Email, u.UsedSpace, u.MaxSpace)
-	writePersistWarning(out, sess.Status())
+	return statusResult(out, sess.Status())
+}
+
+// statusResult prints any persistence warning and returns errStatusDegraded
+// when persistence is degraded, so the caller can exit non-zero after the
+// human-readable output has already been written.
+func statusResult(out io.Writer, st session.Status) error {
+	writePersistWarning(out, st)
+	if st.PersistDegraded {
+		return errStatusDegraded
+	}
 	return nil
 }
 
@@ -59,6 +81,6 @@ func writePersistWarning(out io.Writer, st session.Status) {
 		return
 	}
 	_, _ = fmt.Fprintf(out,
-		"warning: token persistence degraded — rotated tokens not saved to keychain (%q). Re-run `protonmail-mcp login` to restore.\n",
+		"warning: token persistence degraded — rotated tokens not saved to credential store (%q). Re-run `protonmail-mcp login` to restore.\n",
 		st.PersistError)
 }

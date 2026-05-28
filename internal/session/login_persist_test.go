@@ -34,7 +34,7 @@ func (f *failingStore) SaveSession(s keychain.Session) error {
 	return f.Keychain.SaveSession(s)
 }
 
-func newSessionWithStore(kc keychainStore) *Session {
+func newSessionWithStore(kc Store) *Session {
 	return &Session{kc: kc, raw: newRawClient("http://invalid.test", nil)}
 }
 
@@ -152,7 +152,7 @@ func TestPersistLoginStateClearsDegradedFlag(t *testing.T) {
 	}
 }
 
-// clearFailingStore satisfies keychainStore but fails SaveSession and Clear
+// clearFailingStore satisfies Store but fails SaveSession and Clear
 // so we can confirm both the rollback secondary failure surfaces and that
 // the Session marks itself poisoned.
 type clearFailingStore struct {

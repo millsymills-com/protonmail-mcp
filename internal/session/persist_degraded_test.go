@@ -50,10 +50,7 @@ func TestSetPersistDegradedForTestRoundTrip(t *testing.T) {
 	}
 }
 
-// fakeKC satisfies the unexported keychainStore method set. Go's
-// assignability rules permit external packages to pass values that
-// satisfy unexported interfaces, even though the interface type itself
-// is not visible.
+// fakeKC satisfies the Store interface.
 type fakeKC struct {
 	seed       keychain.Session
 	saveErr    error

@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"os"
 	"strings"
 	"testing"
 )
@@ -37,6 +38,7 @@ func TestIsAllDigits(t *testing.T) {
 func TestRunLoginEOFOnEmail(t *testing.T) {
 	stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
 	err := runLogin(context.Background(),
+		os.Getenv,
 		"https://mail.proton.me/api",
 		nil,
 		strings.NewReader(""),
@@ -53,6 +55,7 @@ func TestRunLoginEOFOnEmail(t *testing.T) {
 func TestRunLoginEOFOnPassword(t *testing.T) {
 	stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
 	err := runLogin(context.Background(),
+		os.Getenv,
 		"https://mail.proton.me/api",
 		nil,
 		strings.NewReader("user@example.test\n"),
@@ -72,6 +75,7 @@ func TestRunLoginDefaultAPIURL(t *testing.T) {
 	// Empty stdin forces the email-prompt EOF path; the apiURL default is
 	// applied before the prompt fires, so coverage reaches that branch.
 	_ = runLogin(context.Background(),
+		os.Getenv,
 		"",
 		nil,
 		strings.NewReader(""),
