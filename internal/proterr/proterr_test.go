@@ -49,6 +49,32 @@ func TestMap(t *testing.T) {
 	}
 }
 
+func TestRefreshRejected(t *testing.T) {
+	tests := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{"nil", nil, false},
+		{"401", &proton.APIError{Status: http.StatusUnauthorized}, true},
+		{"revoked-10013", &proton.APIError{Status: http.StatusUnprocessableEntity, Code: proton.AuthRefreshTokenInvalid}, true},
+		{"generic-422", &proton.APIError{Status: http.StatusUnprocessableEntity, Code: 2001}, false},
+		{"400", &proton.APIError{Status: http.StatusBadRequest}, false},
+		{"500", &proton.APIError{Status: http.StatusInternalServerError}, false},
+		{"429", &proton.APIError{Status: http.StatusTooManyRequests}, false},
+		{"net-error", &proton.NetError{Cause: errors.New("dial tcp: refused"), Message: "down"}, false},
+		{"wrapped-401", fmt.Errorf("refresh: %w", &proton.APIError{Status: http.StatusUnauthorized}), true},
+		{"wrapped-revoked", fmt.Errorf("refresh: %w", proton.APIError{Status: http.StatusUnprocessableEntity, Code: proton.AuthRefreshTokenInvalid}), true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := proterr.RefreshRejected(tc.err); got != tc.want {
+				t.Fatalf("RefreshRejected(%v) = %v, want %v", tc.err, got, tc.want)
+			}
+		})
+	}
+}
+
 func TestRetryAfterParsed(t *testing.T) {
 	// proton.NetError carries no headers and proton.APIError carries no
 	// headers either, so callers that have a raw HTTP response wrap it in a

@@ -31,6 +31,11 @@ func New(dir string) (*Store, error) {
 	if dir == "" {
 		return nil, errors.New("credfile: empty state dir")
 	}
+	if !flockSupported {
+		return nil, errors.New(
+			"credfile: the file credential backend requires advisory file locking, " +
+				"unsupported on this OS (use the keychain backend)")
+	}
 	return &Store{dir: dir}, nil
 }
 
@@ -49,15 +54,6 @@ func (s *Store) load() (doc, error) {
 }
 
 func (s *Store) save(d doc) error {
-	if err := os.MkdirAll(s.dir, 0o700); err != nil {
-		return fmt.Errorf("credfile mkdir %s: %w", s.dir, err)
-	}
-	if err := os.Chmod(s.dir, 0o700); err != nil {
-		return fmt.Errorf("credfile chmod dir %s: %w", s.dir, err)
-	}
-	if err := ensureDirSafe(s.dir); err != nil {
-		return err
-	}
 	b, err := json.Marshal(d)
 	if err != nil {
 		return fmt.Errorf("credfile marshal: %w", err)
@@ -95,6 +91,9 @@ func (s *Store) save(d doc) error {
 // read-modify-write. An absent file starts from an empty doc; a parse or
 // permission error on an existing file is surfaced rather than overwritten.
 func (s *Store) merge(fn func(*doc)) error {
+	if err := s.prepareDir(); err != nil {
+		return err
+	}
 	unlock, err := s.lock()
 	if err != nil {
 		return err
@@ -108,13 +107,29 @@ func (s *Store) merge(fn func(*doc)) error {
 	return s.save(d)
 }
 
+// prepareDir creates the state dir (0700) if absent and makes it safe to store
+// secrets in. It runs before lock() and save() so a hostile dir never receives
+// even the sidecar lock file. A symlinked dir or one owned by another user is
+// rejected; these are checked before the chmod so we never follow a symlink to
+// an attacker's target or tamper with a dir we do not own. Group/other
+// permission bits on our own dir are tightened to 0700 rather than rejected.
+func (s *Store) prepareDir() error {
+	if err := os.MkdirAll(s.dir, 0o700); err != nil {
+		return fmt.Errorf("credfile mkdir %s: %w", s.dir, err)
+	}
+	if err := ensureDirSafe(s.dir); err != nil {
+		return err
+	}
+	if err := os.Chmod(s.dir, 0o700); err != nil {
+		return fmt.Errorf("credfile chmod dir %s: %w", s.dir, err)
+	}
+	return nil
+}
+
 // lock acquires an exclusive advisory lock on a sidecar lock file, serializing
 // merges across goroutines and processes that share the state dir. The
-// returned func releases the lock.
+// returned func releases the lock. The caller must have run prepareDir first.
 func (s *Store) lock() (func(), error) {
-	if err := os.MkdirAll(s.dir, 0o700); err != nil {
-		return nil, fmt.Errorf("credfile mkdir %s: %w", s.dir, err)
-	}
 	f, err := os.OpenFile(filepath.Join(s.dir, lockName), os.O_CREATE|os.O_RDWR, 0o600)
 	if err != nil {
 		return nil, fmt.Errorf("credfile lock open: %w", err)
@@ -129,10 +144,11 @@ func (s *Store) lock() (func(), error) {
 	}, nil
 }
 
-// ensureDirSafe refuses to write secrets into a state dir that is a symlink
-// (an attacker could swap the target), is group/other-accessible, or is owned
-// by another user. Called after the dir is created/chmod'd, so the happy path
-// (0700, owned by us) passes.
+// ensureDirSafe refuses to write secrets into a state dir that is a symlink (an
+// attacker could swap the target) or is owned by another user (we cannot secure
+// it). It is called before prepareDir's chmod so neither check follows a symlink
+// nor races a chmod. Group/other permission bits are handled by the caller's
+// chmod, not here.
 func ensureDirSafe(dir string) error {
 	fi, err := os.Lstat(dir)
 	if err != nil {
@@ -140,9 +156,6 @@ func ensureDirSafe(dir string) error {
 	}
 	if fi.Mode()&os.ModeSymlink != 0 {
 		return fmt.Errorf("credfile state dir %s is a symlink; refusing to store credentials there", dir)
-	}
-	if perm := fi.Mode().Perm(); perm&0o077 != 0 {
-		return fmt.Errorf("credfile state dir %s is group/other-accessible (mode %o); restrict it to 0700", dir, perm)
 	}
 	if !ownedByCurrentUser(fi) {
 		return fmt.Errorf("credfile state dir %s is not owned by the current user", dir)

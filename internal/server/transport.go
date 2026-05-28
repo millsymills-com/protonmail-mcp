@@ -5,6 +5,11 @@ import (
 	"strconv"
 )
 
+// minSSETokenLen is the floor for PROTONMAIL_MCP_SSE_TOKEN. The SSE endpoint
+// exposes an authenticated Proton session, so a trivially short (guessable)
+// token is rejected at startup rather than relied upon.
+const minSSETokenLen = 16
+
 type transportConfig struct {
 	kind  string // "stdio" | "sse"
 	host  string // sse only
@@ -45,6 +50,11 @@ func transportConfigFromEnv(getenv func(string) string) (transportConfig, error)
 			return transportConfig{}, fmt.Errorf(
 				"PROTONMAIL_MCP_SSE_TOKEN is required when PROTONMAIL_MCP_TRANSPORT=sse " +
 					"(generate a random secret; clients must send `Authorization: Bearer <token>`)")
+		}
+		if len(token) < minSSETokenLen {
+			return transportConfig{}, fmt.Errorf(
+				"PROTONMAIL_MCP_SSE_TOKEN must be at least %d characters (generate a random secret)",
+				minSSETokenLen)
 		}
 		return transportConfig{kind: "sse", host: host, port: port, token: token}, nil
 	default:

@@ -2,9 +2,11 @@ package server
 
 import (
 	"context"
+	"crypto/sha256"
 	"crypto/subtle"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
 	"strings"
@@ -15,8 +17,10 @@ import (
 
 // SSEMux returns an http.Handler serving the MCP SSE transport at /sse. One
 // *mcp.Server is reused across sessions; SSEHandler calls Connect per GET.
-// Exported so tests can host it via httptest. DNS-rebinding/localhost
-// protection is left on (SSEOptions default) — correct for a loopback listener.
+// Exported so tests can host it via httptest. The SDK's default DNS-rebinding
+// (Host-header) check only fires when the accepting socket is loopback, so it
+// is inert on a non-loopback bind — serveSSE warns in that case, and the bearer
+// token is the primary access control regardless of bind address.
 func SSEMux(srv *mcp.Server) http.Handler {
 	h := mcp.NewSSEHandler(func(*http.Request) *mcp.Server { return srv }, &mcp.SSEOptions{})
 	mux := http.NewServeMux()
@@ -25,15 +29,20 @@ func SSEMux(srv *mcp.Server) http.Handler {
 }
 
 // bearerAuth rejects any request whose Authorization header does not carry the
-// exact bearer token, before the MCP handler runs. The comparison is
-// constant-time so a timing side-channel can't reveal the token.
+// exact bearer token, before the MCP handler runs. Both sides are hashed to a
+// fixed 32-byte digest before the constant-time compare, so neither the token's
+// value nor its length leaks through a timing side-channel.
 func bearerAuth(token string, next http.Handler) http.Handler {
-	want := []byte(token)
+	want := sha256.Sum256([]byte(token))
 	const prefix = "Bearer "
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		h := r.Header.Get("Authorization")
-		if !strings.HasPrefix(h, prefix) ||
-			subtle.ConstantTimeCompare([]byte(h[len(prefix):]), want) != 1 {
+		if !strings.HasPrefix(h, prefix) {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		got := sha256.Sum256([]byte(h[len(prefix):]))
+		if subtle.ConstantTimeCompare(got[:], want[:]) != 1 {
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}
@@ -44,11 +53,28 @@ func bearerAuth(token string, next http.Handler) http.Handler {
 // serveSSE binds host:port and serves the bearer-authenticated SSE handler
 // until ctx is cancelled.
 func serveSSE(ctx context.Context, cfg transportConfig, srv *mcp.Server) error {
+	if !isLoopbackHost(cfg.host) {
+		slog.Warn("sse: binding to a non-loopback address disables the SDK's "+
+			"DNS-rebinding/Host-header protection; the bearer token is the only "+
+			"access control", "host", cfg.host)
+	}
 	ln, err := net.Listen("tcp", fmt.Sprintf("%s:%d", cfg.host, cfg.port))
 	if err != nil {
 		return fmt.Errorf("listen %s:%d: %w", cfg.host, cfg.port, err)
 	}
 	return serveSSEListener(ctx, ln, cfg.token, srv)
+}
+
+// isLoopbackHost reports whether host names the loopback interface, so binding
+// to it keeps the SDK's Host-header rebinding protection active.
+func isLoopbackHost(host string) bool {
+	if host == "localhost" {
+		return true
+	}
+	if ip := net.ParseIP(host); ip != nil {
+		return ip.IsLoopback()
+	}
+	return false
 }
 
 // serveSSEListener serves the bearer-authenticated SSE handler on ln until ctx

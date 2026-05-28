@@ -8,6 +8,10 @@ import (
 	"syscall"
 )
 
+// flockSupported reports whether this platform provides the advisory file
+// locking and ownership checks the file backend relies on.
+const flockSupported = true
+
 func flockExclusive(fd uintptr) error { return syscall.Flock(int(fd), syscall.LOCK_EX) }
 
 func flockUnlock(fd uintptr) error { return syscall.Flock(int(fd), syscall.LOCK_UN) }

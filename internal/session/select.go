@@ -7,6 +7,8 @@ import (
 	"github.com/millsmillsymills/protonmail-mcp/internal/keychain"
 )
 
+const defaultBackend = "keychain"
+
 // BackendName returns the resolved credential backend name (the default when
 // the env var is unset), so callers report the value SelectStore acts on
 // instead of re-deriving the default independently.
@@ -14,7 +16,7 @@ func BackendName(getenv func(string) string) string {
 	if b := getenv("PROTONMAIL_MCP_CREDENTIAL_BACKEND"); b != "" {
 		return b
 	}
-	return "keychain"
+	return defaultBackend
 }
 
 // SelectStore picks the credential backend from
@@ -22,7 +24,7 @@ func BackendName(getenv func(string) string) string {
 // injected so callers pass os.Getenv (or a test stub).
 func SelectStore(getenv func(string) string) (Store, error) {
 	switch backend := BackendName(getenv); backend {
-	case "keychain":
+	case defaultBackend:
 		return keychain.New(), nil
 	case "file":
 		dir, err := credfile.ResolveStateDir(getenv)

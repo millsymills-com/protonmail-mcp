@@ -210,21 +210,30 @@ func TestSaveRejectsSymlinkedStateDir(t *testing.T) {
 
 // Concurrent SaveCreds and SaveSession must not lose either update: the file
 // lock serializes the read-modify-write so the final doc holds both bundles.
+// Every individual write must also succeed — a write that errored under
+// contention would be a regression even if the final doc happened to hold both.
 func TestConcurrentMergeNoLostUpdate(t *testing.T) {
 	s := newTmp(t)
 	var wg sync.WaitGroup
+	errCh := make(chan error, 200)
 	for i := 0; i < 50; i++ {
 		wg.Add(2)
 		go func() {
 			defer wg.Done()
-			_ = s.SaveCreds(keychain.Creds{Username: "u", Password: "p"})
+			errCh <- s.SaveCreds(keychain.Creds{Username: "u", Password: "p"})
 		}()
 		go func() {
 			defer wg.Done()
-			_ = s.SaveSession(keychain.Session{UID: "x", AccessToken: "a", RefreshToken: "r"})
+			errCh <- s.SaveSession(keychain.Session{UID: "x", AccessToken: "a", RefreshToken: "r"})
 		}()
 	}
 	wg.Wait()
+	close(errCh)
+	for err := range errCh {
+		if err != nil {
+			t.Fatalf("merge errored under contention: %v", err)
+		}
+	}
 
 	c, err := s.LoadCreds()
 	if err != nil || c.Username != "u" {
@@ -233,6 +242,33 @@ func TestConcurrentMergeNoLostUpdate(t *testing.T) {
 	sess, err := s.LoadSession()
 	if err != nil || sess.UID != "x" {
 		t.Fatalf("session lost under concurrency: %+v err=%v", sess, err)
+	}
+}
+
+// A pre-existing state dir with group/other permission bits is tightened to
+// 0700 on write (we own it) rather than rejected, so an operator pointing at a
+// loosely-permissioned dir ends up with a secured one.
+func TestPrepareDirTightensLoosePerms(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "state")
+	if err := os.MkdirAll(dir, 0o777); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(dir, 0o777); err != nil { // defeat umask
+		t.Fatal(err)
+	}
+	s, err := New(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if serr := s.SaveSession(keychain.Session{UID: "x"}); serr != nil {
+		t.Fatalf("SaveSession: %v", serr)
+	}
+	di, err := os.Stat(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if di.Mode().Perm() != fs.FileMode(0o700) {
+		t.Fatalf("dir mode = %o, want 700 after write", di.Mode().Perm())
 	}
 }
 

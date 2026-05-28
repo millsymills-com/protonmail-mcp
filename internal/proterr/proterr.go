@@ -109,6 +109,21 @@ func errToMCP(err error) *Error {
 	}
 }
 
+// RefreshRejected reports whether err means Proton rejected the refresh token
+// itself, so an unattended relogin can recover. That is a 401 (auth_required)
+// or the specific "refresh token revoked" code (10013). It deliberately
+// excludes generic 422/400 validation errors and transport/5xx failures: a
+// relogin cannot fix those and retrying SRP on every request would risk
+// Proton's login anti-abuse lockout.
+func RefreshRejected(err error) bool {
+	apiErr, ok := extractAPIError(err)
+	if !ok {
+		return false
+	}
+	return apiErr.Status == http.StatusUnauthorized ||
+		apiErr.Code == proton.AuthRefreshTokenInvalid
+}
+
 // extractAPIError returns the proton.APIError carried by err, whether wrapped
 // as a value or a pointer. ok is false if no APIError is present.
 func extractAPIError(err error) (proton.APIError, bool) {

@@ -3,12 +3,19 @@
 Run `protonmail-mcp` as a loopback SSE service with a file credential backend.
 
 The SSE endpoint exposes the authenticated Proton session, so it always
-requires a bearer token (`PROTONMAIL_MCP_SSE_TOKEN`). Generate one and keep it
-secret — every MCP client must send it as `Authorization: Bearer <token>`:
+requires a bearer token (`PROTONMAIL_MCP_SSE_TOKEN`, at least 16 characters).
+Generate one and keep it secret — every MCP client must send it as
+`Authorization: Bearer <token>`:
 
 ```bash
 openssl rand -hex 32   # use the output as PROTONMAIL_MCP_SSE_TOKEN
 ```
+
+`PROTONMAIL_MCP_HOST` defaults to `127.0.0.1`. The bearer token is enforced on
+every request regardless of bind address, but the SDK's DNS-rebinding
+(Host-header) protection only applies on a loopback bind. Binding a non-loopback
+address (e.g. `0.0.0.0`) logs a warning and leaves the bearer token as the only
+access control — terminate TLS at a reverse proxy in front of it.
 
 ## 1. One-time bootstrap (interactive, on the box)
 
