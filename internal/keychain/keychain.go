@@ -48,6 +48,28 @@ var (
 	keyringDelete = keyring.Delete
 )
 
+// ErrNotFound signals that no credential bundle is stored — the "not logged
+// in" state, distinct from a read/parse failure. Both this backend and the
+// file backend return it (wrapped) so session.Client can map it to the
+// `protonmail-mcp login` hint while surfacing genuine failures verbatim.
+var ErrNotFound = errors.New("credential not stored")
+
+// firstGet wraps the keychain's leading read so a missing primary key (no
+// stored bundle) reports ErrNotFound, while any other failure keeps its
+// diagnosed message. A partial bundle (primary key present, a later field
+// missing) is treated as a genuine read error by the callers below, not as
+// "not logged in".
+func firstGet(op, key string) (string, error) {
+	v, err := keyringGet(service, key)
+	if errors.Is(err, keyring.ErrNotFound) {
+		return "", fmt.Errorf("%s: %w", op, ErrNotFound)
+	}
+	if err != nil {
+		return "", fmt.Errorf("%s: %w", op, diagnoseKeychainErr(err))
+	}
+	return v, nil
+}
+
 // Keychain is the typed wrapper. Construct with New().
 type Keychain struct{}
 
@@ -77,9 +99,9 @@ func (k *Keychain) SaveCreds(c Creds) error {
 }
 
 func (k *Keychain) LoadCreds() (Creds, error) {
-	u, err := keyringGet(service, keyUsername)
+	u, err := firstGet("load username", keyUsername)
 	if err != nil {
-		return Creds{}, fmt.Errorf("load username: %w", diagnoseKeychainErr(err))
+		return Creds{}, err
 	}
 	p, err := keyringGet(service, keyPassword)
 	if err != nil {
@@ -106,9 +128,9 @@ func (k *Keychain) SaveSession(s Session) error {
 }
 
 func (k *Keychain) LoadSession() (Session, error) {
-	uid, err := keyringGet(service, keyUID)
+	uid, err := firstGet("load uid", keyUID)
 	if err != nil {
-		return Session{}, fmt.Errorf("load uid: %w", diagnoseKeychainErr(err))
+		return Session{}, err
 	}
 	at, err := keyringGet(service, keyAccessToken)
 	if err != nil {

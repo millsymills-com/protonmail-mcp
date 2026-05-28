@@ -21,9 +21,9 @@ import (
 	"github.com/millsmillsymills/protonmail-mcp/internal/proterr"
 )
 
-// keychainStore is the minimal persistence surface Session needs.
-// *keychain.Keychain satisfies it; tests inject failure-injecting wrappers.
-type keychainStore interface {
+// Store is the persistence surface a Session needs. *keychain.Keychain and
+// *credfile.Store both satisfy it; tests inject failure-injecting wrappers.
+type Store interface {
 	SaveCreds(keychain.Creds) error
 	LoadCreds() (keychain.Creds, error)
 	SaveSession(keychain.Session) error
@@ -36,7 +36,7 @@ type Session struct {
 	mgr     *proton.Manager
 	client  *proton.Client
 	raw     *rawClient
-	kc      keychainStore
+	kc      Store
 	current keychain.Session
 	// poisoned indicates the in-process Session and the keychain are known
 	// to be in inconsistent states because a Login persist rollback's Clear
@@ -51,6 +51,13 @@ type Session struct {
 	// Cleared by the next successful SaveSession or by Logout.
 	persistDegraded  bool
 	persistErrReason string
+
+	// reloginExhausted is set after an unattended self-heal relogin attempt
+	// did not produce a working client (it failed, hit a CAPTCHA, or no usable
+	// creds were stored). It stops Client from re-running SRP on every
+	// subsequent call — which would hammer Proton's login endpoint and risk its
+	// anti-abuse lockout — until Login or Logout resets it.
+	reloginExhausted bool
 }
 
 // ErrSessionInconsistent is returned when a prior Login persist rollback
@@ -85,7 +92,7 @@ func (s *Session) Status() Status {
 }
 
 // SetPersistDegradedForTest injects degraded state for tests that hold
-// only a *Session and cannot drive a keychainStore failure directly.
+// only a *Session and cannot drive a Store failure directly.
 func (s *Session) SetPersistDegradedForTest(reason string) {
 	s.mu.Lock()
 	s.persistDegraded = reason != ""
@@ -115,7 +122,7 @@ func WithSkipProofVerificationForRecording() Option {
 	return func(c *config) { c.skipProofVerify = true }
 }
 
-func New(apiURL string, kc keychainStore, opts ...Option) *Session {
+func New(apiURL string, kc Store, opts ...Option) *Session {
 	var cfg config
 	for _, o := range opts {
 		o(&cfg)
@@ -198,17 +205,40 @@ func (s *Session) Client(ctx context.Context) (*proton.Client, error) {
 		return nil, ErrSessionInconsistent
 	}
 	sess, err := s.kc.LoadSession()
-	if err != nil {
+	if errors.Is(err, keychain.ErrNotFound) {
 		return nil, fmt.Errorf("%w — run `protonmail-mcp login`", proterr.ErrNoSession)
+	}
+	if err != nil {
+		// A corrupt file, a permission error, or a locked keychain is not the
+		// "not logged in" state — surface it verbatim so the user can fix the
+		// real problem instead of looping on `login` (which would hit the same
+		// error). Only keychain.ErrNotFound maps to the login hint above.
+		return nil, fmt.Errorf("load session from credential store: %w", err)
 	}
 	c, refreshed, err := s.mgr.NewClientWithRefresh(ctx, sess.UID, sess.RefreshToken)
 	if err != nil {
-		// If Proton rejected the stored refresh token (typical after server-
-		// side session invalidation, e.g. another login closed it), proterr
-		// will surface a proton/auth_required Error pointing the user at
-		// `protonmail-mcp login`. Forward it so the user sees a stable code +
-		// hint instead of "refresh session: <opaque proton api error>".
-		if pe := proterr.Map(err); pe != nil && pe.Code == "proton/auth_required" {
+		pe := proterr.Map(err)
+		// Only a rejected/revoked refresh token warrants an unattended relogin
+		// (proterr.RefreshRejected: 401, or code 10013 "refresh token
+		// revoked"). A generic 422/400, a transport error, a 5xx, or a 429 must
+		// NOT trigger relogin: re-login can't fix Proton being down, and
+		// repeated SRP attempts risk tripping its anti-abuse lockout
+		// (~10 logins/min). The reloginExhausted latch bounds it to one attempt
+		// until Login/Logout resets it. reloginLocked sets s.client on success;
+		// we already hold s.mu.
+		if proterr.RefreshRejected(err) && !s.reloginExhausted {
+			healed, captcha := s.reloginLocked(ctx)
+			if healed != nil {
+				return healed, nil
+			}
+			s.reloginExhausted = true
+			if captcha != nil {
+				return nil, captcha
+			}
+		}
+		// No relogin, or it failed: forward a stable auth_required code + hint
+		// when Proton classified it that way, otherwise the wrapped error.
+		if pe != nil && pe.Code == "proton/auth_required" {
 			return nil, pe
 		}
 		return nil, fmt.Errorf("refresh session: %w", err)
@@ -300,6 +330,7 @@ func (s *Session) Logout() error {
 	s.poisoned = false
 	s.persistDegraded = false
 	s.persistErrReason = ""
+	s.reloginExhausted = false
 	return nil
 }
 
@@ -313,7 +344,57 @@ type LoginInput struct {
 func (s *Session) Login(ctx context.Context, in LoginInput) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	return s.loginLocked(ctx, in)
+}
 
+// reloginLocked attempts unattended self-heal after a cold-start refresh
+// failure by re-running login from stored credentials. The caller MUST hold
+// s.mu. It returns:
+//   - (client, nil)  on a successful relogin (in-memory + persisted state set);
+//   - (nil, captcha) when Proton answered with a human-verification challenge
+//     that cannot be solved without an operator;
+//   - (nil, nil)     when no usable creds are stored, the stored TOTP secret is
+//     absent, or the relogin failed for any other reason — leaving the caller
+//     to surface the original refresh error.
+func (s *Session) reloginLocked(ctx context.Context) (*proton.Client, error) {
+	creds, err := s.kc.LoadCreds()
+	if err != nil {
+		// A real load failure (corrupt file, permission error) is distinct from
+		// "no creds stored"; surface it so a headless operator can diagnose why
+		// self-heal could not run instead of seeing only the refresh error.
+		if !errors.Is(err, keychain.ErrNotFound) {
+			slog.Warn("session: self-heal aborted, could not load stored credentials", "err", err)
+		}
+		return nil, nil
+	}
+	if creds.Username == "" || creds.Password == "" {
+		return nil, nil
+	}
+	rerr := s.loginLocked(ctx, LoginInput{
+		Username:   creds.Username,
+		Password:   creds.Password,
+		TOTPSecret: creds.TOTPSecret,
+	})
+	if rerr != nil {
+		cpe := proterr.Map(rerr)
+		if cpe != nil && cpe.Code == "proton/captcha" {
+			return nil, cpe
+		}
+		// Log the mapped code (never the wrapped cause, which could echo
+		// credentials) so the failed self-heal is observable in daemon logs.
+		code := "unknown"
+		if cpe != nil {
+			code = cpe.Code
+		}
+		slog.Warn("session: self-heal relogin failed", "code", code)
+		return nil, nil
+	}
+	return s.client, nil
+}
+
+// loginLocked performs password+2FA auth and persists state. Caller MUST hold
+// s.mu (so the cold-start self-heal path can reuse it without re-locking).
+func (s *Session) loginLocked(ctx context.Context, in LoginInput) error {
 	c, auth, err := s.mgr.NewClientWithLogin(ctx, in.Username, []byte(in.Password))
 	if err != nil {
 		return fmt.Errorf("password auth: %w", err)
@@ -384,6 +465,7 @@ func (s *Session) Login(ctx context.Context, in LoginInput) error {
 	s.client = c
 	s.current = next
 	s.raw.setAuth(next.AccessToken, next.UID)
+	s.reloginExhausted = false
 	return nil
 }
 

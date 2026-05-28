@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"os"
@@ -55,27 +56,24 @@ func run(
 	slog.SetDefault(logger)
 
 	apiURL := envLookup(env, "PROTONMAIL_MCP_API_URL")
+	getenv := func(k string) string { return envLookup(env, k) }
 
 	if len(args) > 0 {
 		switch args[0] {
 		case "login":
-			if err := runLogin(ctx, apiURL, transport, stdin, stdout, stderr); err != nil {
+			if err := runLogin(ctx, getenv, apiURL, transport, stdin, stdout, stderr); err != nil {
 				_, _ = stderr.Write([]byte("login: " + err.Error() + "\n"))
 				return 1
 			}
 			return 0
 		case "logout":
-			if err := runLogout(ctx, apiURL, transport, stderr); err != nil {
+			if err := runLogout(ctx, getenv, apiURL, transport, stderr); err != nil {
 				_, _ = stderr.Write([]byte("logout: " + err.Error() + "\n"))
 				return 1
 			}
 			return 0
 		case "status":
-			if err := runStatus(ctx, apiURL, transport, stdout); err != nil {
-				_, _ = stderr.Write([]byte("status: " + err.Error() + "\n"))
-				return 1
-			}
-			return 0
+			return statusExitCode(runStatus(ctx, getenv, apiURL, transport, stdout), stderr)
 		default:
 			_, _ = stderr.Write([]byte("unknown subcommand " + args[0] + "\n"))
 			return 2
@@ -103,13 +101,25 @@ func runWithSessionHook(
 ) int {
 	if len(args) > 0 && args[0] == "status" {
 		apiURL := envLookup(env, "PROTONMAIL_MCP_API_URL")
-		if err := runStatusWithHook(ctx, apiURL, transport, stdout, statusHook); err != nil {
-			_, _ = stderr.Write([]byte("status: " + err.Error() + "\n"))
-			return 1
-		}
-		return 0
+		getenv := func(k string) string { return envLookup(env, k) }
+		return statusExitCode(runStatusWithHook(ctx, getenv, apiURL, transport, stdout, statusHook), stderr)
 	}
 	return run(ctx, args, env, stdin, stdout, stderr, transport)
+}
+
+// statusExitCode maps a status result to a process exit code: 0 on success, 3
+// when persistence is degraded (output already printed; surfaced for headless
+// monitors), 1 for any other error after writing it to stderr.
+func statusExitCode(err error, stderr io.Writer) int {
+	switch {
+	case err == nil:
+		return 0
+	case errors.Is(err, errStatusDegraded):
+		return 3
+	default:
+		_, _ = stderr.Write([]byte("status: " + err.Error() + "\n"))
+		return 1
+	}
 }
 
 func envLookup(env []string, key string) string {

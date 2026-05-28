@@ -23,6 +23,7 @@ func RegisterAll() {
 	registerLogoutInvalidates()
 	registerReadTools()
 	registerRefreshRevoked()
+	registerReloginAfterRefreshReject()
 	registerServerBoot()
 	registerTokenRotation()
 	registerWriteAddresses()
