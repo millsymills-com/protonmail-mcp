@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"runtime"
 
+	dbus "github.com/godbus/dbus/v5"
 	"github.com/zalando/go-keyring"
 )
 
@@ -162,11 +163,20 @@ func (k *Keychain) Clear() error {
 // Load* methods get the hint as well as the Save* methods.
 const interactionNotAllowedExitCode = 36
 
-// diagnoseKeychainErr augments the one opaque go-keyring error that has a known
-// macOS cause: errSecInteractionNotAllowed, which surfaces as an *exec.ExitError
-// with code 36 when the login keychain is locked or unreachable from the
-// current context (e.g. a non-GUI agent with no SecurityAgent connection). All
-// other errors — other exit statuses, non-darwin platforms, and go-keyring's
+// secretServiceUnknownDBusName is the D-Bus error name returned when no process
+// owns org.freedesktop.secrets — i.e. no Secret Service is running. This is the
+// failure on a headless host or a --no-create-home service user with no
+// unlocked session keyring.
+const secretServiceUnknownDBusName = "org.freedesktop.DBus.Error.ServiceUnknown"
+
+// diagnoseKeychainErr augments the two opaque go-keyring errors that have a
+// known, actionable cause:
+//   - macOS: errSecInteractionNotAllowed, surfacing as an *exec.ExitError with
+//     code 36 when the login keychain is locked or unreachable.
+//   - Linux/BSD: org.freedesktop.DBus.Error.ServiceUnknown, surfacing as a
+//     dbus.Error when no Secret Service is available — point at the file backend.
+//
+// All other errors — other exit statuses, other D-Bus errors, and go-keyring's
 // own typed errors (ErrNotFound, ErrSetDataTooBig, …) — pass through unchanged,
 // since they already carry an actionable message.
 func diagnoseKeychainErr(cause error) error {
@@ -174,18 +184,32 @@ func diagnoseKeychainErr(cause error) error {
 }
 
 // diagnoseKeychainErrFor is the GOOS-parameterized core, split out so tests can
-// exercise both the darwin and non-darwin branches deterministically. The match
-// is structural (errors.As + ExitCode) rather than a stringified comparison so
-// it survives a future go-keyring wrapping the error or capturing stderr.
+// exercise the darwin and non-darwin branches deterministically. Both matches
+// are structural (errors.As on *exec.ExitError / dbus.Error) rather than a
+// stringified comparison, so they survive a future go-keyring wrapping the error
+// or capturing stderr.
 func diagnoseKeychainErrFor(cause error, goos string) error {
-	var exitErr *exec.ExitError
-	if cause == nil || goos != "darwin" || !errors.As(cause, &exitErr) ||
-		exitErr.ExitCode() != interactionNotAllowedExitCode {
+	if cause == nil {
 		return cause
 	}
-	return fmt.Errorf(
-		"%w (login keychain is locked or unreachable from this context — "+
-			"unlock via Keychain Access.app, or run `security unlock-keychain "+
-			"~/Library/Keychains/login.keychain-db` in a Terminal.app session "+
-			"that has a SecurityAgent connection)", cause)
+	if goos == "darwin" {
+		var exitErr *exec.ExitError
+		if errors.As(cause, &exitErr) && exitErr.ExitCode() == interactionNotAllowedExitCode {
+			return fmt.Errorf(
+				"%w (login keychain is locked or unreachable from this context — "+
+					"unlock via Keychain Access.app, or run `security unlock-keychain "+
+					"~/Library/Keychains/login.keychain-db` in a Terminal.app session "+
+					"that has a SecurityAgent connection)", cause)
+		}
+		return cause
+	}
+	var dbusErr dbus.Error
+	if errors.As(cause, &dbusErr) && dbusErr.Name == secretServiceUnknownDBusName {
+		return fmt.Errorf(
+			"%w (no D-Bus Secret Service is available on this host — set "+
+				"PROTONMAIL_MCP_CREDENTIAL_BACKEND=file and PROTONMAIL_MCP_STATE_DIR "+
+				"to use the file credential backend; see docs/headless-deployment.md)",
+			cause)
+	}
+	return cause
 }
