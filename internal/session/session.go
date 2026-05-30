@@ -448,15 +448,10 @@ func (s *Session) loginLocked(ctx context.Context, in LoginInput) error {
 		}
 	}
 
-	mailboxPassword := in.MailboxPassword
-	if auth.PasswordMode == proton.TwoPasswordMode && mailboxPassword == "" {
+	mailboxPassword, err := chooseMailboxPassword(auth.PasswordMode, in.MailboxPassword)
+	if err != nil {
 		c.Close()
-		return ErrMailboxPasswordRequired
-	}
-	// One-password mode reuses the login password; persist it empty so the
-	// unlock path falls back to Password (keeps existing accounts migration-free).
-	if auth.PasswordMode == proton.OnePasswordMode {
-		mailboxPassword = ""
+		return err
 	}
 
 	c.AddAuthHandler(func(a proton.Auth) {
@@ -487,6 +482,24 @@ func (s *Session) loginLocked(ctx context.Context, in LoginInput) error {
 	s.raw.setAuth(next.AccessToken, next.UID)
 	s.reloginExhausted = false
 	return nil
+}
+
+// chooseMailboxPassword resolves the mailbox password to persist for the
+// account's password mode. Two-password accounts require a supplied value;
+// one-password accounts reuse the login password (persisted empty so the
+// unlock path falls back to it), keeping existing accounts migration-free.
+func chooseMailboxPassword(mode proton.PasswordMode, supplied string) (string, error) {
+	switch mode {
+	case proton.TwoPasswordMode:
+		if supplied == "" {
+			return "", ErrMailboxPasswordRequired
+		}
+		return supplied, nil
+	case proton.OnePasswordMode:
+		return "", nil
+	default:
+		return "", fmt.Errorf("unrecognised password mode %d", mode)
+	}
 }
 
 // persistLoginState writes credentials and the post-auth session to the
