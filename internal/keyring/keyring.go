@@ -29,8 +29,8 @@ type Keyrings struct {
 // unlocks each address keyring against it. mailboxPassword must be the actual
 // mailbox password (login password for one-password-mode accounts).
 //
-// Note: Keys.Primary() panics if the user has no keys; we guard with a len
-// check before calling it.
+// Note: proton.Keys.Primary() panics when no key is marked primary, so we find
+// the primary key with an explicit loop and return an error instead.
 func Unlock(ctx context.Context, f KeyFetcher, mailboxPassword []byte) (*Keyrings, error) {
 	salts, err := f.GetSalts(ctx)
 	if err != nil {
@@ -40,10 +40,18 @@ func Unlock(ctx context.Context, f KeyFetcher, mailboxPassword []byte) (*Keyring
 	if err != nil {
 		return nil, fmt.Errorf("get user: %w", err)
 	}
-	if len(user.Keys) == 0 {
+	var primary proton.Key
+	hasPrimary := false
+	for _, k := range user.Keys {
+		if k.Primary {
+			primary = k
+			hasPrimary = true
+			break
+		}
+	}
+	if !hasPrimary {
 		return nil, fmt.Errorf("user has no primary key")
 	}
-	primary := user.Keys.Primary()
 	saltedKeyPass, err := salts.SaltForKey(mailboxPassword, primary.ID)
 	if err != nil {
 		return nil, fmt.Errorf("salt for key: %w", err)

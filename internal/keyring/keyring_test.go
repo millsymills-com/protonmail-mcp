@@ -176,6 +176,17 @@ func TestUnlockNoPrimaryKey(t *testing.T) {
 	}
 }
 
+// TestUnlockNoPrimaryKeyNonEmpty covers a user with keys where none is marked
+// primary: proton.Keys.Primary() would panic, so Unlock must return an error.
+func TestUnlockNoPrimaryKeyNonEmpty(t *testing.T) {
+	f := fakeFetcher{
+		user: proton.User{Keys: proton.Keys{{ID: "k1"}}},
+	}
+	if _, err := Unlock(context.Background(), f, []byte("pw")); err == nil {
+		t.Fatal("expected error when no key is primary, got nil (or it panicked)")
+	}
+}
+
 // TestUnlockSaltNotFoundError covers the SaltForKey error path: user has a key
 // but the salts slice has no matching entry.
 func TestUnlockSaltNotFoundError(t *testing.T) {
