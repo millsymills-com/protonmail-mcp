@@ -272,6 +272,21 @@ func TestPrepareDirTightensLoosePerms(t *testing.T) {
 	}
 }
 
+func TestCredfileRoundTripsMailboxPassword(t *testing.T) {
+	s := newTmp(t)
+	want := keychain.Creds{Username: "u@example.test", Password: "login-pw", MailboxPassword: "mbox-pw"}
+	if err := s.SaveCreds(want); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+	got, err := s.LoadCreds()
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if got.MailboxPassword != "mbox-pw" {
+		t.Fatalf("MailboxPassword = %q, want %q", got.MailboxPassword, "mbox-pw")
+	}
+}
+
 func TestClearRemovesFile(t *testing.T) {
 	s := newTmp(t)
 	if err := s.SaveSession(keychain.Session{UID: "x"}); err != nil {

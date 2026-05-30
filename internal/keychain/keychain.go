@@ -17,6 +17,7 @@ const (
 	keyUsername     = "username"
 	keyPassword     = "password"
 	keyTOTPSecret   = "totp_secret"
+	keyMailboxPass  = "mailbox_password"
 	keyUID          = "session_uid"
 	keyAccessToken  = "access_token"
 	keyRefreshToken = "refresh_token"
@@ -24,10 +25,13 @@ const (
 
 // Creds is the long-lived credential bundle written by `protonmail-mcp login`.
 // TOTPSecret may be empty when the user opted to enter a one-shot code.
+// MailboxPassword is set only for two-password-mode accounts. Empty means
+// the login Password doubles as the mailbox password (one-password mode).
 type Creds struct {
-	Username   string
-	Password   string
-	TOTPSecret string
+	Username        string
+	Password        string
+	TOTPSecret      string
+	MailboxPassword string
 }
 
 // Session is the short-lived auth state. Both tokens are rotated by go-proton-api.
@@ -82,18 +86,24 @@ func (k *Keychain) SaveCreds(c Creds) error {
 	if err := keyringSet(service, keyPassword, c.Password); err != nil {
 		return fmt.Errorf("save password: %w", diagnoseKeychainErr(err))
 	}
-	// TOTP secret is optional. When the caller supplies an empty string, drop
-	// any pre-existing entry so a stale secret from a prior login can't bleed
-	// through. Tolerate ErrNotFound (no entry to delete).
-	if c.TOTPSecret == "" {
-		if err := keyringDelete(service, keyTOTPSecret); err != nil &&
+	if err := saveOptional(keyTOTPSecret, c.TOTPSecret); err != nil {
+		return err
+	}
+	return saveOptional(keyMailboxPass, c.MailboxPassword)
+}
+
+// saveOptional sets key to value, or deletes any stale entry when value is
+// empty so a secret from a prior login cannot bleed through.
+func saveOptional(key, value string) error {
+	if value == "" {
+		if err := keyringDelete(service, key); err != nil &&
 			!errors.Is(err, keyring.ErrNotFound) {
-			return fmt.Errorf("clear stale totp: %w", diagnoseKeychainErr(err))
+			return fmt.Errorf("clear stale %s: %w", key, diagnoseKeychainErr(err))
 		}
 		return nil
 	}
-	if err := keyringSet(service, keyTOTPSecret, c.TOTPSecret); err != nil {
-		return fmt.Errorf("save totp: %w", diagnoseKeychainErr(err))
+	if err := keyringSet(service, key, value); err != nil {
+		return fmt.Errorf("save %s: %w", key, diagnoseKeychainErr(err))
 	}
 	return nil
 }
@@ -111,7 +121,11 @@ func (k *Keychain) LoadCreds() (Creds, error) {
 	if err != nil && !errors.Is(err, keyring.ErrNotFound) {
 		return Creds{}, fmt.Errorf("load totp: %w", diagnoseKeychainErr(err))
 	}
-	return Creds{Username: u, Password: p, TOTPSecret: t}, nil
+	m, err := keyringGet(service, keyMailboxPass)
+	if err != nil && !errors.Is(err, keyring.ErrNotFound) {
+		return Creds{}, fmt.Errorf("load mailbox password: %w", diagnoseKeychainErr(err))
+	}
+	return Creds{Username: u, Password: p, TOTPSecret: t, MailboxPassword: m}, nil
 }
 
 func (k *Keychain) SaveSession(s Session) error {
@@ -144,7 +158,7 @@ func (k *Keychain) LoadSession() (Session, error) {
 }
 
 func (k *Keychain) Clear() error {
-	keys := []string{keyUsername, keyPassword, keyTOTPSecret, keyUID, keyAccessToken, keyRefreshToken}
+	keys := []string{keyUsername, keyPassword, keyTOTPSecret, keyMailboxPass, keyUID, keyAccessToken, keyRefreshToken}
 	for _, key := range keys {
 		if err := keyringDelete(service, key); err != nil && !errors.Is(err, keyring.ErrNotFound) {
 			return fmt.Errorf("delete %s: %w", key, diagnoseKeychainErr(err))
