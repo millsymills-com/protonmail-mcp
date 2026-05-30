@@ -18,6 +18,7 @@ import (
 	proton "github.com/ProtonMail/go-proton-api"
 	"github.com/go-resty/resty/v2"
 	"github.com/millsmillsymills/protonmail-mcp/internal/keychain"
+	"github.com/millsmillsymills/protonmail-mcp/internal/keyring"
 	"github.com/millsmillsymills/protonmail-mcp/internal/proterr"
 )
 
@@ -38,6 +39,10 @@ type Session struct {
 	raw     *rawClient
 	kc      Store
 	current keychain.Session
+	// keyrings is the lazily-unlocked, session-lifetime PGP keyring cache. Holds
+	// decrypted private key material; nil until first crypto use and dropped on
+	// logout/relogin. Never persisted, never logged.
+	keyrings *keyring.Keyrings
 	// poisoned indicates the in-process Session and the keychain are known
 	// to be in inconsistent states because a Login persist rollback's Clear
 	// itself failed. Subsequent operations that would otherwise read from
@@ -95,6 +100,46 @@ func (s *Session) Status() Status {
 		PersistDegraded: s.persistDegraded,
 		PersistError:    s.persistErrReason,
 	}
+}
+
+// clearKeyringCache drops the unlocked keyrings. Caller must hold s.mu when
+// reachable from a locked path (Logout and loginLocked already do).
+func (s *Session) clearKeyringCache() {
+	s.keyrings = nil
+}
+
+// Keyrings returns the session's unlocked PGP keyrings, unlocking them on
+// first use and caching the result for the session lifetime. The mailbox
+// password is the stored MailboxPassword, or the login password for
+// one-password accounts.
+func (s *Session) Keyrings(ctx context.Context) (*keyring.Keyrings, error) {
+	s.mu.RLock()
+	cached := s.keyrings
+	s.mu.RUnlock()
+	if cached != nil {
+		return cached, nil
+	}
+
+	c, err := s.Client(ctx)
+	if err != nil {
+		return nil, err
+	}
+	creds, err := s.kc.LoadCreds()
+	if err != nil {
+		return nil, fmt.Errorf("load creds for keyring unlock: %w", err)
+	}
+	mailbox := creds.MailboxPassword
+	if mailbox == "" {
+		mailbox = creds.Password
+	}
+	krs, err := keyring.Unlock(ctx, c, []byte(mailbox))
+	if err != nil {
+		return nil, err
+	}
+	s.mu.Lock()
+	s.keyrings = krs
+	s.mu.Unlock()
+	return krs, nil
 }
 
 // SetPersistDegradedForTest injects degraded state for tests that hold
@@ -337,6 +382,7 @@ func (s *Session) Logout() error {
 	s.persistDegraded = false
 	s.persistErrReason = ""
 	s.reloginExhausted = false
+	s.clearKeyringCache()
 	return nil
 }
 
@@ -481,6 +527,7 @@ func (s *Session) loginLocked(ctx context.Context, in LoginInput) error {
 	s.current = next
 	s.raw.setAuth(next.AccessToken, next.UID)
 	s.reloginExhausted = false
+	s.clearKeyringCache()
 	return nil
 }
 
