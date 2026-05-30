@@ -107,8 +107,12 @@ func TestDecryptBodyUnknownAddressErrors(t *testing.T) {
 func TestDecryptBodyBadArmoredErrors(t *testing.T) {
 	kr := newTestKeyRing(t)
 	krs := &Keyrings{User: kr, Addr: map[string]*crypto.KeyRing{"addr-1": kr}}
-	if _, err := krs.DecryptBody("addr-1", "not-armored-pgp-data"); err == nil {
+	_, err := krs.DecryptBody("addr-1", "not-armored-pgp-data")
+	if err == nil {
 		t.Fatal("expected error for malformed armored body")
+	}
+	if !errors.Is(err, proterr.ErrKeyringLocked) {
+		t.Fatalf("expected ErrKeyringLocked, got %v", err)
 	}
 }
 
@@ -125,8 +129,12 @@ func TestDecryptBodyWrongKeyErrors(t *testing.T) {
 		t.Fatalf("armor: %v", err)
 	}
 	krs := &Keyrings{User: decKR, Addr: map[string]*crypto.KeyRing{"addr-1": decKR}}
-	if _, err := krs.DecryptBody("addr-1", pgp); err == nil {
+	_, err = krs.DecryptBody("addr-1", pgp)
+	if err == nil {
 		t.Fatal("expected error when decrypting with wrong key")
+	}
+	if !errors.Is(err, proterr.ErrKeyringLocked) {
+		t.Fatalf("expected ErrKeyringLocked, got %v", err)
 	}
 }
 
