@@ -102,8 +102,7 @@ func (s *Session) Status() Status {
 	}
 }
 
-// clearKeyringCache drops the unlocked keyrings. Caller must hold s.mu when
-// reachable from a locked path (Logout and loginLocked already do).
+// clearKeyringCache drops the cached keyrings. Caller must hold s.mu.
 func (s *Session) clearKeyringCache() {
 	s.keyrings = nil
 }
@@ -134,7 +133,7 @@ func (s *Session) Keyrings(ctx context.Context) (*keyring.Keyrings, error) {
 	}
 	krs, err := keyring.Unlock(ctx, c, []byte(mailbox))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unlock keyrings: %w", err)
 	}
 	s.mu.Lock()
 	s.keyrings = krs
