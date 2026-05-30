@@ -111,9 +111,12 @@ holding the unlocked user keyring plus per-address keyrings.
 - **Cleared on logout and relogin.** Any auth-state reset drops the cached keyrings.
 - **Never persisted, never logged.** Decrypted keyrings stay in memory only; the existing
   log-redaction set is extended to cover keyring/passphrase material.
-- **Surface:** two idempotent helpers — `Session.UserKeyRing(ctx)` and
-  `Session.AddrKeyRing(ctx, addrID)`. Both unlock-on-demand and return the cached keyring
-  thereafter.
+- **Surface:** a single idempotent accessor — `Session.Keyrings(ctx)` — returns the
+  unlocked `*keyring.Keyrings` (user keyring + per-address keyrings), unlocking on first
+  use and returning the cached value thereafter. Decryption is a method on the returned
+  value (`(*keyring.Keyrings).DecryptBody(addrID, armoredBody)`), colocating the operation
+  with the keys it needs. (Phase 0 chose this one-entry-point shape over separate
+  `UserKeyRing`/`AddrKeyRing` helpers.)
 
 ### Two-password mode and credential migration
 
