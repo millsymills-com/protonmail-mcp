@@ -279,12 +279,14 @@ func TestUnlockHappyPath(t *testing.T) {
 	}
 }
 
-// TestUnlockAddressSkippedOnError covers the continue path when an address key
-// fails to unlock — the address is skipped but the call still succeeds.
+// TestUnlockAddressSkippedOnError covers the continue path: one address key
+// fails to unlock and is skipped while a good address still unlocks, so the
+// call succeeds and only the good address is present.
 func TestUnlockAddressSkippedOnError(t *testing.T) {
 	masterPass := []byte("mailbox-pass")
 	rawSalt := []byte("abcdef1234567890") // 16 bytes
 	userKey, userSalt := lockedProtonKey(t, "key-1", masterPass, rawSalt)
+	goodAddrKey, _ := lockedProtonKey(t, "good-key", masterPass, rawSalt)
 
 	f := fakeFetcher{
 		salts: proton.Salts{userSalt},
@@ -301,6 +303,7 @@ func TestUnlockAddressSkippedOnError(t *testing.T) {
 					},
 				},
 			},
+			{ID: "good-addr", Keys: proton.Keys{goodAddrKey}},
 		},
 	}
 	krs, err := Unlock(context.Background(), f, masterPass)
@@ -309,5 +312,36 @@ func TestUnlockAddressSkippedOnError(t *testing.T) {
 	}
 	if _, ok := krs.Addr["bad-addr"]; ok {
 		t.Fatal("expected bad-addr to be skipped, not present")
+	}
+	if _, ok := krs.Addr["good-addr"]; !ok {
+		t.Fatal("expected good-addr to be unlocked")
+	}
+}
+
+// TestUnlockAllAddressesSkippedReturnsError covers the post-loop guard: the
+// user keyring unlocks but every address key fails (here, the address key is
+// locked under a different passphrase), so Unlock must error rather than
+// silently return an empty address map.
+func TestUnlockAllAddressesSkippedReturnsError(t *testing.T) {
+	masterPass := []byte("mailbox-pass")
+	rawSalt := []byte("abcdef1234567890") // 16 bytes
+	userKey, userSalt := lockedProtonKey(t, "key-1", masterPass, rawSalt)
+	// Address key locked under a different master password: a.Keys.Unlock fails.
+	otherSalt := []byte("0987654321fedcba") // 16 bytes
+	badAddrKey, _ := lockedProtonKey(t, "addr-key", []byte("other-pass"), otherSalt)
+
+	f := fakeFetcher{
+		salts: proton.Salts{userSalt},
+		user:  proton.User{Keys: proton.Keys{userKey}},
+		addrs: []proton.Address{
+			{ID: "addr-1", Keys: proton.Keys{badAddrKey}},
+		},
+	}
+	krs, err := Unlock(context.Background(), f, masterPass)
+	if err == nil {
+		t.Fatal("expected error when no address keyring unlocks")
+	}
+	if krs != nil {
+		t.Fatalf("expected nil Keyrings on error, got %+v", krs)
 	}
 }

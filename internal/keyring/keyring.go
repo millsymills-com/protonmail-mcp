@@ -68,11 +68,17 @@ func Unlock(ctx context.Context, f KeyFetcher, mailboxPassword []byte) (*Keyring
 	for _, a := range addrs {
 		kr, err := a.Keys.Unlock(saltedKeyPass, userKR)
 		if err != nil {
-			// A disabled address with no usable key is not fatal — skip it so a
-			// single bad address can't block decryption for all the others.
+			// A disabled or inactive address can have no usable key; skip it so one
+			// such address doesn't block decryption for the others. Total failure
+			// (no address unlocked at all) is caught by the guard after the loop.
 			continue
 		}
 		addrKRs[a.ID] = kr
+	}
+	if len(addrs) > 0 && len(addrKRs) == 0 {
+		return nil, fmt.Errorf(
+			"no address keyring could be unlocked (wrong password or all addresses disabled)",
+		)
 	}
 	return &Keyrings{User: userKR, Addr: addrKRs}, nil
 }
