@@ -261,3 +261,21 @@ func TestLogoutLeavesPoisonOnClearFailure(t *testing.T) {
 		t.Fatal("Logout with failed Clear must leave poisoned flag set")
 	}
 }
+
+func TestErrMailboxPasswordRequiredIsDistinct(t *testing.T) {
+	// Guards the sentinel used by the CLI to branch into a mailbox-password
+	// prompt instead of treating it as a generic auth failure.
+	if !errors.Is(ErrMailboxPasswordRequired, ErrMailboxPasswordRequired) {
+		t.Fatal("sentinel must match itself")
+	}
+	if errors.Is(ErrMailboxPasswordRequired, ErrTOTPRequired) {
+		t.Fatal("mailbox-password and TOTP sentinels must be distinct")
+	}
+}
+
+func TestLoginInputCarriesMailboxPassword(t *testing.T) {
+	in := LoginInput{Username: "u@example.test", Password: "login", MailboxPassword: "mbox"}
+	if in.MailboxPassword != "mbox" {
+		t.Fatalf("MailboxPassword = %q, want %q", in.MailboxPassword, "mbox")
+	}
+}

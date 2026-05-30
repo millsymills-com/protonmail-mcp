@@ -73,6 +73,12 @@ var ErrSessionInconsistent = errors.New(
 // than matching the error string.
 var ErrTOTPRequired = errors.New("2FA required but no TOTP provided")
 
+// ErrMailboxPasswordRequired is returned from Login when the account uses
+// two-password mode but LoginInput supplied no MailboxPassword. Callers should
+// use errors.Is to branch into a mailbox-password prompt.
+var ErrMailboxPasswordRequired = errors.New(
+	"mailbox password required (two-password mode) but none provided")
+
 // Status reports persistence-layer health. PersistDegraded is true when
 // the most recent SaveSession write failed; in-memory tokens still work
 // for the current process.
@@ -335,10 +341,11 @@ func (s *Session) Logout() error {
 }
 
 type LoginInput struct {
-	Username   string
-	Password   string
-	TOTPSecret string // raw seed; if empty, TOTPCode is consumed once
-	TOTPCode   string // 6-digit code; only used if TOTPSecret is empty
+	Username        string
+	Password        string
+	TOTPSecret      string // raw seed; if empty, TOTPCode is consumed once
+	TOTPCode        string // 6-digit code; only used if TOTPSecret is empty
+	MailboxPassword string // required only in two-password mode
 }
 
 func (s *Session) Login(ctx context.Context, in LoginInput) error {
@@ -371,9 +378,10 @@ func (s *Session) reloginLocked(ctx context.Context) (*proton.Client, error) {
 		return nil, nil
 	}
 	rerr := s.loginLocked(ctx, LoginInput{
-		Username:   creds.Username,
-		Password:   creds.Password,
-		TOTPSecret: creds.TOTPSecret,
+		Username:        creds.Username,
+		Password:        creds.Password,
+		TOTPSecret:      creds.TOTPSecret,
+		MailboxPassword: creds.MailboxPassword,
 	})
 	if rerr != nil {
 		cpe := proterr.Map(rerr)
@@ -440,6 +448,17 @@ func (s *Session) loginLocked(ctx context.Context, in LoginInput) error {
 		}
 	}
 
+	mailboxPassword := in.MailboxPassword
+	if auth.PasswordMode == proton.TwoPasswordMode && mailboxPassword == "" {
+		c.Close()
+		return ErrMailboxPasswordRequired
+	}
+	// One-password mode reuses the login password; persist it empty so the
+	// unlock path falls back to Password (keeps existing accounts migration-free).
+	if auth.PasswordMode == proton.OnePasswordMode {
+		mailboxPassword = ""
+	}
+
 	c.AddAuthHandler(func(a proton.Auth) {
 		s.OnAuthRotated(keychain.Session{
 			UID:          a.UID,
@@ -454,9 +473,10 @@ func (s *Session) loginLocked(ctx context.Context, in LoginInput) error {
 		RefreshToken: auth.RefreshToken,
 	}
 	if err := s.persistLoginState(keychain.Creds{
-		Username:   in.Username,
-		Password:   in.Password,
-		TOTPSecret: in.TOTPSecret,
+		Username:        in.Username,
+		Password:        in.Password,
+		TOTPSecret:      in.TOTPSecret,
+		MailboxPassword: mailboxPassword,
 	}, next); err != nil {
 		c.Close()
 		return err
