@@ -9,6 +9,7 @@ import (
 	proton "github.com/ProtonMail/go-proton-api"
 	srp "github.com/ProtonMail/go-srp"
 	"github.com/ProtonMail/gopenpgp/v2/crypto"
+	"github.com/millsmillsymills/protonmail-mcp/internal/proterr"
 )
 
 // newTestKeyRing generates an unlocked in-memory keyring for tests.
@@ -94,8 +95,12 @@ func TestDecryptBodyRecoversPlaintext(t *testing.T) {
 
 func TestDecryptBodyUnknownAddressErrors(t *testing.T) {
 	krs := &Keyrings{User: nil, Addr: map[string]*crypto.KeyRing{}}
-	if _, err := krs.DecryptBody("missing", "irrelevant"); err == nil {
+	_, err := krs.DecryptBody("missing", "irrelevant")
+	if err == nil {
 		t.Fatal("expected error for unknown address ID")
+	}
+	if !errors.Is(err, proterr.ErrKeyringLocked) {
+		t.Fatalf("expected ErrKeyringLocked, got %v", err)
 	}
 }
 
@@ -340,6 +345,9 @@ func TestUnlockAllAddressesSkippedReturnsError(t *testing.T) {
 	krs, err := Unlock(context.Background(), f, masterPass)
 	if err == nil {
 		t.Fatal("expected error when no address keyring unlocks")
+	}
+	if !errors.Is(err, proterr.ErrKeyringLocked) {
+		t.Fatalf("expected ErrKeyringLocked, got %v", err)
 	}
 	if krs != nil {
 		t.Fatalf("expected nil Keyrings on error, got %+v", krs)

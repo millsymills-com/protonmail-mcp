@@ -56,7 +56,7 @@ type searchMessagesOut struct {
 type getMessageIn struct {
 	ID             string `json:"id"`
 	IncludeHeaders bool   `json:"include_headers,omitempty" jsonschema:"if true, return the full raw RFC822 header block + parsed headers (e.g. Authentication-Results)"`
-	IncludeBody    bool   `json:"include_body,omitempty" jsonschema:"if true, decrypt and return the plaintext body (requires an unlocked keyring)"`
+	IncludeBody    bool   `json:"include_body,omitempty" jsonschema:"if true, decrypt and return the plaintext body; returns proton/keyring_locked on a wrong mailbox password (non-retryable)"`
 }
 type getMessageOut struct {
 	Message       messageStubDTO      `json:"message"`

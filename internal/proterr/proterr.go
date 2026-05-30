@@ -101,6 +101,17 @@ func errToMCP(err error) *Error {
 		}
 	}
 
+	// Keyring unlock/decrypt failure: non-retryable. Checked last (after the
+	// APIError/HTTPError/NetError probes) so a Proton API error carried under a
+	// keyring fetch still maps via its status rather than being shadowed here.
+	if errors.Is(err, ErrKeyringLocked) {
+		return &Error{
+			Code:    "proton/keyring_locked",
+			Message: "Could not unlock or use the mailbox keyring.",
+			Hint:    "Verify the mailbox password (two-password accounts) and re-run `protonmail-mcp login`",
+		}
+	}
+
 	// Anything else is treated as upstream/transport.
 	return &Error{
 		Code:    "proton/upstream",

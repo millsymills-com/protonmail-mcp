@@ -9,6 +9,7 @@ import (
 
 	proton "github.com/ProtonMail/go-proton-api"
 	"github.com/ProtonMail/gopenpgp/v2/crypto"
+	"github.com/millsmillsymills/protonmail-mcp/internal/proterr"
 )
 
 // KeyFetcher is the subset of *proton.Client the unlocker needs. *proton.Client
@@ -58,7 +59,7 @@ func Unlock(ctx context.Context, f KeyFetcher, mailboxPassword []byte) (*Keyring
 	}
 	userKR, err := user.Keys.Unlock(saltedKeyPass, nil)
 	if err != nil {
-		return nil, fmt.Errorf("unlock user keyring: %w", err)
+		return nil, fmt.Errorf("unlock user keyring: %w: %w", proterr.ErrKeyringLocked, err)
 	}
 	addrs, err := f.GetAddresses(ctx)
 	if err != nil {
@@ -77,7 +78,8 @@ func Unlock(ctx context.Context, f KeyFetcher, mailboxPassword []byte) (*Keyring
 	}
 	if len(addrs) > 0 && len(addrKRs) == 0 {
 		return nil, fmt.Errorf(
-			"no address keyring could be unlocked (wrong password or all addresses disabled)",
+			"%w: no address keyring could be unlocked (wrong password or all addresses disabled)",
+			proterr.ErrKeyringLocked,
 		)
 	}
 	return &Keyrings{User: userKR, Addr: addrKRs}, nil
@@ -87,15 +89,15 @@ func Unlock(ctx context.Context, f KeyFetcher, mailboxPassword []byte) (*Keyring
 func (k *Keyrings) DecryptBody(addrID, armoredBody string) (string, error) {
 	kr, ok := k.Addr[addrID]
 	if !ok {
-		return "", fmt.Errorf("no unlocked keyring for address %s", addrID)
+		return "", fmt.Errorf("%w: no unlocked keyring for address %s", proterr.ErrKeyringLocked, addrID)
 	}
 	msg, err := crypto.NewPGPMessageFromArmored(armoredBody)
 	if err != nil {
-		return "", fmt.Errorf("parse armored body: %w", err)
+		return "", fmt.Errorf("parse armored body: %w: %w", proterr.ErrKeyringLocked, err)
 	}
 	plain, err := kr.Decrypt(msg, nil, 0)
 	if err != nil {
-		return "", fmt.Errorf("decrypt body: %w", err)
+		return "", fmt.Errorf("decrypt body: %w: %w", proterr.ErrKeyringLocked, err)
 	}
 	return plain.GetString(), nil
 }
