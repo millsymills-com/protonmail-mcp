@@ -158,7 +158,10 @@ func (k *Keychain) LoadSession() (Session, error) {
 }
 
 func (k *Keychain) Clear() error {
-	keys := []string{keyUsername, keyPassword, keyTOTPSecret, keyMailboxPass, keyUID, keyAccessToken, keyRefreshToken}
+	keys := []string{
+		keyUsername, keyPassword, keyTOTPSecret, keyMailboxPass,
+		keyUID, keyAccessToken, keyRefreshToken,
+	}
 	for _, key := range keys {
 		if err := keyringDelete(service, key); err != nil && !errors.Is(err, keyring.ErrNotFound) {
 			return fmt.Errorf("delete %s: %w", key, diagnoseKeychainErr(err))

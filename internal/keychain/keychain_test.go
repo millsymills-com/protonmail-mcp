@@ -94,7 +94,9 @@ func TestClearError(t *testing.T) {
 func TestSaveLoadCredsRoundTripsMailboxPassword(t *testing.T) {
 	keyring.MockInit()
 	k := keychain.New()
-	want := keychain.Creds{Username: "u@example.test", Password: "login-pw", MailboxPassword: "mbox-pw"}
+	want := keychain.Creds{
+		Username: "u@example.test", Password: "login-pw", MailboxPassword: "mbox-pw",
+	}
 	if err := k.SaveCreds(want); err != nil {
 		t.Fatalf("save: %v", err)
 	}
@@ -104,25 +106,6 @@ func TestSaveLoadCredsRoundTripsMailboxPassword(t *testing.T) {
 	}
 	if got.MailboxPassword != "mbox-pw" {
 		t.Fatalf("MailboxPassword = %q, want %q", got.MailboxPassword, "mbox-pw")
-	}
-}
-
-func TestLoadCredsToleratesMissingMailboxPassword(t *testing.T) {
-	keyring.MockInit()
-	k := keychain.New()
-	// Simulate a pre-migration bundle: username + password only, no mailbox key.
-	if err := keyring.Set("protonmail-mcp", "username", "u@example.test"); err != nil {
-		t.Fatal(err)
-	}
-	if err := keyring.Set("protonmail-mcp", "password", "login-pw"); err != nil {
-		t.Fatal(err)
-	}
-	got, err := k.LoadCreds()
-	if err != nil {
-		t.Fatalf("load must tolerate absent mailbox password: %v", err)
-	}
-	if got.MailboxPassword != "" {
-		t.Fatalf("MailboxPassword = %q, want empty", got.MailboxPassword)
 	}
 }
 

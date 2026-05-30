@@ -274,7 +274,9 @@ func TestPrepareDirTightensLoosePerms(t *testing.T) {
 
 func TestCredfileRoundTripsMailboxPassword(t *testing.T) {
 	s := newTmp(t)
-	want := keychain.Creds{Username: "u@example.test", Password: "login-pw", MailboxPassword: "mbox-pw"}
+	want := keychain.Creds{
+		Username: "u@example.test", Password: "login-pw", MailboxPassword: "mbox-pw",
+	}
 	if err := s.SaveCreds(want); err != nil {
 		t.Fatalf("save: %v", err)
 	}
