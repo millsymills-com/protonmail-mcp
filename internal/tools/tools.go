@@ -12,9 +12,11 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-// Deps is what handlers need. Kept tiny on purpose.
+// Deps is what handlers need. Kept tiny on purpose. Session is an interface so
+// tests can wrap a real session to drive handler error paths (e.g. a keyring
+// unlock failure) without a live backend.
 type Deps struct {
-	Session *session.Session
+	Session session.Service
 }
 
 // Register attaches every v1 tool to server. WritesEnabled is read once at
