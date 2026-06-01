@@ -56,100 +56,100 @@ type updateCoreSettingsOut struct {
 }
 
 func registerSettings(server *mcp.Server, d Deps) {
-	mcp.AddTool(server, &mcp.Tool{
+	addTool(server, d, &mcp.Tool{
 		Name:        "proton_get_mail_settings",
 		Description: "Returns mail settings (display name, signature, draft MIME type, default PGP scheme).",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ getMailSettingsIn) (*mcp.CallToolResult, getMailSettingsOut, error) {
-		c, fail := clientOrFail(ctx, d)
-		if fail != nil {
-			return fail, getMailSettingsOut{}, nil
+	}, func(ctx context.Context, d Deps, _ getMailSettingsIn) (getMailSettingsOut, *proterr.Error) {
+		c, perr := client(ctx, d)
+		if perr != nil {
+			return getMailSettingsOut{}, perr
 		}
 		ms, err := c.GetMailSettings(ctx)
 		if err != nil {
-			return failure(proterr.Map(err)), getMailSettingsOut{}, nil
+			return getMailSettingsOut{}, proterr.Map(err)
 		}
-		return nil, getMailSettingsOut{Settings: toMailSettingsDTO(ms)}, nil
+		return getMailSettingsOut{Settings: toMailSettingsDTO(ms)}, nil
 	})
 
-	mcp.AddTool(server, &mcp.Tool{
+	addTool(server, d, &mcp.Tool{
 		Name:        "proton_get_core_settings",
 		Description: "Returns account-level (core) settings: telemetry and crash-report flags.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ getCoreSettingsIn) (*mcp.CallToolResult, getCoreSettingsOut, error) {
-		c, fail := clientOrFail(ctx, d)
-		if fail != nil {
-			return fail, getCoreSettingsOut{}, nil
+	}, func(ctx context.Context, d Deps, _ getCoreSettingsIn) (getCoreSettingsOut, *proterr.Error) {
+		c, perr := client(ctx, d)
+		if perr != nil {
+			return getCoreSettingsOut{}, perr
 		}
 		us, err := c.GetUserSettings(ctx)
 		if err != nil {
-			return failure(proterr.Map(err)), getCoreSettingsOut{}, nil
+			return getCoreSettingsOut{}, proterr.Map(err)
 		}
-		return nil, getCoreSettingsOut{Settings: toCoreSettingsDTO(us)}, nil
+		return getCoreSettingsOut{Settings: toCoreSettingsDTO(us)}, nil
 	})
 
 	if !WritesEnabled() {
 		return
 	}
 
-	mcp.AddTool(server, &mcp.Tool{
+	addTool(server, d, &mcp.Tool{
 		Name:        "proton_update_mail_settings",
 		Description: "Updates mail settings (partial — only set fields are changed).",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateMailSettingsIn) (*mcp.CallToolResult, updateMailSettingsOut, error) {
-		c, fail := clientOrFail(ctx, d)
-		if fail != nil {
-			return fail, updateMailSettingsOut{}, nil
+	}, func(ctx context.Context, d Deps, in updateMailSettingsIn) (updateMailSettingsOut, *proterr.Error) {
+		c, perr := client(ctx, d)
+		if perr != nil {
+			return updateMailSettingsOut{}, perr
 		}
 		var ms proton.MailSettings
 		var err error
 		if in.DisplayName != nil {
 			ms, err = c.SetDisplayName(ctx, proton.SetDisplayNameReq{DisplayName: *in.DisplayName})
 			if err != nil {
-				return failure(proterr.Map(err)), updateMailSettingsOut{}, nil
+				return updateMailSettingsOut{}, proterr.Map(err)
 			}
 		}
 		if in.Signature != nil {
 			ms, err = c.SetSignature(ctx, proton.SetSignatureReq{Signature: *in.Signature})
 			if err != nil {
-				return failure(proterr.Map(err)), updateMailSettingsOut{}, nil
+				return updateMailSettingsOut{}, proterr.Map(err)
 			}
 		}
 		if in.DisplayName == nil && in.Signature == nil {
 			ms, err = c.GetMailSettings(ctx)
 			if err != nil {
-				return failure(proterr.Map(err)), updateMailSettingsOut{}, nil
+				return updateMailSettingsOut{}, proterr.Map(err)
 			}
 		}
-		return nil, updateMailSettingsOut{Settings: toMailSettingsDTO(ms)}, nil
+		return updateMailSettingsOut{Settings: toMailSettingsDTO(ms)}, nil
 	})
 
-	mcp.AddTool(server, &mcp.Tool{
+	addTool(server, d, &mcp.Tool{
 		Name:        "proton_update_core_settings",
 		Description: "Updates account-level (core) settings: telemetry and crash-report toggles.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateCoreSettingsIn) (*mcp.CallToolResult, updateCoreSettingsOut, error) {
-		c, fail := clientOrFail(ctx, d)
-		if fail != nil {
-			return fail, updateCoreSettingsOut{}, nil
+	}, func(ctx context.Context, d Deps, in updateCoreSettingsIn) (updateCoreSettingsOut, *proterr.Error) {
+		c, perr := client(ctx, d)
+		if perr != nil {
+			return updateCoreSettingsOut{}, perr
 		}
 		var us proton.UserSettings
 		var err error
 		if in.Telemetry != nil {
 			us, err = c.SetUserSettingsTelemetry(ctx, proton.SetTelemetryReq{Telemetry: boolToSettingsBool(*in.Telemetry)})
 			if err != nil {
-				return failure(proterr.Map(err)), updateCoreSettingsOut{}, nil
+				return updateCoreSettingsOut{}, proterr.Map(err)
 			}
 		}
 		if in.CrashReports != nil {
 			us, err = c.SetUserSettingsCrashReports(ctx, proton.SetCrashReportReq{CrashReports: boolToSettingsBool(*in.CrashReports)})
 			if err != nil {
-				return failure(proterr.Map(err)), updateCoreSettingsOut{}, nil
+				return updateCoreSettingsOut{}, proterr.Map(err)
 			}
 		}
 		if in.Telemetry == nil && in.CrashReports == nil {
 			us, err = c.GetUserSettings(ctx)
 			if err != nil {
-				return failure(proterr.Map(err)), updateCoreSettingsOut{}, nil
+				return updateCoreSettingsOut{}, proterr.Map(err)
 			}
 		}
-		return nil, updateCoreSettingsOut{Settings: toCoreSettingsDTO(us)}, nil
+		return updateCoreSettingsOut{Settings: toCoreSettingsDTO(us)}, nil
 	})
 }
 

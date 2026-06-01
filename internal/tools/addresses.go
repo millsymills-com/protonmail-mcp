@@ -73,89 +73,88 @@ type deleteAddressOut struct {
 }
 
 func registerAddresses(server *mcp.Server, d Deps) {
-	mcp.AddTool(server, &mcp.Tool{
+	addTool(server, d, &mcp.Tool{
 		Name:        "proton_list_addresses",
 		Description: "Lists all addresses on the account, including aliases and disabled ones.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ listAddressesIn) (*mcp.CallToolResult, listAddressesOut, error) {
-		c, fail := clientOrFail(ctx, d)
-		if fail != nil {
-			return fail, listAddressesOut{}, nil
+	}, func(ctx context.Context, d Deps, _ listAddressesIn) (listAddressesOut, *proterr.Error) {
+		c, perr := client(ctx, d)
+		if perr != nil {
+			return listAddressesOut{}, perr
 		}
 		raw, err := c.GetAddresses(ctx)
 		if err != nil {
-			return failure(proterr.Map(err)), listAddressesOut{}, nil
+			return listAddressesOut{}, proterr.Map(err)
 		}
 		out := make([]addressDTO, len(raw))
 		for i, a := range raw {
 			out[i] = toAddressDTO(a)
 		}
-		return nil, listAddressesOut{Addresses: out}, nil
+		return listAddressesOut{Addresses: out}, nil
 	})
 
-	mcp.AddTool(server, &mcp.Tool{
+	addTool(server, d, &mcp.Tool{
 		Name:        "proton_get_address",
 		Description: "Returns detail for a single address by ID.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in getAddressIn) (*mcp.CallToolResult, getAddressOut, error) {
-		c, fail := clientOrFail(ctx, d)
-		if fail != nil {
-			return fail, getAddressOut{}, nil
+	}, func(ctx context.Context, d Deps, in getAddressIn) (getAddressOut, *proterr.Error) {
+		c, perr := client(ctx, d)
+		if perr != nil {
+			return getAddressOut{}, perr
 		}
 		raw, err := c.GetAddress(ctx, in.ID)
 		if err != nil {
-			return failure(proterr.Map(err)), getAddressOut{}, nil
+			return getAddressOut{}, proterr.Map(err)
 		}
-		return nil, getAddressOut{Address: toAddressDTO(raw)}, nil
+		return getAddressOut{Address: toAddressDTO(raw)}, nil
 	})
 
 	if !WritesEnabled() {
 		return
 	}
 
-	mcp.AddTool(server, &mcp.Tool{
+	addTool(server, d, &mcp.Tool{
 		Name:        "proton_create_address",
 		Description: "Creates a new address (alias) on a custom domain.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createAddressIn) (*mcp.CallToolResult, createAddressOut, error) {
-		raw := d.Session.Raw(ctx)
-		got, err := protonraw.CreateAddress(ctx, raw, protonraw.CreateAddressRequest{
+	}, func(ctx context.Context, d Deps, in createAddressIn) (createAddressOut, *proterr.Error) {
+		got, err := protonraw.CreateAddress(ctx, d.Session.Raw(ctx), protonraw.CreateAddressRequest{
 			DomainID:    in.DomainID,
 			LocalPart:   in.LocalPart,
 			DisplayName: in.DisplayName,
 			Signature:   in.Signature,
 		})
 		if err != nil {
-			return failure(proterr.Map(err)), createAddressOut{}, nil
+			return createAddressOut{}, proterr.Map(err)
 		}
-		return nil, createAddressOut{ID: got.ID, Email: got.Email}, nil
+		return createAddressOut{ID: got.ID, Email: got.Email}, nil
 	})
 
-	mcp.AddTool(server, &mcp.Tool{
+	addTool(server, d, &mcp.Tool{
 		Name:        "proton_update_address",
 		Description: "Updates display name and/or signature for the account. Note: SetDisplayName/SetSignature in go-proton-api are global mail settings, not per-address; the ID parameter is accepted for forward compatibility.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateAddressIn) (*mcp.CallToolResult, updateAddressOut, error) {
-		c, fail := clientOrFail(ctx, d)
-		if fail != nil {
-			return fail, updateAddressOut{}, nil
+	}, func(ctx context.Context, d Deps, in updateAddressIn) (updateAddressOut, *proterr.Error) {
+		c, perr := client(ctx, d)
+		if perr != nil {
+			return updateAddressOut{}, perr
 		}
 		if in.DisplayName != nil {
 			if _, err := c.SetDisplayName(ctx, proton.SetDisplayNameReq{DisplayName: *in.DisplayName}); err != nil {
-				return failure(proterr.Map(err)), updateAddressOut{}, nil
+				return updateAddressOut{}, proterr.Map(err)
 			}
 		}
 		if in.Signature != nil {
 			if _, err := c.SetSignature(ctx, proton.SetSignatureReq{Signature: *in.Signature}); err != nil {
-				return failure(proterr.Map(err)), updateAddressOut{}, nil
+				return updateAddressOut{}, proterr.Map(err)
 			}
 		}
-		return nil, updateAddressOut{OK: true}, nil
+		return updateAddressOut{OK: true}, nil
 	})
 
-	mcp.AddTool(server, &mcp.Tool{
+	addTool(server, d, &mcp.Tool{
 		Name:        "proton_set_address_status",
 		Description: "Enables or disables an address.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in setAddressStatusIn) (*mcp.CallToolResult, setAddressStatusOut, error) {
-		c, fail := clientOrFail(ctx, d)
-		if fail != nil {
-			return fail, setAddressStatusOut{}, nil
+	}, func(ctx context.Context, d Deps, in setAddressStatusIn) (setAddressStatusOut, *proterr.Error) {
+		c, perr := client(ctx, d)
+		if perr != nil {
+			return setAddressStatusOut{}, perr
 		}
 		var err error
 		if in.Enabled {
@@ -164,23 +163,23 @@ func registerAddresses(server *mcp.Server, d Deps) {
 			err = c.DisableAddress(ctx, in.ID)
 		}
 		if err != nil {
-			return failure(proterr.Map(err)), setAddressStatusOut{}, nil
+			return setAddressStatusOut{}, proterr.Map(err)
 		}
-		return nil, setAddressStatusOut{OK: true}, nil
+		return setAddressStatusOut{OK: true}, nil
 	})
 
-	mcp.AddTool(server, &mcp.Tool{
+	addTool(server, d, &mcp.Tool{
 		Name:        "proton_delete_address",
 		Description: "Permanently deletes an address. DESTRUCTIVE — cannot be undone.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in deleteAddressIn) (*mcp.CallToolResult, deleteAddressOut, error) {
-		c, fail := clientOrFail(ctx, d)
-		if fail != nil {
-			return fail, deleteAddressOut{}, nil
+	}, func(ctx context.Context, d Deps, in deleteAddressIn) (deleteAddressOut, *proterr.Error) {
+		c, perr := client(ctx, d)
+		if perr != nil {
+			return deleteAddressOut{}, perr
 		}
 		if err := c.DeleteAddress(ctx, in.ID); err != nil {
-			return failure(proterr.Map(err)), deleteAddressOut{}, nil
+			return deleteAddressOut{}, proterr.Map(err)
 		}
-		return nil, deleteAddressOut{OK: true}, nil
+		return deleteAddressOut{OK: true}, nil
 	})
 }
 

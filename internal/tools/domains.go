@@ -87,42 +87,42 @@ type disableCatchallOut struct {
 }
 
 func registerDomains(server *mcp.Server, d Deps) {
-	mcp.AddTool(server, &mcp.Tool{
+	addTool(server, d, &mcp.Tool{
 		Name:        "proton_list_custom_domains",
 		Description: "Lists all custom domains on the account with verification state.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ listDomainsIn) (*mcp.CallToolResult, listDomainsOut, error) {
+	}, func(ctx context.Context, d Deps, _ listDomainsIn) (listDomainsOut, *proterr.Error) {
 		raws, err := protonraw.ListCustomDomains(ctx, d.Session.Raw(ctx))
 		if err != nil {
-			return failure(proterr.Map(err)), listDomainsOut{}, nil
+			return listDomainsOut{}, proterr.Map(err)
 		}
 		out := make([]domainDTO, len(raws))
 		for i, r := range raws {
 			out[i] = toDomainDTO(r)
 		}
-		return nil, listDomainsOut{Domains: out}, nil
+		return listDomainsOut{Domains: out}, nil
 	})
 
-	mcp.AddTool(server, &mcp.Tool{
+	addTool(server, d, &mcp.Tool{
 		Name:        "proton_get_custom_domain",
 		Description: "Returns detail (including required DNS records) for a custom domain.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in getDomainIn) (*mcp.CallToolResult, getDomainOut, error) {
+	}, func(ctx context.Context, d Deps, in getDomainIn) (getDomainOut, *proterr.Error) {
 		raw, err := protonraw.GetCustomDomain(ctx, d.Session.Raw(ctx), in.ID)
 		if err != nil {
-			return failure(proterr.Map(err)), getDomainOut{}, nil
+			return getDomainOut{}, proterr.Map(err)
 		}
-		return nil, getDomainOut{Domain: toDomainDTO(raw)}, nil
+		return getDomainOut{Domain: toDomainDTO(raw)}, nil
 	})
 
-	mcp.AddTool(server, &mcp.Tool{
+	addTool(server, d, &mcp.Tool{
 		Name:        "proton_get_catchall",
 		Description: "Reports whether catchall is enabled on a custom domain and, if so, which address receives unmatched mail.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in getCatchallIn) (*mcp.CallToolResult, getCatchallOut, error) {
-		if fail := requireField("domain_id", in.DomainID); fail != nil {
-			return fail, getCatchallOut{}, nil
+	}, func(ctx context.Context, d Deps, in getCatchallIn) (getCatchallOut, *proterr.Error) {
+		if perr := required("domain_id", in.DomainID); perr != nil {
+			return getCatchallOut{}, perr
 		}
 		addrs, err := protonraw.ListDomainAddresses(ctx, d.Session.Raw(ctx), in.DomainID)
 		if err != nil {
-			return failure(proterr.Map(err)), getCatchallOut{}, nil
+			return getCatchallOut{}, proterr.Map(err)
 		}
 		out := getCatchallOut{DomainID: in.DomainID}
 		for _, a := range addrs {
@@ -134,59 +134,59 @@ func registerDomains(server *mcp.Server, d Deps) {
 				break
 			}
 		}
-		return nil, out, nil
+		return out, nil
 	})
 
 	if !WritesEnabled() {
 		return
 	}
 
-	mcp.AddTool(server, &mcp.Tool{
+	addTool(server, d, &mcp.Tool{
 		Name:        "proton_add_custom_domain",
 		Description: "Adds a new custom domain. Returns the required DNS records to publish at your DNS provider.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in addDomainIn) (*mcp.CallToolResult, addDomainOut, error) {
+	}, func(ctx context.Context, d Deps, in addDomainIn) (addDomainOut, *proterr.Error) {
 		raw, err := protonraw.AddCustomDomain(ctx, d.Session.Raw(ctx), in.DomainName)
 		if err != nil {
-			return failure(proterr.Map(err)), addDomainOut{}, nil
+			return addDomainOut{}, proterr.Map(err)
 		}
-		return nil, addDomainOut{Domain: toDomainDTO(raw)}, nil
+		return addDomainOut{Domain: toDomainDTO(raw)}, nil
 	})
 
-	mcp.AddTool(server, &mcp.Tool{
+	addTool(server, d, &mcp.Tool{
 		Name:        "proton_verify_custom_domain",
 		Description: "Asks Proton to re-verify the published DNS records for a custom domain.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in verifyDomainIn) (*mcp.CallToolResult, verifyDomainOut, error) {
+	}, func(ctx context.Context, d Deps, in verifyDomainIn) (verifyDomainOut, *proterr.Error) {
 		raw, err := protonraw.VerifyCustomDomain(ctx, d.Session.Raw(ctx), in.ID)
 		if err != nil {
-			return failure(proterr.Map(err)), verifyDomainOut{}, nil
+			return verifyDomainOut{}, proterr.Map(err)
 		}
-		return nil, verifyDomainOut{Domain: toDomainDTO(raw)}, nil
+		return verifyDomainOut{Domain: toDomainDTO(raw)}, nil
 	})
 
-	mcp.AddTool(server, &mcp.Tool{
+	addTool(server, d, &mcp.Tool{
 		Name:        "proton_remove_custom_domain",
 		Description: "Removes a custom domain. DESTRUCTIVE — orphans all aliases on the domain.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in removeDomainIn) (*mcp.CallToolResult, removeDomainOut, error) {
+	}, func(ctx context.Context, d Deps, in removeDomainIn) (removeDomainOut, *proterr.Error) {
 		if err := protonraw.RemoveCustomDomain(ctx, d.Session.Raw(ctx), in.ID); err != nil {
-			return failure(proterr.Map(err)), removeDomainOut{}, nil
+			return removeDomainOut{}, proterr.Map(err)
 		}
-		return nil, removeDomainOut{OK: true}, nil
+		return removeDomainOut{OK: true}, nil
 	})
 
-	mcp.AddTool(server, &mcp.Tool{
+	addTool(server, d, &mcp.Tool{
 		Name:        "proton_set_catchall",
 		Description: "Enables catchall on a custom domain and routes unmatched mail to the given address. The address must already exist on that domain.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in setCatchallIn) (*mcp.CallToolResult, setCatchallOut, error) {
-		if fail := requireField("domain_id", in.DomainID); fail != nil {
-			return fail, setCatchallOut{}, nil
+	}, func(ctx context.Context, d Deps, in setCatchallIn) (setCatchallOut, *proterr.Error) {
+		if perr := required("domain_id", in.DomainID); perr != nil {
+			return setCatchallOut{}, perr
 		}
-		if fail := requireField("destination_address_id", in.DestinationAddressID); fail != nil {
-			return fail, setCatchallOut{}, nil
+		if perr := required("destination_address_id", in.DestinationAddressID); perr != nil {
+			return setCatchallOut{}, perr
 		}
 		raw := d.Session.Raw(ctx)
 		addrs, err := protonraw.ListDomainAddresses(ctx, raw, in.DomainID)
 		if err != nil {
-			return failure(proterr.Map(err)), setCatchallOut{}, nil
+			return setCatchallOut{}, proterr.Map(err)
 		}
 		found := false
 		for _, a := range addrs {
@@ -196,29 +196,29 @@ func registerDomains(server *mcp.Server, d Deps) {
 			}
 		}
 		if !found {
-			return failure(&proterr.Error{
+			return setCatchallOut{}, &proterr.Error{
 				Code:    "proton/validation",
 				Message: fmt.Sprintf("address %s does not belong to domain %s", in.DestinationAddressID, in.DomainID),
 				Hint:    "call proton_list_addresses or proton_list_custom_domains to find the right address ID",
-			}), setCatchallOut{}, nil
+			}
 		}
 		if err := protonraw.UpdateCatchAll(ctx, raw, in.DomainID, &in.DestinationAddressID); err != nil {
-			return failure(proterr.Map(err)), setCatchallOut{}, nil
+			return setCatchallOut{}, proterr.Map(err)
 		}
-		return nil, setCatchallOut{OK: true}, nil
+		return setCatchallOut{OK: true}, nil
 	})
 
-	mcp.AddTool(server, &mcp.Tool{
+	addTool(server, d, &mcp.Tool{
 		Name:        "proton_disable_catchall",
 		Description: "Disables catchall on a custom domain. Mail to unknown local-parts will bounce.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in disableCatchallIn) (*mcp.CallToolResult, disableCatchallOut, error) {
-		if fail := requireField("domain_id", in.DomainID); fail != nil {
-			return fail, disableCatchallOut{}, nil
+	}, func(ctx context.Context, d Deps, in disableCatchallIn) (disableCatchallOut, *proterr.Error) {
+		if perr := required("domain_id", in.DomainID); perr != nil {
+			return disableCatchallOut{}, perr
 		}
 		if err := protonraw.UpdateCatchAll(ctx, d.Session.Raw(ctx), in.DomainID, nil); err != nil {
-			return failure(proterr.Map(err)), disableCatchallOut{}, nil
+			return disableCatchallOut{}, proterr.Map(err)
 		}
-		return nil, disableCatchallOut{OK: true}, nil
+		return disableCatchallOut{OK: true}, nil
 	})
 }
 

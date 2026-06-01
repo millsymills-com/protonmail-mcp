@@ -40,6 +40,23 @@ func WritesEnabled() bool {
 	return false
 }
 
+// addTool registers a handler that returns the honest (Out, *proterr.Error)
+// contract, adapting it to the MCP SDK's (*CallToolResult, Out, error) shape.
+// A non-nil *proterr.Error becomes an IsError result; the transport-level
+// error is always nil so the host renders structured error text rather than a
+// protocol failure.
+func addTool[In, Out any](server *mcp.Server, d Deps, t *mcp.Tool,
+	fn func(context.Context, Deps, In) (Out, *proterr.Error)) {
+	mcp.AddTool(server, t, func(ctx context.Context, _ *mcp.CallToolRequest, in In) (*mcp.CallToolResult, Out, error) {
+		out, perr := fn(ctx, d, in)
+		if perr != nil {
+			var zero Out
+			return failure(perr), zero, nil
+		}
+		return nil, out, nil
+	})
+}
+
 // failure converts a *proterr.Error into the MCP CallToolResult shape with
 // IsError=true so the host shows structured error text without surfacing a
 // transport-level failure.
@@ -53,25 +70,25 @@ func failure(perr *proterr.Error) *mcp.CallToolResult {
 	}
 }
 
-// clientOrFail centralizes the "get session.Client or return MCP error" pattern.
-func clientOrFail(ctx context.Context, d Deps) (*proton.Client, *mcp.CallToolResult) {
+// client centralizes the "get session.Client or map the error" pattern.
+func client(ctx context.Context, d Deps) (*proton.Client, *proterr.Error) {
 	c, err := d.Session.Client(ctx)
 	if err != nil {
-		return nil, failure(proterr.Map(err))
+		return nil, proterr.Map(err)
 	}
 	return c, nil
 }
 
-// requireField returns a structured validation failure when value is empty.
-// Used at tool entry to give callers a clear "missing X" error before any
-// API call, instead of letting the raw layer reject the request with a
-// less specific "domain_id is required" generic error.
-func requireField(name, value string) *mcp.CallToolResult {
+// required returns a structured validation error when value is empty. Used at
+// tool entry to give callers a clear "missing X" error before any API call,
+// instead of letting the raw layer reject the request with a less specific
+// generic error.
+func required(name, value string) *proterr.Error {
 	if value != "" {
 		return nil
 	}
-	return failure(&proterr.Error{
+	return &proterr.Error{
 		Code:    "proton/validation",
 		Message: name + " is required",
-	})
+	}
 }

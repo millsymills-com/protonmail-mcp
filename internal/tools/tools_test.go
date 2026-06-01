@@ -7,21 +7,18 @@ import (
 	"github.com/millsmillsymills/protonmail-mcp/internal/proterr"
 )
 
-func TestRequireField_Empty(t *testing.T) {
-	got := requireField("id", "")
+func TestRequired_Empty(t *testing.T) {
+	got := required("id", "")
 	if got == nil {
-		t.Fatal("want validation failure for empty value")
+		t.Fatal("want validation error for empty value")
 	}
-	if !got.IsError {
-		t.Fatal("want IsError=true")
-	}
-	if len(got.Content) == 0 {
-		t.Fatal("want non-empty Content")
+	if got.Code != "proton/validation" {
+		t.Fatalf("want proton/validation code, got %q", got.Code)
 	}
 }
 
-func TestRequireField_Present(t *testing.T) {
-	if got := requireField("id", "abc"); got != nil {
+func TestRequired_Present(t *testing.T) {
+	if got := required("id", "abc"); got != nil {
 		t.Fatalf("want nil for non-empty value, got %+v", got)
 	}
 }
@@ -39,13 +36,13 @@ func TestFailure_WrapsError(t *testing.T) {
 	}
 }
 
-func TestClientOrFail_NilSession(t *testing.T) {
+func TestClient_NilSession(t *testing.T) {
 	defer func() {
 		if r := recover(); r == nil {
 			t.Fatal("want panic when session is nil")
 		}
 	}()
-	_, _ = clientOrFail(context.Background(), Deps{Session: nil})
+	_, _ = client(context.Background(), Deps{Session: nil})
 }
 
 func TestWritesEnabled(t *testing.T) {
