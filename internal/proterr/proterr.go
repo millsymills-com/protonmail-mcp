@@ -101,6 +101,30 @@ func errToMCP(err error) *Error {
 		}
 	}
 
+	// Undecryptable body: the keyring is fine, this specific body just can't be
+	// decrypted (not PGP, empty, encrypted to a key we don't hold, or its address
+	// has no usable keyring). Checked before ErrKeyringLocked so it gets its own
+	// diagnosis rather than sending the operator to re-check a mailbox password
+	// that isn't at fault.
+	if errors.Is(err, ErrBodyUndecryptable) {
+		return &Error{
+			Code:    "proton/body_undecryptable",
+			Message: "This message body could not be decrypted with the available keys.",
+			Hint:    "Fetch the message without include_body, or inspect raw_headers instead",
+		}
+	}
+
+	// Keyring unlock/decrypt failure: non-retryable. Checked last (after the
+	// APIError/HTTPError/NetError probes) so a Proton API error carried under a
+	// keyring fetch still maps via its status rather than being shadowed here.
+	if errors.Is(err, ErrKeyringLocked) {
+		return &Error{
+			Code:    "proton/keyring_locked",
+			Message: "Could not unlock or use the mailbox keyring.",
+			Hint:    "Verify the mailbox password (two-password accounts) and re-run `protonmail-mcp login`",
+		}
+	}
+
 	// Anything else is treated as upstream/transport.
 	return &Error{
 		Code:    "proton/upstream",

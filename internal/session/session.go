@@ -18,6 +18,7 @@ import (
 	proton "github.com/ProtonMail/go-proton-api"
 	"github.com/go-resty/resty/v2"
 	"github.com/millsmillsymills/protonmail-mcp/internal/keychain"
+	"github.com/millsmillsymills/protonmail-mcp/internal/keyring"
 	"github.com/millsmillsymills/protonmail-mcp/internal/proterr"
 )
 
@@ -38,6 +39,10 @@ type Session struct {
 	raw     *rawClient
 	kc      Store
 	current keychain.Session
+	// keyrings is the lazily-unlocked, session-lifetime PGP keyring cache. Holds
+	// decrypted private key material; nil until first crypto use and dropped on
+	// logout/relogin. Never persisted, never logged.
+	keyrings *keyring.Keyrings
 	// poisoned indicates the in-process Session and the keychain are known
 	// to be in inconsistent states because a Login persist rollback's Clear
 	// itself failed. Subsequent operations that would otherwise read from
@@ -73,6 +78,12 @@ var ErrSessionInconsistent = errors.New(
 // than matching the error string.
 var ErrTOTPRequired = errors.New("2FA required but no TOTP provided")
 
+// ErrMailboxPasswordRequired is returned from Login when the account uses
+// two-password mode but LoginInput supplied no MailboxPassword. Callers should
+// use errors.Is to branch into a mailbox-password prompt.
+var ErrMailboxPasswordRequired = errors.New(
+	"mailbox password required (two-password mode) but none provided")
+
 // Status reports persistence-layer health. PersistDegraded is true when
 // the most recent SaveSession write failed; in-memory tokens still work
 // for the current process.
@@ -89,6 +100,45 @@ func (s *Session) Status() Status {
 		PersistDegraded: s.persistDegraded,
 		PersistError:    s.persistErrReason,
 	}
+}
+
+// clearKeyringCache drops the cached keyrings. Caller must hold s.mu.
+func (s *Session) clearKeyringCache() {
+	s.keyrings = nil
+}
+
+// Keyrings returns the session's unlocked PGP keyrings, unlocking them on
+// first use and caching the result for the session lifetime. The mailbox
+// password is the stored MailboxPassword, or the login password for
+// one-password accounts.
+func (s *Session) Keyrings(ctx context.Context) (*keyring.Keyrings, error) {
+	s.mu.RLock()
+	cached := s.keyrings
+	s.mu.RUnlock()
+	if cached != nil {
+		return cached, nil
+	}
+
+	c, err := s.Client(ctx)
+	if err != nil {
+		return nil, err
+	}
+	creds, err := s.kc.LoadCreds()
+	if err != nil {
+		return nil, fmt.Errorf("load creds for keyring unlock: %w", err)
+	}
+	mailbox := creds.MailboxPassword
+	if mailbox == "" {
+		mailbox = creds.Password
+	}
+	krs, err := keyring.Unlock(ctx, c, []byte(mailbox))
+	if err != nil {
+		return nil, fmt.Errorf("unlock keyrings: %w", err)
+	}
+	s.mu.Lock()
+	s.keyrings = krs
+	s.mu.Unlock()
+	return krs, nil
 }
 
 // SetPersistDegradedForTest injects degraded state for tests that hold
@@ -331,14 +381,16 @@ func (s *Session) Logout() error {
 	s.persistDegraded = false
 	s.persistErrReason = ""
 	s.reloginExhausted = false
+	s.clearKeyringCache()
 	return nil
 }
 
 type LoginInput struct {
-	Username   string
-	Password   string
-	TOTPSecret string // raw seed; if empty, TOTPCode is consumed once
-	TOTPCode   string // 6-digit code; only used if TOTPSecret is empty
+	Username        string
+	Password        string
+	TOTPSecret      string // raw seed; if empty, TOTPCode is consumed once
+	TOTPCode        string // 6-digit code; only used if TOTPSecret is empty
+	MailboxPassword string // required only in two-password mode
 }
 
 func (s *Session) Login(ctx context.Context, in LoginInput) error {
@@ -371,9 +423,10 @@ func (s *Session) reloginLocked(ctx context.Context) (*proton.Client, error) {
 		return nil, nil
 	}
 	rerr := s.loginLocked(ctx, LoginInput{
-		Username:   creds.Username,
-		Password:   creds.Password,
-		TOTPSecret: creds.TOTPSecret,
+		Username:        creds.Username,
+		Password:        creds.Password,
+		TOTPSecret:      creds.TOTPSecret,
+		MailboxPassword: creds.MailboxPassword,
 	})
 	if rerr != nil {
 		cpe := proterr.Map(rerr)
@@ -440,6 +493,12 @@ func (s *Session) loginLocked(ctx context.Context, in LoginInput) error {
 		}
 	}
 
+	mailboxPassword, err := chooseMailboxPassword(auth.PasswordMode, in.MailboxPassword)
+	if err != nil {
+		c.Close()
+		return err
+	}
+
 	c.AddAuthHandler(func(a proton.Auth) {
 		s.OnAuthRotated(keychain.Session{
 			UID:          a.UID,
@@ -454,9 +513,10 @@ func (s *Session) loginLocked(ctx context.Context, in LoginInput) error {
 		RefreshToken: auth.RefreshToken,
 	}
 	if err := s.persistLoginState(keychain.Creds{
-		Username:   in.Username,
-		Password:   in.Password,
-		TOTPSecret: in.TOTPSecret,
+		Username:        in.Username,
+		Password:        in.Password,
+		TOTPSecret:      in.TOTPSecret,
+		MailboxPassword: mailboxPassword,
 	}, next); err != nil {
 		c.Close()
 		return err
@@ -466,7 +526,26 @@ func (s *Session) loginLocked(ctx context.Context, in LoginInput) error {
 	s.current = next
 	s.raw.setAuth(next.AccessToken, next.UID)
 	s.reloginExhausted = false
+	s.clearKeyringCache()
 	return nil
+}
+
+// chooseMailboxPassword resolves the mailbox password to persist for the
+// account's password mode. Two-password accounts require a supplied value;
+// one-password accounts reuse the login password (persisted empty so the
+// unlock path falls back to it), keeping existing accounts migration-free.
+func chooseMailboxPassword(mode proton.PasswordMode, supplied string) (string, error) {
+	switch mode {
+	case proton.TwoPasswordMode:
+		if supplied == "" {
+			return "", ErrMailboxPasswordRequired
+		}
+		return supplied, nil
+	case proton.OnePasswordMode:
+		return "", nil
+	default:
+		return "", fmt.Errorf("unrecognised password mode %d", mode)
+	}
 }
 
 // persistLoginState writes credentials and the post-auth session to the

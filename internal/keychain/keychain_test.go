@@ -91,6 +91,24 @@ func TestClearError(t *testing.T) {
 	}
 }
 
+func TestSaveLoadCredsRoundTripsMailboxPassword(t *testing.T) {
+	keyring.MockInit()
+	k := keychain.New()
+	want := keychain.Creds{
+		Username: "u@example.test", Password: "login-pw", MailboxPassword: "mbox-pw",
+	}
+	if err := k.SaveCreds(want); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+	got, err := k.LoadCreds()
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if got.MailboxPassword != "mbox-pw" {
+		t.Fatalf("MailboxPassword = %q, want %q", got.MailboxPassword, "mbox-pw")
+	}
+}
+
 // TestSaveCredsTOTPLifecycle walks the same user through two sequential
 // SaveCreds calls (with TOTP, then without) and asserts post-load state
 // at each step. Verifies the one-shot-code path doesn't leave a stale

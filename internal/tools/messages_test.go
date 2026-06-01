@@ -70,6 +70,13 @@ func TestFilterSensitiveHeadersNilOnEmpty(t *testing.T) {
 	}
 }
 
+func TestGetMessageInHasIncludeBody(t *testing.T) {
+	in := getMessageIn{ID: "m1", IncludeBody: true}
+	if !in.IncludeBody {
+		t.Fatal("IncludeBody field missing")
+	}
+}
+
 func TestToMessageStubDTOPopulatesFields(t *testing.T) {
 	meta := proton.MessageMetadata{
 		ID:             "m1",

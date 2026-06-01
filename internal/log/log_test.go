@@ -20,6 +20,7 @@ func TestRedactsSensitiveFields(t *testing.T) {
 		"PassPhrase", "shh",
 		"api_key", "k-123",
 		"private_key", "armored",
+		"mailbox_password", "s3cr3t",
 		"safe_field", "ok",
 	)
 
@@ -39,6 +40,7 @@ func TestRedactsSensitiveFields(t *testing.T) {
 		{"PassPhrase", true},
 		{"api_key", true},
 		{"private_key", true},
+		{"mailbox_password", true},
 		{"safe_field", false},
 	}
 	for _, tc := range tests {

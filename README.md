@@ -18,7 +18,7 @@ v1. 23 tools total: 12 reads (always registered) + 11 writes (registered when `P
 | Account settings (get, update telemetry + crash reports) | yes | locale update is not exposed by upstream |
 | Encryption keys (list with fingerprint + armored public key) | yes | via `gopenpgp/v2` |
 | Encryption key generation / set primary | **deferred to v1.5** | requires keyring unlock + signed KeyList |
-| Mail search + header inspection (read-only) | yes | metadata + raw headers; body decryption needs unlocked keyring (v1.5) |
+| Mail search + header inspection | yes | metadata + raw headers; `proton_get_message` with `include_body=true` decrypts the plaintext body when the keyring unlocks |
 | Mail send / draft / label mutations | **v2** | |
 | Calendar / Drive | **v3** | |
 
