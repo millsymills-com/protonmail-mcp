@@ -30,9 +30,15 @@ type Keyrings struct {
 // unlocks each address keyring against it. mailboxPassword must be the actual
 // mailbox password (login password for one-password-mode accounts).
 //
+// Unlock consumes mailboxPassword: it zeroes the caller's slice and the derived
+// salted passphrase before returning (on every path, success or error) so the
+// plaintext inputs to the keyring don't linger on the heap for GC. The unlocked
+// *Keyrings still holds decrypted private key material — see ClearPrivateParams.
+//
 // Note: proton.Keys.Primary() panics when no key is marked primary, so we find
 // the primary key with an explicit loop and return an error instead.
 func Unlock(ctx context.Context, f KeyFetcher, mailboxPassword []byte) (*Keyrings, error) {
+	defer zero(mailboxPassword)
 	salts, err := f.GetSalts(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("get salts: %w", err)
@@ -57,6 +63,7 @@ func Unlock(ctx context.Context, f KeyFetcher, mailboxPassword []byte) (*Keyring
 	if err != nil {
 		return nil, fmt.Errorf("salt for key: %w", err)
 	}
+	defer zero(saltedKeyPass)
 	userKR, err := user.Keys.Unlock(saltedKeyPass, nil)
 	if err != nil {
 		return nil, fmt.Errorf("unlock user keyring: %w: %w", proterr.ErrKeyringLocked, err)
@@ -83,6 +90,16 @@ func Unlock(ctx context.Context, f KeyFetcher, mailboxPassword []byte) (*Keyring
 		)
 	}
 	return &Keyrings{User: userKR, Addr: addrKRs}, nil
+}
+
+// zero overwrites b in place to shorten the window secret material (a mailbox
+// password or salted passphrase) sits unencrypted on the heap. Best-effort: Go
+// strings can't be wiped and the runtime may have copied the bytes elsewhere,
+// so this reduces residue rather than guaranteeing erasure.
+func zero(b []byte) {
+	for i := range b {
+		b[i] = 0
+	}
 }
 
 // ClearPrivateParams wipes the decrypted private key material from every held
