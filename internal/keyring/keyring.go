@@ -85,6 +85,20 @@ func Unlock(ctx context.Context, f KeyFetcher, mailboxPassword []byte) (*Keyring
 	return &Keyrings{User: userKR, Addr: addrKRs}, nil
 }
 
+// ClearPrivateParams wipes the decrypted private key material from every held
+// keyring, shortening the window it sits unencrypted on the heap. Call it when
+// dropping a cached *Keyrings (logout/relogin) rather than relying on GC. The
+// receiver stays usable only for public-key operations afterward; decryption
+// will fail, so callers must also drop their reference.
+func (k *Keyrings) ClearPrivateParams() {
+	if k.User != nil {
+		k.User.ClearPrivateParams()
+	}
+	for _, kr := range k.Addr {
+		kr.ClearPrivateParams()
+	}
+}
+
 // DecryptBody decrypts an armored PGP body using the keyring for addrID.
 func (k *Keyrings) DecryptBody(addrID, armoredBody string) (string, error) {
 	kr, ok := k.Addr[addrID]
