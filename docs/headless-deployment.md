@@ -64,3 +64,21 @@ in step 1 and the service resolve the same path.
 If the refresh token is revoked, the service re-logins from the stored
 credentials (TOTP generated from the stored secret) on the next call. **If Proton
 answers with a CAPTCHA challenge, it cannot self-heal** — re-run step 1 manually.
+
+## 4. Troubleshooting: no Secret Service / D-Bus on a headless host
+
+The default credential backend talks to the freedesktop Secret Service over
+D-Bus, which is absent on most headless hosts. If you skip
+`PROTONMAIL_MCP_CREDENTIAL_BACKEND=file`, login fails with one of:
+
+```
+save creds: ... The name org.freedesktop.secrets was not provided by any .service files
+save creds: ... dbus: couldn't determine address of session bus
+```
+
+The first means the session bus is up but no secrets daemon owns
+`org.freedesktop.secrets`; the second means there is no session bus at all (the
+common case under systemd or `sudo -u`). Both have the same remedy: use the file
+backend by setting `PROTONMAIL_MCP_CREDENTIAL_BACKEND=file` and
+`PROTONMAIL_MCP_STATE_DIR` (steps 1–2 above) on **every** invocation, including
+`status` and `logout`.
