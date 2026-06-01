@@ -319,14 +319,29 @@ func (s *bodyScrubber) scrubHeaderField(t map[string]any, k string, vv any) bool
 	return false
 }
 
+// messageIdentitySiblings are fields that only ever appear next to a Subject on
+// a Proton message or message-list entry, never on a config object that happens
+// to carry a Subject (MailSettings.AutoResponder). Keying Subject redaction on
+// any of them — not ConversationID alone — keeps a message-shaped payload that
+// surfaces a bare Subject without a sibling ConversationID from leaking it.
+var messageIdentitySiblings = []string{
+	"ConversationID",
+	"AddressID",
+	"ExternalID",
+	"Header",
+	"ParsedHeaders",
+}
+
 // isMessageObject reports whether t is a Proton message or message-list entry.
-// Every Message and MessageMetadata carries a ConversationID; objects that
-// merely happen to have a Subject (MailSettings.AutoResponder) do not, so this
-// keeps the Subject redaction from clobbering unrelated settings values.
+// Such objects carry at least one message-identity sibling; config objects that
+// merely happen to have a Subject (MailSettings.AutoResponder) carry none, so
+// this keeps the Subject redaction from clobbering unrelated settings values.
 func isMessageObject(t map[string]any) bool {
 	for k := range t {
-		if strings.EqualFold(k, "ConversationID") {
-			return true
+		for _, sib := range messageIdentitySiblings {
+			if strings.EqualFold(k, sib) {
+				return true
+			}
 		}
 	}
 	return false

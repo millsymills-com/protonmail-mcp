@@ -434,6 +434,61 @@ func TestScrubRedactsMessageSubject(t *testing.T) {
 	}
 }
 
+// TestScrubRedactsSubjectWithoutConversationID covers a message-shaped payload
+// that surfaces a bare Subject without a sibling ConversationID. The widened
+// message-object heuristic keys on any message-identity sibling (here AddressID,
+// ExternalID, Header), so the Subject is redacted even though ConversationID is
+// absent — closing the latent leak from issue #151.
+func TestScrubRedactsSubjectWithoutConversationID(t *testing.T) {
+	cases := map[string]string{
+		"AddressID":     `{"AddressID":"addr-1","Subject":"Real Leaked Subject Line"}`,
+		"ExternalID":    `{"ExternalID":"<x@y>","Subject":"Real Leaked Subject Line"}`,
+		"Header":        `{"Header":"Content-Type: text/plain\n","Subject":"Real Leaked Subject Line"}`,
+		"ParsedHeaders": `{"ParsedHeaders":{"Content-Type":"text/plain"},"Subject":"Real Leaked Subject Line"}`,
+	}
+	for name, body := range cases {
+		t.Run(name, func(t *testing.T) {
+			i := &cassette.Interaction{
+				Response: cassette.Response{Body: body, Headers: http.Header{"Content-Type": []string{"application/json"}}},
+			}
+			if err := saveHook(i); err != nil {
+				t.Fatal(err)
+			}
+			if strings.Contains(i.Response.Body, "Real Leaked Subject Line") {
+				t.Fatalf("message subject survived scrub: %s", i.Response.Body)
+			}
+			var got map[string]any
+			if err := json.Unmarshal([]byte(i.Response.Body), &got); err != nil {
+				t.Fatal(err)
+			}
+			if got["Subject"] != "REDACTED" {
+				t.Fatalf("Subject not redacted: %v", got["Subject"])
+			}
+		})
+	}
+}
+
+// TestScrubPreservesConfigSubject pins the negative case for the widened
+// heuristic: a config object whose Subject is settings data and which carries no
+// message-identity sibling must be left alone, not clobbered.
+func TestScrubPreservesConfigSubject(t *testing.T) {
+	body := `{"AutoResponder":{"IsEnabled":false,"Subject":"Auto","Zone":"Europe/Zurich"}}`
+	i := &cassette.Interaction{
+		Response: cassette.Response{Body: body, Headers: http.Header{"Content-Type": []string{"application/json"}}},
+	}
+	if err := saveHook(i); err != nil {
+		t.Fatal(err)
+	}
+	var got map[string]any
+	if err := json.Unmarshal([]byte(i.Response.Body), &got); err != nil {
+		t.Fatal(err)
+	}
+	ar := got["AutoResponder"].(map[string]any)
+	if ar["Subject"] != "Auto" {
+		t.Fatalf("config Subject must be preserved, got: %v", ar["Subject"])
+	}
+}
+
 // TestScrubRawHeaderRedactsSenderControlled guards the allowlist against the
 // denylist gap it replaced: sender-controlled headers (List-Unsubscribe
 // tracking token, third-party Sender, X-Originating-IP) that no denylist
