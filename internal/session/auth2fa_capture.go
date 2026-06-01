@@ -15,6 +15,11 @@ import (
 // otherwise discards. Concurrency is bounded: a single hook write happens
 // before Auth2FA's caller observes merge(), so the mutex covers the
 // possibility of resty re-running OnAfterResponse on a retried request.
+//
+// The hook is registered through Client.AddPostRequestHook, which guards it by
+// clientID and offers no removal, so the registered closure pins this struct
+// for the process lifetime. merge() zeroes the buffered tokens once it hands
+// them off so that retained closure pins no live credential material.
 type auth2FACapture struct {
 	mu  sync.Mutex
 	set bool
@@ -95,5 +100,11 @@ func (a *auth2FACapture) merge(base proton.Auth) *proton.Auth {
 	if a.got.Scope != "" {
 		merged.Scope = a.got.Scope
 	}
+	// Drop our reference to the captured tokens. The hook closure pins this
+	// struct for the process lifetime; without this the post-2FA tokens would
+	// sit on the heap until process exit. (Go strings are immutable, so this
+	// releases for GC rather than wiping bytes in place — the best the runtime
+	// allows.) set stays true so a re-entrant merge still returns nil.
+	a.got = proton.Auth{}
 	return &merged
 }
