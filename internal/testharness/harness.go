@@ -41,6 +41,7 @@ type Option func(*config)
 
 type config struct {
 	interceptor func(*http.Request) *http.Response
+	sessionWrap func(session.Service) session.Service
 }
 
 // WithInterceptor wraps the dev server's handler. If fn returns a non-nil
@@ -48,6 +49,22 @@ type config struct {
 // the call falls through.
 func WithInterceptor(fn func(*http.Request) *http.Response) Option {
 	return func(c *config) { c.interceptor = fn }
+}
+
+// WithSessionService wraps the session the tools are registered against,
+// letting a test inject handler-level failures (e.g. a keyring unlock error)
+// while delegating everything else to the real session.
+func WithSessionService(wrap func(session.Service) session.Service) Option {
+	return func(c *config) { c.sessionWrap = wrap }
+}
+
+// depsSession applies any sessionWrap to sess, returning the Service the tools
+// should be registered against.
+func (c config) depsSession(sess session.Service) session.Service {
+	if c.sessionWrap != nil {
+		return c.sessionWrap(sess)
+	}
+	return sess
 }
 
 // Harness is a live test rig: dev server + session + MCP server/client over

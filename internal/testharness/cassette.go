@@ -20,6 +20,10 @@ const cassetteBaseURL = "https://mail.proton.me/api"
 // testdata/cassettes/ relative to the calling test's package.
 func BootWithCassette(t *testing.T, scenarioName string, opts ...Option) *Harness {
 	t.Helper()
+	var cfg config
+	for _, o := range opts {
+		o(&cfg)
+	}
 	// Use in-memory keyring so tests never touch the real OS keychain.
 	keyring.MockInit()
 
@@ -38,7 +42,7 @@ func BootWithCassette(t *testing.T, scenarioName string, opts ...Option) *Harnes
 	sess.OnAuthRotated(seed)
 
 	mcpSrv := mcp.NewServer(&mcp.Implementation{Name: "protonmail-mcp", Version: "test"}, nil)
-	tools.Register(mcpSrv, tools.Deps{Session: sess})
+	tools.Register(mcpSrv, tools.Deps{Session: cfg.depsSession(sess)})
 
 	h := &Harness{
 		t:      t,

@@ -104,6 +104,16 @@ func (s *Session) Status() Status {
 	}
 }
 
+// Service is the session surface the tools package depends on. *Session
+// implements it; tests wrap a real *Session to inject failures (e.g. a keyring
+// unlock error) at the handler boundary without standing up a live backend.
+type Service interface {
+	Raw(ctx context.Context) *rawClient
+	Status() Status
+	Client(ctx context.Context) (*proton.Client, error)
+	Keyrings(ctx context.Context) (*keyring.Keyrings, error)
+}
+
 // clearKeyringCache wipes the cached keyrings' private key material and drops
 // the reference. Caller must hold s.mu.
 func (s *Session) clearKeyringCache() {
