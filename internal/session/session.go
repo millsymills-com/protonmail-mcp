@@ -480,7 +480,7 @@ func (s *Session) loginLocked(ctx context.Context, in LoginInput) error {
 		// volume, so the leak stays small in practice.
 		captured := newAuth2FACapture()
 		c.AddPostRequestHook(captured.hook)
-		if err := c.Auth2FA(ctx, proton.Auth2FAReq{TwoFactorCode: code}); err != nil {
+		if err = c.Auth2FA(ctx, proton.Auth2FAReq{TwoFactorCode: code}); err != nil {
 			c.Close()
 			return fmt.Errorf("submit 2fa: %w", err)
 		}
