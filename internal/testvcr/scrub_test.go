@@ -403,6 +403,37 @@ func TestScrubRedactsParsedHeaders(t *testing.T) {
 	}
 }
 
+// TestScrubRedactsMessageSubject covers the bare "Subject" field on a message
+// body object (a sibling of Header/ParsedHeaders that the header rules miss).
+// It must be redacted for a message (identified by ConversationID) but left
+// alone on an unrelated object — here MailSettings.AutoResponder — whose
+// Subject is configuration, not per-message PII.
+func TestScrubRedactsMessageSubject(t *testing.T) {
+	body := `{"Message":{"ConversationID":"abc==","Subject":"Real Leaked Subject Line"},` +
+		`"MailSettings":{"AutoResponder":{"IsEnabled":false,"Subject":"Auto","Zone":"Europe/Zurich"}}}`
+	i := &cassette.Interaction{
+		Response: cassette.Response{Body: body, Headers: http.Header{"Content-Type": []string{"application/json"}}},
+	}
+	if err := saveHook(i); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(i.Response.Body, "Real Leaked Subject Line") {
+		t.Fatalf("message subject survived scrub: %s", i.Response.Body)
+	}
+	var got map[string]any
+	if err := json.Unmarshal([]byte(i.Response.Body), &got); err != nil {
+		t.Fatal(err)
+	}
+	msg := got["Message"].(map[string]any)
+	if msg["Subject"] != "REDACTED" {
+		t.Fatalf("message Subject not redacted: %v", msg["Subject"])
+	}
+	ar := got["MailSettings"].(map[string]any)["AutoResponder"].(map[string]any)
+	if ar["Subject"] != "Auto" {
+		t.Fatalf("AutoResponder Subject must be preserved, got: %v", ar["Subject"])
+	}
+}
+
 // TestScrubRawHeaderRedactsSenderControlled guards the allowlist against the
 // denylist gap it replaced: sender-controlled headers (List-Unsubscribe
 // tracking token, third-party Sender, X-Originating-IP) that no denylist
