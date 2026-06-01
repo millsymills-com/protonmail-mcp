@@ -42,6 +42,11 @@ func TestMap(t *testing.T) {
 			fmt.Errorf("%w: %w", proterr.ErrKeyringLocked, unauthAPIErr),
 			"proton/auth_required",
 		},
+		{
+			"body-undecryptable",
+			fmt.Errorf("parse armored body: %w", proterr.ErrBodyUndecryptable),
+			"proton/body_undecryptable",
+		},
 		{"503", &proton.APIError{Status: http.StatusServiceUnavailable}, "proton/upstream"},
 		{"unknown-status", &proton.APIError{Status: 418}, "proton/upstream"},
 		//nolint:revive // line-length-limit: test signatures with go-sdk types exceed 100 chars; cannot be split readably

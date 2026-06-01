@@ -111,8 +111,11 @@ func TestDecryptBodyBadArmoredErrors(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for malformed armored body")
 	}
-	if !errors.Is(err, proterr.ErrKeyringLocked) {
-		t.Fatalf("expected ErrKeyringLocked, got %v", err)
+	if !errors.Is(err, proterr.ErrBodyUndecryptable) {
+		t.Fatalf("expected ErrBodyUndecryptable, got %v", err)
+	}
+	if errors.Is(err, proterr.ErrKeyringLocked) {
+		t.Fatalf("unparseable body must not classify as keyring_locked: %v", err)
 	}
 }
 

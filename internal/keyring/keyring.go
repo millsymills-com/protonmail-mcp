@@ -93,7 +93,7 @@ func (k *Keyrings) DecryptBody(addrID, armoredBody string) (string, error) {
 	}
 	msg, err := crypto.NewPGPMessageFromArmored(armoredBody)
 	if err != nil {
-		return "", fmt.Errorf("parse armored body: %w: %w", proterr.ErrKeyringLocked, err)
+		return "", fmt.Errorf("parse armored body: %w: %w", proterr.ErrBodyUndecryptable, err)
 	}
 	plain, err := kr.Decrypt(msg, nil, 0)
 	if err != nil {

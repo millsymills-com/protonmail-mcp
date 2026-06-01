@@ -11,3 +11,9 @@ var ErrNoSession = errors.New("no session in keychain")
 // (wrong mailbox password, no usable address key, or a decrypt failure). It is
 // non-retryable — distinct from transient proton/upstream transport failures.
 var ErrKeyringLocked = errors.New("keyring locked or unusable")
+
+// ErrBodyUndecryptable signals the message body itself is not decryptable PGP
+// (empty, plaintext, or otherwise unparseable) even though the keyring is
+// unlocked. Distinct from ErrKeyringLocked so the operator is not told to
+// re-check their mailbox password for a body that was never encrypted.
+var ErrBodyUndecryptable = errors.New("message body is not decryptable")
