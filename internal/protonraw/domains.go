@@ -2,7 +2,8 @@ package protonraw
 
 import (
 	"context"
-	"fmt"
+
+	"github.com/go-resty/resty/v2"
 )
 
 // CustomDomain mirrors the Proton API shape for a user-managed custom domain.
@@ -33,12 +34,10 @@ func ListCustomDomains(ctx context.Context, d Doer) ([]CustomDomain, error) {
 	var out struct {
 		Domains []CustomDomain `json:"Domains"`
 	}
-	resp, err := d.R().SetContext(ctx).Get("/core/v4/domains")
-	if err != nil {
-		return nil, fmt.Errorf("list custom domains: %w", err)
-	}
-	if err := decode(resp, &out); err != nil {
-		return nil, fmt.Errorf("list custom domains: %w", err)
+	if err := do(ctx, d, "list custom domains", &out, func(r *resty.Request) (*resty.Response, error) {
+		return r.Get("/core/v4/domains")
+	}); err != nil {
+		return nil, err
 	}
 	return out.Domains, nil
 }
@@ -52,12 +51,10 @@ func GetCustomDomain(ctx context.Context, d Doer, id string) (CustomDomain, erro
 	var out struct {
 		Domain CustomDomain `json:"Domain"`
 	}
-	resp, err := d.R().SetContext(ctx).Get("/core/v4/domains/" + id)
-	if err != nil {
-		return CustomDomain{}, fmt.Errorf("get custom domain %s: %w", id, err)
-	}
-	if err := decode(resp, &out); err != nil {
-		return CustomDomain{}, fmt.Errorf("get custom domain %s: %w", id, err)
+	if err := do(ctx, d, "get custom domain "+id, &out, func(r *resty.Request) (*resty.Response, error) {
+		return r.Get("/core/v4/domains/" + id)
+	}); err != nil {
+		return CustomDomain{}, err
 	}
 	return out.Domain, nil
 }
@@ -69,12 +66,10 @@ func AddCustomDomain(ctx context.Context, d Doer, domain string) (CustomDomain, 
 	var out struct {
 		Domain CustomDomain `json:"Domain"`
 	}
-	resp, err := d.R().SetContext(ctx).SetBody(body).Post("/core/v4/domains")
-	if err != nil {
-		return CustomDomain{}, fmt.Errorf("add custom domain %s: %w", domain, err)
-	}
-	if err := decode(resp, &out); err != nil {
-		return CustomDomain{}, fmt.Errorf("add custom domain %s: %w", domain, err)
+	if err := do(ctx, d, "add custom domain "+domain, &out, func(r *resty.Request) (*resty.Response, error) {
+		return r.SetBody(body).Post("/core/v4/domains")
+	}); err != nil {
+		return CustomDomain{}, err
 	}
 	return out.Domain, nil
 }
@@ -88,12 +83,10 @@ func VerifyCustomDomain(ctx context.Context, d Doer, id string) (CustomDomain, e
 	var out struct {
 		Domain CustomDomain `json:"Domain"`
 	}
-	resp, err := d.R().SetContext(ctx).Put("/core/v4/domains/" + id + "/verify")
-	if err != nil {
-		return CustomDomain{}, fmt.Errorf("verify custom domain %s: %w", id, err)
-	}
-	if err := decode(resp, &out); err != nil {
-		return CustomDomain{}, fmt.Errorf("verify custom domain %s: %w", id, err)
+	if err := do(ctx, d, "verify custom domain "+id, &out, func(r *resty.Request) (*resty.Response, error) {
+		return r.Put("/core/v4/domains/" + id + "/verify")
+	}); err != nil {
+		return CustomDomain{}, err
 	}
 	return out.Domain, nil
 }
@@ -104,12 +97,7 @@ func RemoveCustomDomain(ctx context.Context, d Doer, id string) error {
 	if err := validatePathID("id", id); err != nil {
 		return err
 	}
-	resp, err := d.R().SetContext(ctx).Delete("/core/v4/domains/" + id)
-	if err != nil {
-		return fmt.Errorf("remove custom domain %s: %w", id, err)
-	}
-	if err := decode(resp, nil); err != nil {
-		return fmt.Errorf("remove custom domain %s: %w", id, err)
-	}
-	return nil
+	return do(ctx, d, "remove custom domain "+id, nil, func(r *resty.Request) (*resty.Response, error) {
+		return r.Delete("/core/v4/domains/" + id)
+	})
 }

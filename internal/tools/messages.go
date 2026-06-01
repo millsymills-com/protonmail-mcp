@@ -66,13 +66,13 @@ type getMessageOut struct {
 }
 
 func registerMessages(server *mcp.Server, d Deps) {
-	mcp.AddTool(server, &mcp.Tool{
+	addTool(server, d, &mcp.Tool{
 		Name:        "proton_search_messages",
 		Description: "Searches recent messages by subject substring, label/folder, or recipient address. Returns metadata only (no body). Use proton_get_message with include_headers=true to inspect Authentication-Results for delivery verification.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in searchMessagesIn) (*mcp.CallToolResult, searchMessagesOut, error) {
-		c, fail := clientOrFail(ctx, d)
-		if fail != nil {
-			return fail, searchMessagesOut{}, nil
+	}, func(ctx context.Context, d Deps, in searchMessagesIn) (searchMessagesOut, *proterr.Error) {
+		c, perr := client(ctx, d)
+		if perr != nil {
+			return searchMessagesOut{}, perr
 		}
 		page := in.Page
 		if page < 0 {
@@ -93,29 +93,29 @@ func registerMessages(server *mcp.Server, d Deps) {
 		}
 		raws, err := c.GetMessageMetadataPage(ctx, page, size, filter)
 		if err != nil {
-			return failure(proterr.Map(err)), searchMessagesOut{}, nil
+			return searchMessagesOut{}, proterr.Map(err)
 		}
 		out := make([]messageStubDTO, len(raws))
 		for i, m := range raws {
 			out[i] = toMessageStubDTO(m)
 		}
-		return nil, searchMessagesOut{Messages: out}, nil
+		return searchMessagesOut{Messages: out}, nil
 	})
 
-	mcp.AddTool(server, &mcp.Tool{
+	addTool(server, d, &mcp.Tool{
 		Name:        "proton_get_message",
 		Description: "Returns a single message's metadata. With include_headers=true, also returns the raw RFC822 header block and a parsed-header map (e.g. Authentication-Results, DKIM-Signature, Received) for delivery verification. Sensitive headers (Bcc, X-Originating-IP, etc.) are stripped from parsed_headers, but raw_headers is the complete block — treat raw_headers as containing the BCC list and origination IP and handle accordingly. With include_body=true, decrypts and returns the plaintext body when the session keyring is unlocked.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in getMessageIn) (*mcp.CallToolResult, getMessageOut, error) {
-		if fail := requireField("id", in.ID); fail != nil {
-			return fail, getMessageOut{}, nil
+	}, func(ctx context.Context, d Deps, in getMessageIn) (getMessageOut, *proterr.Error) {
+		if perr := required("id", in.ID); perr != nil {
+			return getMessageOut{}, perr
 		}
-		c, fail := clientOrFail(ctx, d)
-		if fail != nil {
-			return fail, getMessageOut{}, nil
+		c, perr := client(ctx, d)
+		if perr != nil {
+			return getMessageOut{}, perr
 		}
 		raw, err := c.GetMessage(ctx, in.ID)
 		if err != nil {
-			return failure(proterr.Map(err)), getMessageOut{}, nil
+			return getMessageOut{}, proterr.Map(err)
 		}
 		out := getMessageOut{Message: toMessageStubDTO(raw.MessageMetadata)}
 		if in.IncludeHeaders {
@@ -125,15 +125,15 @@ func registerMessages(server *mcp.Server, d Deps) {
 		if in.IncludeBody {
 			krs, kerr := d.Session.Keyrings(ctx)
 			if kerr != nil {
-				return failure(proterr.Map(kerr)), getMessageOut{}, nil
+				return getMessageOut{}, proterr.Map(kerr)
 			}
 			body, derr := krs.DecryptBody(raw.AddressID, raw.Body)
 			if derr != nil {
-				return failure(proterr.Map(derr)), getMessageOut{}, nil
+				return getMessageOut{}, proterr.Map(derr)
 			}
 			out.Body = body
 		}
-		return nil, out, nil
+		return out, nil
 	})
 }
 

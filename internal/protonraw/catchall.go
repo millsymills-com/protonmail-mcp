@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"strings"
+
+	"github.com/go-resty/resty/v2"
 )
 
 // validatePathID rejects empty input or any character that would let a
@@ -46,12 +48,10 @@ func ListDomainAddresses(ctx context.Context, d Doer, domainID string) ([]Domain
 	var out struct {
 		Addresses []DomainAddress `json:"Addresses"`
 	}
-	resp, err := d.R().SetContext(ctx).Get("/core/v4/domains/" + domainID + "/addresses")
-	if err != nil {
-		return nil, fmt.Errorf("list domain addresses %s: %w", domainID, err)
-	}
-	if err := decode(resp, &out); err != nil {
-		return nil, fmt.Errorf("list domain addresses %s: %w", domainID, err)
+	if err := do(ctx, d, "list domain addresses "+domainID, &out, func(r *resty.Request) (*resty.Response, error) {
+		return r.Get("/core/v4/domains/" + domainID + "/addresses")
+	}); err != nil {
+		return nil, err
 	}
 	return out.Addresses, nil
 }
@@ -67,12 +67,7 @@ func UpdateCatchAll(ctx context.Context, d Doer, domainID string, addressID *str
 		return err
 	}
 	body := map[string]any{"AddressID": addressID}
-	resp, err := d.R().SetContext(ctx).SetBody(body).Put("/core/v4/domains/" + domainID + "/catchall")
-	if err != nil {
-		return fmt.Errorf("update catchall %s: %w", domainID, err)
-	}
-	if err := decode(resp, nil); err != nil {
-		return fmt.Errorf("update catchall %s: %w", domainID, err)
-	}
-	return nil
+	return do(ctx, d, "update catchall "+domainID, nil, func(r *resty.Request) (*resty.Response, error) {
+		return r.SetBody(body).Put("/core/v4/domains/" + domainID + "/catchall")
+	})
 }

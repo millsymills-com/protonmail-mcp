@@ -7,6 +7,7 @@
 package protonraw
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -19,6 +20,22 @@ import (
 // a cycle; the interface is just enough to make HTTP calls.
 type Doer interface {
 	R() *resty.Request
+}
+
+// do issues the request built by call against d, then decodes the response
+// into out (pass nil to discard the body). The transport error and the decode
+// error are both wrapped with label, so each endpoint names its operation
+// exactly once instead of repeating the same fmt.Errorf on both paths.
+func do(ctx context.Context, d Doer, label string, out any,
+	call func(*resty.Request) (*resty.Response, error)) error {
+	resp, err := call(d.R().SetContext(ctx))
+	if err != nil {
+		return fmt.Errorf("%s: %w", label, err)
+	}
+	if err := decode(resp, out); err != nil {
+		return fmt.Errorf("%s: %w", label, err)
+	}
+	return nil
 }
 
 func decode(resp *resty.Response, out any) error {
