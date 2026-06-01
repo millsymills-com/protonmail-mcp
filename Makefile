@@ -1,5 +1,5 @@
 GO ?= go
-COVER_PKGS := github.com/millsmillsymills/protonmail-mcp/cmd/protonmail-mcp,github.com/millsmillsymills/protonmail-mcp/internal/server,github.com/millsmillsymills/protonmail-mcp/internal/tools,github.com/millsmillsymills/protonmail-mcp/internal/session,github.com/millsmillsymills/protonmail-mcp/internal/protonraw,github.com/millsmillsymills/protonmail-mcp/internal/proterr,github.com/millsmillsymills/protonmail-mcp/internal/log,github.com/millsmillsymills/protonmail-mcp/internal/keychain
+COVER_PKGS := github.com/millsmillsymills/protonmail-mcp/cmd/protonmail-mcp,github.com/millsmillsymills/protonmail-mcp/internal/server,github.com/millsmillsymills/protonmail-mcp/internal/tools,github.com/millsmillsymills/protonmail-mcp/internal/session,github.com/millsmillsymills/protonmail-mcp/internal/protonraw,github.com/millsmillsymills/protonmail-mcp/internal/proterr,github.com/millsmillsymills/protonmail-mcp/internal/log,github.com/millsmillsymills/protonmail-mcp/internal/keychain,github.com/millsmillsymills/protonmail-mcp/internal/keyring
 
 .PHONY: test test-race coverage coverage-check verify-cassettes record
 

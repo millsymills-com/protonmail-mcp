@@ -13,6 +13,7 @@ import (
 )
 
 func TestMap(t *testing.T) {
+	unauthAPIErr := &proton.APIError{Status: http.StatusUnauthorized}
 	tests := []struct {
 		name string
 		err  error
@@ -31,6 +32,21 @@ func TestMap(t *testing.T) {
 		{"net-error", &proton.NetError{Cause: errors.New("dial tcp: connection refused"), Message: "could not reach API"}, "proton/upstream"},
 		{"plain-network", errors.New("dial tcp: connection refused"), "proton/upstream"},
 		{"no-session", fmt.Errorf("%w — run login", proterr.ErrNoSession), "proton/auth_required"},
+		{
+			"keyring-locked",
+			fmt.Errorf("unlock user keyring: %w", proterr.ErrKeyringLocked),
+			"proton/keyring_locked",
+		},
+		{
+			"keyring-wraps-apierror",
+			fmt.Errorf("%w: %w", proterr.ErrKeyringLocked, unauthAPIErr),
+			"proton/auth_required",
+		},
+		{
+			"body-undecryptable",
+			fmt.Errorf("parse armored body: %w", proterr.ErrBodyUndecryptable),
+			"proton/body_undecryptable",
+		},
 		{"503", &proton.APIError{Status: http.StatusServiceUnavailable}, "proton/upstream"},
 		{"unknown-status", &proton.APIError{Status: 418}, "proton/upstream"},
 		//nolint:revive // line-length-limit: test signatures with go-sdk types exceed 100 chars; cannot be split readably

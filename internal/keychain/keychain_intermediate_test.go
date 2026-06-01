@@ -138,3 +138,25 @@ func TestLoadCredsInteractionNotAllowedHint(t *testing.T) {
 		t.Fatalf("darwin load failure should carry the unlock hint, got %v", err)
 	}
 }
+
+// TestLoadCredsToleratesMissingMailboxPassword guards the migration path: a
+// pre-existing bundle written before the mailbox_password key existed (only
+// username + password seeded) must load without error and report an empty
+// MailboxPassword. Seeding through the real service/key seams keeps this
+// coupled to the actual storage layout.
+func TestLoadCredsToleratesMissingMailboxPassword(t *testing.T) {
+	keyring.MockInit()
+	if err := keyringSet(service, keyUsername, "u@example.test"); err != nil {
+		t.Fatal(err)
+	}
+	if err := keyringSet(service, keyPassword, "login-pw"); err != nil {
+		t.Fatal(err)
+	}
+	got, err := New().LoadCreds()
+	if err != nil {
+		t.Fatalf("load must tolerate absent mailbox password: %v", err)
+	}
+	if got.MailboxPassword != "" {
+		t.Fatalf("MailboxPassword = %q, want empty", got.MailboxPassword)
+	}
+}

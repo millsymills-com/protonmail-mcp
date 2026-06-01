@@ -27,8 +27,8 @@ var sensitiveHeaders = map[string]struct{}{
 
 // messageStubDTO is the search-result projection. Fields chosen for the
 // canonical "did delivery happen?" check: subject + sender + recipients +
-// timestamp + flags. Body is intentionally absent — bodies are PGP-encrypted
-// and decrypting them needs an unlocked keyring (v1.5).
+// timestamp + flags. Body is intentionally absent from search results — use
+// proton_get_message with include_body=true to decrypt and return the plaintext body.
 type messageStubDTO struct {
 	ID            string   `json:"id"`
 	Subject       string   `json:"subject"`
@@ -56,11 +56,13 @@ type searchMessagesOut struct {
 type getMessageIn struct {
 	ID             string `json:"id"`
 	IncludeHeaders bool   `json:"include_headers,omitempty" jsonschema:"if true, return the full raw RFC822 header block + parsed headers (e.g. Authentication-Results)"`
+	IncludeBody    bool   `json:"include_body,omitempty" jsonschema:"if true, decrypt and return the plaintext body; returns proton/keyring_locked on a wrong mailbox password (non-retryable)"`
 }
 type getMessageOut struct {
 	Message       messageStubDTO      `json:"message"`
 	RawHeaders    string              `json:"raw_headers,omitempty"`
 	ParsedHeaders map[string][]string `json:"parsed_headers,omitempty"`
+	Body          string              `json:"body,omitempty"`
 }
 
 func registerMessages(server *mcp.Server, d Deps) {
@@ -102,7 +104,7 @@ func registerMessages(server *mcp.Server, d Deps) {
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "proton_get_message",
-		Description: "Returns a single message's metadata. With include_headers=true, also returns the raw RFC822 header block and a parsed-header map (e.g. Authentication-Results, DKIM-Signature, Received) for delivery verification. Sensitive headers (Bcc, X-Originating-IP, etc.) are stripped from parsed_headers, but raw_headers is the complete block — treat raw_headers as containing the BCC list and origination IP and handle accordingly. Body is not returned — PGP decryption requires an unlocked keyring (v1.5).",
+		Description: "Returns a single message's metadata. With include_headers=true, also returns the raw RFC822 header block and a parsed-header map (e.g. Authentication-Results, DKIM-Signature, Received) for delivery verification. Sensitive headers (Bcc, X-Originating-IP, etc.) are stripped from parsed_headers, but raw_headers is the complete block — treat raw_headers as containing the BCC list and origination IP and handle accordingly. With include_body=true, decrypts and returns the plaintext body when the session keyring is unlocked.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in getMessageIn) (*mcp.CallToolResult, getMessageOut, error) {
 		if fail := requireField("id", in.ID); fail != nil {
 			return fail, getMessageOut{}, nil
@@ -119,6 +121,17 @@ func registerMessages(server *mcp.Server, d Deps) {
 		if in.IncludeHeaders {
 			out.RawHeaders = raw.Header
 			out.ParsedHeaders = filterSensitiveHeaders(raw.ParsedHeaders.Values)
+		}
+		if in.IncludeBody {
+			krs, kerr := d.Session.Keyrings(ctx)
+			if kerr != nil {
+				return failure(proterr.Map(kerr)), getMessageOut{}, nil
+			}
+			body, derr := krs.DecryptBody(raw.AddressID, raw.Body)
+			if derr != nil {
+				return failure(proterr.Map(derr)), getMessageOut{}, nil
+			}
+			out.Body = body
 		}
 		return nil, out, nil
 	})

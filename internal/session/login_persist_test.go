@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	proton "github.com/ProtonMail/go-proton-api"
 	"github.com/zalando/go-keyring"
 
 	"github.com/millsmillsymills/protonmail-mcp/internal/keychain"
@@ -259,5 +260,54 @@ func TestLogoutLeavesPoisonOnClearFailure(t *testing.T) {
 	}
 	if !s.poisoned {
 		t.Fatal("Logout with failed Clear must leave poisoned flag set")
+	}
+}
+
+func TestErrMailboxPasswordRequiredIsDistinct(t *testing.T) {
+	// Guards the sentinel used by the CLI to branch into a mailbox-password
+	// prompt instead of treating it as a generic auth failure.
+	if !errors.Is(ErrMailboxPasswordRequired, ErrMailboxPasswordRequired) {
+		t.Fatal("sentinel must match itself")
+	}
+	if errors.Is(ErrMailboxPasswordRequired, ErrTOTPRequired) {
+		t.Fatal("mailbox-password and TOTP sentinels must be distinct")
+	}
+}
+
+func TestChooseMailboxPassword(t *testing.T) {
+	tests := []struct {
+		name     string
+		mode     proton.PasswordMode
+		supplied string
+		want     string
+		wantErr  error
+	}{
+		{"two-password requires value", proton.TwoPasswordMode, "", "", ErrMailboxPasswordRequired},
+		{"two-password keeps supplied", proton.TwoPasswordMode, "mbox", "mbox", nil},
+		{"one-password forces empty", proton.OnePasswordMode, "ignored", "", nil},
+		{"unknown mode errors", proton.PasswordMode(0), "x", "", nil}, // expects a non-nil error; see check below
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := chooseMailboxPassword(tc.mode, tc.supplied)
+			if tc.name == "unknown mode errors" {
+				if err == nil {
+					t.Fatal("expected error for unknown mode")
+				}
+				return
+			}
+			if tc.wantErr != nil {
+				if !errors.Is(err, tc.wantErr) {
+					t.Fatalf("err = %v, want %v", err, tc.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected err: %v", err)
+			}
+			if got != tc.want {
+				t.Fatalf("got %q, want %q", got, tc.want)
+			}
+		})
 	}
 }
