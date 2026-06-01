@@ -286,10 +286,14 @@ var rfc2822SafeHeaders = map[string]bool{
 	"content-language":          true,
 }
 
-// scrubHeaderField redacts the two shapes Proton uses to surface a message's
-// raw headers: a "Header" string holding a full RFC2822 block, and a
-// "ParsedHeaders" object keyed by header name. Returns true when it handled
-// (and thus consumed) the entry, so walk skips its generic processing.
+// scrubHeaderField redacts the three shapes Proton uses to surface a message's
+// header-derived content: a "Header" string holding a full RFC2822 block, a
+// "ParsedHeaders" object keyed by header name, and a bare "Subject" string on
+// the message body object (a sibling of Header/ParsedHeaders, not nested in
+// them). The Subject case is scoped to message objects so it leaves same-named
+// fields on unrelated payloads (e.g. MailSettings.AutoResponder.Subject) alone.
+// Returns true when it handled (and thus consumed) the entry, so walk skips its
+// generic processing.
 func (s *bodyScrubber) scrubHeaderField(t map[string]any, k string, vv any) bool {
 	switch {
 	case strings.EqualFold(k, "Header"):
@@ -304,6 +308,24 @@ func (s *bodyScrubber) scrubHeaderField(t map[string]any, k string, vv any) bool
 					m[hk] = "REDACTED"
 				}
 			}
+			return true
+		}
+	case strings.EqualFold(k, "Subject"):
+		if _, ok := vv.(string); ok && isMessageObject(t) {
+			t[k] = "REDACTED"
+			return true
+		}
+	}
+	return false
+}
+
+// isMessageObject reports whether t is a Proton message or message-list entry.
+// Every Message and MessageMetadata carries a ConversationID; objects that
+// merely happen to have a Subject (MailSettings.AutoResponder) do not, so this
+// keeps the Subject redaction from clobbering unrelated settings values.
+func isMessageObject(t map[string]any) bool {
+	for k := range t {
+		if strings.EqualFold(k, "ConversationID") {
 			return true
 		}
 	}
