@@ -1,7 +1,10 @@
 package session
 
 import (
+	"context"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	gokeyring "github.com/zalando/go-keyring"
 
@@ -46,34 +49,55 @@ func TestKeyringsCacheHitSkipsClient(t *testing.T) {
 	}
 }
 
-// TestKeyringsSingleFlightReusesWinner drives the post-lock re-check: a caller
-// that misses the fast-path check and blocks on unlockMu must reuse a keyring
-// populated while it waited, instead of falling through to Client (which would
-// fail against "http://invalid.test"). This is the single-flight guarantee that
-// concurrent first-use callers don't each run the unlock round-trips.
+// TestKeyringsSingleFlightReusesWinner drives the post-lock re-check. The winner
+// enters the fetcher and parks there holding unlockMu; a second caller then
+// reads the empty cache, queues on unlockMu, and — once the winner finishes —
+// must reuse the winner's result via the re-check rather than unlock again. The
+// fetcher counts invocations: dropping the re-check makes the second caller
+// fetch a second time, so the count climbs to 2 and the test fails.
 func TestKeyringsSingleFlightReusesWinner(t *testing.T) {
-	s := &Session{raw: newRawClient("http://invalid.test", nil)}
-	want := &keyring.Keyrings{}
+	var fetchCalls int32
+	winnerIn := make(chan struct{})
+	release := make(chan struct{})
+	s := &Session{
+		kc:  &credKC{creds: keychain.Creds{Password: "pw"}},
+		raw: newRawClient("http://invalid.test", nil),
+	}
+	f := lockedFetcher(t, "pw")
+	s.keyFetcher = func(context.Context) (keyring.KeyFetcher, error) {
+		if atomic.AddInt32(&fetchCalls, 1) == 1 {
+			close(winnerIn) // first caller is the winner, parked inside the unlock
+			<-release
+		}
+		return f, nil
+	}
 
-	s.unlockMu.Lock() // stand in for an in-flight unlock winner
-	done := make(chan struct{})
-	var got *keyring.Keyrings
-	var gotErr error
+	winnerErr := make(chan error, 1)
+	go func() { _, err := s.Keyrings(context.Background()); winnerErr <- err }()
+	<-winnerIn // winner now holds unlockMu inside the fetcher; cache still empty
+
+	secondErr := make(chan error, 1)
+	var secondGot *keyring.Keyrings
 	go func() {
-		got, gotErr = s.Keyrings(t.Context()) // misses fast check, blocks on unlockMu
-		close(done)
+		krs, err := s.Keyrings(context.Background()) // reads empty cache, queues on unlockMu
+		secondGot = krs
+		secondErr <- err
 	}()
 
-	s.mu.Lock()
-	s.keyrings = want // winner stores its result
-	s.mu.Unlock()
-	s.unlockMu.Unlock() // release the waiter into its re-check
+	// Give the second caller time to park on unlockMu before the winner finishes.
+	time.Sleep(20 * time.Millisecond)
+	close(release)
 
-	<-done
-	if gotErr != nil {
-		t.Fatalf("unexpected error (fell through to Client?): %v", gotErr)
+	if err := <-winnerErr; err != nil {
+		t.Fatalf("winner: %v", err)
 	}
-	if got != want {
-		t.Fatal("waiter must reuse the cached keyrings, not unlock again")
+	if err := <-secondErr; err != nil {
+		t.Fatalf("second caller: %v", err)
+	}
+	if secondGot != s.keyrings {
+		t.Fatal("second caller must reuse the winner's cached keyrings")
+	}
+	if n := atomic.LoadInt32(&fetchCalls); n != 1 {
+		t.Fatalf("fetcher ran %d times, want 1; the post-lock re-check is missing", n)
 	}
 }
