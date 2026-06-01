@@ -53,12 +53,12 @@ func registerIdentity(server *mcp.Server, d Deps) {
 		Name:        "proton_session_status",
 		Description: "Reports whether a session is currently authenticated and whether token persistence is healthy.",
 	}, func(ctx context.Context, d Deps, _ sessionStatusInput) (sessionStatusOutput, *proterr.Error) {
+		c, err := d.Session.Client(ctx)
 		st := d.Session.Status()
 		out := sessionStatusOutput{
 			PersistDegraded: st.PersistDegraded,
 			PersistError:    st.PersistError,
 		}
-		c, err := d.Session.Client(ctx)
 		if err != nil {
 			return out, nil
 		}
