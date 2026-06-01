@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -16,6 +17,23 @@ import (
 	"github.com/millsmillsymills/protonmail-mcp/internal/server"
 	"github.com/millsmillsymills/protonmail-mcp/internal/session"
 )
+
+// defaultAPIURL is Proton's production mail API base, used when
+// PROTONMAIL_MCP_API_URL is unset.
+const defaultAPIURL = "https://mail.proton.me/api"
+
+// newSession resolves the credential backend and constructs a Session with the
+// default API URL applied. Shared by the login/logout/status subcommands.
+func newSession(getenv func(string) string, apiURL string, transport http.RoundTripper) (*session.Session, error) {
+	if apiURL == "" {
+		apiURL = defaultAPIURL
+	}
+	store, err := session.SelectStore(getenv)
+	if err != nil {
+		return nil, fmt.Errorf("credential backend: %w", err)
+	}
+	return session.New(apiURL, store, session.WithTransport(transport)), nil
+}
 
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
