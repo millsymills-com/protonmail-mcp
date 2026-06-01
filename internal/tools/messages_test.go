@@ -71,7 +71,7 @@ func TestFilterSensitiveHeadersNilOnEmpty(t *testing.T) {
 }
 
 func TestGetMessageInHasIncludeBody(t *testing.T) {
-	in := getMessageIn{ID: "m1", IncludeBody: true}
+	in := getMessageIn{IncludeBody: true}
 	if !in.IncludeBody {
 		t.Fatal("IncludeBody field missing")
 	}

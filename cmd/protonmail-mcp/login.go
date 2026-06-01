@@ -24,14 +24,10 @@ func runLogin(
 	stdin io.Reader,
 	stdout, stderr io.Writer,
 ) error {
-	if apiURL == "" {
-		apiURL = "https://mail.proton.me/api"
-	}
-	store, err := session.SelectStore(getenv)
+	sess, err := newSession(getenv, apiURL, transport)
 	if err != nil {
-		return fmt.Errorf("credential backend: %w", err)
+		return err
 	}
-	sess := session.New(apiURL, store, session.WithTransport(transport))
 
 	reader := bufio.NewReader(stdin)
 	username, err := promptReader(stdout, reader, "Proton email: ")

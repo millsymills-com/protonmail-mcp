@@ -26,20 +26,20 @@ type sessionStatusOutput struct {
 }
 
 func registerIdentity(server *mcp.Server, d Deps) {
-	mcp.AddTool(server, &mcp.Tool{
+	addTool(server, d, &mcp.Tool{
 		Name:        "proton_whoami",
 		Description: "Returns the logged-in Proton account's email, display name, storage usage, and token-persistence health.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ whoamiInput) (*mcp.CallToolResult, whoamiOutput, error) {
-		c, fail := clientOrFail(ctx, d)
-		if fail != nil {
-			return fail, whoamiOutput{}, nil
+	}, func(ctx context.Context, d Deps, _ whoamiInput) (whoamiOutput, *proterr.Error) {
+		c, perr := client(ctx, d)
+		if perr != nil {
+			return whoamiOutput{}, perr
 		}
 		u, err := c.GetUser(ctx)
 		if err != nil {
-			return failure(proterr.Map(err)), whoamiOutput{}, nil
+			return whoamiOutput{}, proterr.Map(err)
 		}
 		st := d.Session.Status()
-		return nil, whoamiOutput{
+		return whoamiOutput{
 			Email:           u.Email,
 			Name:            u.DisplayName,
 			UsedSpace:       int64(u.UsedSpace),
@@ -49,34 +49,25 @@ func registerIdentity(server *mcp.Server, d Deps) {
 		}, nil
 	})
 
-	mcp.AddTool(server, &mcp.Tool{
+	addTool(server, d, &mcp.Tool{
 		Name:        "proton_session_status",
 		Description: "Reports whether a session is currently authenticated and whether token persistence is healthy.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ sessionStatusInput) (*mcp.CallToolResult, sessionStatusOutput, error) {
-		c, fail := clientOrFail(ctx, d)
-		if fail != nil {
-			st := d.Session.Status()
-			return nil, sessionStatusOutput{
-				LoggedIn:        false,
-				PersistDegraded: st.PersistDegraded,
-				PersistError:    st.PersistError,
-			}, nil
+	}, func(ctx context.Context, d Deps, _ sessionStatusInput) (sessionStatusOutput, *proterr.Error) {
+		c, err := d.Session.Client(ctx)
+		st := d.Session.Status()
+		out := sessionStatusOutput{
+			PersistDegraded: st.PersistDegraded,
+			PersistError:    st.PersistError,
+		}
+		if err != nil {
+			return out, nil
 		}
 		u, err := c.GetUser(ctx)
 		if err != nil {
-			st := d.Session.Status()
-			return nil, sessionStatusOutput{
-				LoggedIn:        false,
-				PersistDegraded: st.PersistDegraded,
-				PersistError:    st.PersistError,
-			}, nil
+			return out, nil
 		}
-		st := d.Session.Status()
-		return nil, sessionStatusOutput{
-			LoggedIn:        true,
-			Email:           u.Email,
-			PersistDegraded: st.PersistDegraded,
-			PersistError:    st.PersistError,
-		}, nil
+		out.LoggedIn = true
+		out.Email = u.Email
+		return out, nil
 	})
 }

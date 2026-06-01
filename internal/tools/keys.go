@@ -29,17 +29,17 @@ type listKeysOut struct {
 }
 
 func registerKeys(server *mcp.Server, d Deps) {
-	mcp.AddTool(server, &mcp.Tool{
+	addTool(server, d, &mcp.Tool{
 		Name:        "proton_list_address_keys",
 		Description: "Lists encryption keys for an address (id, fingerprint, primary flag, armored public key).",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listKeysIn) (*mcp.CallToolResult, listKeysOut, error) {
-		c, fail := clientOrFail(ctx, d)
-		if fail != nil {
-			return fail, listKeysOut{}, nil
+	}, func(ctx context.Context, d Deps, in listKeysIn) (listKeysOut, *proterr.Error) {
+		c, perr := client(ctx, d)
+		if perr != nil {
+			return listKeysOut{}, perr
 		}
 		addr, err := c.GetAddress(ctx, in.AddressID)
 		if err != nil {
-			return failure(proterr.Map(err)), listKeysOut{}, nil
+			return listKeysOut{}, proterr.Map(err)
 		}
 		out := make([]keyDTO, len(addr.Keys))
 		for i, k := range addr.Keys {
@@ -60,7 +60,7 @@ func registerKeys(server *mcp.Server, d Deps) {
 			}
 			out[i] = dto
 		}
-		return nil, listKeysOut{Keys: out}, nil
+		return listKeysOut{Keys: out}, nil
 	})
 
 	// NOTE: Key write operations are deferred. go-proton-api exposes
