@@ -49,6 +49,10 @@ func TestDiagnoseKeychainErrFor(t *testing.T) {
 		"The name org.freedesktop.secrets was not provided by any .service files")
 	wrappedNoSecretService := fmt.Errorf("save username: %w", noSecretService)
 	otherDBus := dbusErrNamed("org.freedesktop.DBus.Error.AccessDenied", "denied")
+	// godbus v5.2.2 returns this as a plain errors.New (no dbus.Error type) when
+	// there is no session bus at all — the dominant headless case.
+	noSessionBus := errors.New("dbus: couldn't determine address of session bus")
+	wrappedNoSessionBus := fmt.Errorf("save username: %w", noSessionBus)
 
 	tests := []struct {
 		name        string
@@ -66,6 +70,9 @@ func TestDiagnoseKeychainErrFor(t *testing.T) {
 		{"linux backend error passes through", backend, "linux", false, ""},
 		{"linux secret-service-unknown augments", noSecretService, "linux", true, "CREDENTIAL_BACKEND=file"},
 		{"linux wrapped secret-service-unknown augments", wrappedNoSecretService, "linux", true, "CREDENTIAL_BACKEND=file"},
+		{"linux no-session-bus augments", noSessionBus, "linux", true, "CREDENTIAL_BACKEND=file"},
+		{"linux wrapped no-session-bus augments", wrappedNoSessionBus, "linux", true, "CREDENTIAL_BACKEND=file"},
+		{"darwin no-session-bus passes through", noSessionBus, "darwin", false, ""},
 		{"linux other dbus error passes through", otherDBus, "linux", false, ""},
 		{"nil darwin", nil, "darwin", false, ""},
 		{"nil linux", nil, "linux", false, ""},
