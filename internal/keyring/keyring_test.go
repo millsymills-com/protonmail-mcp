@@ -93,6 +93,33 @@ func TestDecryptBodyRecoversPlaintext(t *testing.T) {
 	}
 }
 
+func TestClearPrivateParamsDisablesDecrypt(t *testing.T) {
+	kr := newTestKeyRing(t)
+	armored, err := kr.Encrypt(crypto.NewPlainMessageFromString("secret"), nil)
+	if err != nil {
+		t.Fatalf("encrypt: %v", err)
+	}
+	pgp, err := armored.GetArmored()
+	if err != nil {
+		t.Fatalf("armor: %v", err)
+	}
+	krs := &Keyrings{User: kr, Addr: map[string]*crypto.KeyRing{"addr-1": kr}}
+	if _, err := krs.DecryptBody("addr-1", pgp); err != nil {
+		t.Fatalf("decrypt before clear: %v", err)
+	}
+	krs.ClearPrivateParams()
+	// Private key material is gone, so the same body must no longer decrypt —
+	// proving the wipe is effective rather than cosmetic.
+	if _, err := krs.DecryptBody("addr-1", pgp); err == nil {
+		t.Fatal("decrypt must fail after ClearPrivateParams")
+	}
+}
+
+func TestClearPrivateParamsNilUserSafe(t *testing.T) {
+	krs := &Keyrings{Addr: map[string]*crypto.KeyRing{}}
+	krs.ClearPrivateParams() // must not panic on a nil User / empty Addr
+}
+
 func TestDecryptBodyUnknownAddressErrors(t *testing.T) {
 	krs := &Keyrings{User: nil, Addr: map[string]*crypto.KeyRing{}}
 	_, err := krs.DecryptBody("missing", "irrelevant")
