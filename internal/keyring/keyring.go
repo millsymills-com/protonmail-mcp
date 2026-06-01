@@ -89,7 +89,11 @@ func Unlock(ctx context.Context, f KeyFetcher, mailboxPassword []byte) (*Keyring
 func (k *Keyrings) DecryptBody(addrID, armoredBody string) (string, error) {
 	kr, ok := k.Addr[addrID]
 	if !ok {
-		return "", fmt.Errorf("%w: no unlocked keyring for address %s", proterr.ErrKeyringLocked, addrID)
+		// The user keyring unlocked fine; this message's address just has no
+		// usable keyring (disabled/skipped address, or an unknown addrID). That
+		// is a body-level problem, not a mailbox-password one — classify it as
+		// undecryptable so the operator isn't sent to re-check their password.
+		return "", fmt.Errorf("%w: no unlocked keyring for address %s", proterr.ErrBodyUndecryptable, addrID)
 	}
 	msg, err := crypto.NewPGPMessageFromArmored(armoredBody)
 	if err != nil {
@@ -97,7 +101,10 @@ func (k *Keyrings) DecryptBody(addrID, armoredBody string) (string, error) {
 	}
 	plain, err := kr.Decrypt(msg, nil, 0)
 	if err != nil {
-		return "", fmt.Errorf("decrypt body: %w: %w", proterr.ErrKeyringLocked, err)
+		// A parseable PGP body that won't decrypt with an unlocked keyring was
+		// encrypted to a key we don't hold (forwarded/foreign-key message, key
+		// rotation) — the keyring is fine, so this is not ErrKeyringLocked.
+		return "", fmt.Errorf("decrypt body: %w: %w", proterr.ErrBodyUndecryptable, err)
 	}
 	return plain.GetString(), nil
 }

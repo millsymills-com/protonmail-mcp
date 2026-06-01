@@ -99,8 +99,11 @@ func TestDecryptBodyUnknownAddressErrors(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for unknown address ID")
 	}
-	if !errors.Is(err, proterr.ErrKeyringLocked) {
-		t.Fatalf("expected ErrKeyringLocked, got %v", err)
+	if !errors.Is(err, proterr.ErrBodyUndecryptable) {
+		t.Fatalf("expected ErrBodyUndecryptable, got %v", err)
+	}
+	if errors.Is(err, proterr.ErrKeyringLocked) {
+		t.Fatalf("missing address keyring must not classify as keyring_locked: %v", err)
 	}
 }
 
@@ -116,6 +119,23 @@ func TestDecryptBodyBadArmoredErrors(t *testing.T) {
 	}
 	if errors.Is(err, proterr.ErrKeyringLocked) {
 		t.Fatalf("unparseable body must not classify as keyring_locked: %v", err)
+	}
+}
+
+func TestDecryptBodyEmptyErrors(t *testing.T) {
+	// Proton returns an empty Body for some draft/system messages: must classify
+	// as undecryptable, never as keyring_locked.
+	kr := newTestKeyRing(t)
+	krs := &Keyrings{User: kr, Addr: map[string]*crypto.KeyRing{"addr-1": kr}}
+	_, err := krs.DecryptBody("addr-1", "")
+	if err == nil {
+		t.Fatal("expected error for empty body")
+	}
+	if !errors.Is(err, proterr.ErrBodyUndecryptable) {
+		t.Fatalf("expected ErrBodyUndecryptable, got %v", err)
+	}
+	if errors.Is(err, proterr.ErrKeyringLocked) {
+		t.Fatalf("empty body must not classify as keyring_locked: %v", err)
 	}
 }
 
@@ -136,8 +156,11 @@ func TestDecryptBodyWrongKeyErrors(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error when decrypting with wrong key")
 	}
-	if !errors.Is(err, proterr.ErrKeyringLocked) {
-		t.Fatalf("expected ErrKeyringLocked, got %v", err)
+	if !errors.Is(err, proterr.ErrBodyUndecryptable) {
+		t.Fatalf("expected ErrBodyUndecryptable, got %v", err)
+	}
+	if errors.Is(err, proterr.ErrKeyringLocked) {
+		t.Fatalf("wrong-key body must not classify as keyring_locked: %v", err)
 	}
 }
 
