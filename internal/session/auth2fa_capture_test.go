@@ -52,6 +52,29 @@ func TestAuth2FACaptureAdoptsPostTokens(t *testing.T) {
 	}
 }
 
+// merge must drop its buffered copy of the post-2FA tokens once it hands them
+// off: the hook closure pins the capture for the process lifetime, so a
+// retained non-empty got would keep live credentials on the heap until exit.
+func TestAuth2FACaptureWipesBufferAfterMerge(t *testing.T) {
+	body := []byte(`{"Code":1000,"UID":"uid-post","AccessToken":"acc-post","RefreshToken":"ref-post"}`)
+	resp := newRestyResponse(t, http.MethodPost, "https://api.example/auth/v4/2fa", http.StatusOK, body)
+
+	cap := newAuth2FACapture()
+	if err := cap.hook(nil, resp); err != nil {
+		t.Fatalf("hook: %v", err)
+	}
+	if got := cap.merge(proton.Auth{UID: "uid-pre"}); got == nil {
+		t.Fatal("merge returned nil; want post-2FA Auth")
+	}
+	if cap.got.UID != "" || cap.got.AccessToken != "" || cap.got.RefreshToken != "" {
+		t.Fatalf("buffered tokens not wiped after merge: %+v", cap.got)
+	}
+	// A second merge must stay nil now that the buffer is cleared.
+	if got := cap.merge(proton.Auth{UID: "uid-pre"}); got != nil {
+		t.Fatalf("re-entrant merge = %+v, want nil after wipe", *got)
+	}
+}
+
 // Proton may decline to rotate one or more fields. merge must fall back to
 // the pre-2FA value for any field the response omitted, not blow it out.
 func TestAuth2FACapturePreservesUnsetFields(t *testing.T) {
