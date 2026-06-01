@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os/exec"
 	"runtime"
+	"strings"
 
 	dbus "github.com/godbus/dbus/v5"
 	"github.com/zalando/go-keyring"
@@ -186,12 +187,22 @@ const interactionNotAllowedExitCode = 36
 // unlocked session keyring.
 const secretServiceUnknownDBusName = "org.freedesktop.DBus.Error.ServiceUnknown"
 
+// noSessionBusSubstr matches godbus's failure when there is no session bus at
+// all — the dominant headless case, which fails inside dbus.SessionBus() before
+// org.freedesktop.secrets is ever contacted. godbus (v5.2.2) returns this as a
+// plain errors.New with no stable type, so errors.As(cause, &dbus.Error) misses
+// it; match defensively on the substring. Load-bearing and brittle across godbus
+// versions — pinned by diagnose_test.go.
+const noSessionBusSubstr = "couldn't determine address of session bus"
+
 // diagnoseKeychainErr augments the two opaque go-keyring errors that have a
 // known, actionable cause:
 //   - macOS: errSecInteractionNotAllowed, surfacing as an *exec.ExitError with
 //     code 36 when the login keychain is locked or unreachable.
-//   - Linux/BSD: org.freedesktop.DBus.Error.ServiceUnknown, surfacing as a
-//     dbus.Error when no Secret Service is available — point at the file backend.
+//   - Linux/BSD: no Secret Service available — either a dbus.Error named
+//     org.freedesktop.DBus.Error.ServiceUnknown (session bus up, secrets daemon
+//     absent) or a plain no-session-bus error (no session bus at all). Both
+//     point at the file backend.
 //
 // All other errors — other exit statuses, other D-Bus errors, and go-keyring's
 // own typed errors (ErrNotFound, ErrSetDataTooBig, …) — pass through unchanged,
@@ -201,10 +212,10 @@ func diagnoseKeychainErr(cause error) error {
 }
 
 // diagnoseKeychainErrFor is the GOOS-parameterized core, split out so tests can
-// exercise the darwin and non-darwin branches deterministically. Both matches
-// are structural (errors.As on *exec.ExitError / dbus.Error) rather than a
-// stringified comparison, so they survive a future go-keyring wrapping the error
-// or capturing stderr.
+// exercise the darwin and non-darwin branches deterministically. The exit-code
+// and ServiceUnknown matches are structural (errors.As on *exec.ExitError /
+// dbus.Error) so they survive go-keyring wrapping the error; the no-session-bus
+// case has no stable type and falls back to a substring match (noSessionBusSubstr).
 func diagnoseKeychainErrFor(cause error, goos string) error {
 	if cause == nil {
 		return cause
@@ -221,7 +232,8 @@ func diagnoseKeychainErrFor(cause error, goos string) error {
 		return cause
 	}
 	var dbusErr dbus.Error
-	if errors.As(cause, &dbusErr) && dbusErr.Name == secretServiceUnknownDBusName {
+	serviceUnknown := errors.As(cause, &dbusErr) && dbusErr.Name == secretServiceUnknownDBusName
+	if serviceUnknown || strings.Contains(cause.Error(), noSessionBusSubstr) {
 		return fmt.Errorf(
 			"%w (no D-Bus Secret Service is available on this host — set "+
 				"PROTONMAIL_MCP_CREDENTIAL_BACKEND=file and PROTONMAIL_MCP_STATE_DIR "+
