@@ -414,3 +414,42 @@ func TestUnlockAllAddressesSkippedReturnsError(t *testing.T) {
 		t.Fatalf("expected nil Keyrings on error, got %+v", krs)
 	}
 }
+
+func assertZeroed(t *testing.T, b []byte) {
+	t.Helper()
+	for i, v := range b {
+		if v != 0 {
+			t.Fatalf("mailboxPassword[%d] = %d, want 0 (slice must be wiped)", i, v)
+		}
+	}
+}
+
+// TestUnlockZeroesMailboxPasswordOnSuccess proves the success path consumes the
+// caller's password slice: it is read for salt derivation, then wiped.
+func TestUnlockZeroesMailboxPasswordOnSuccess(t *testing.T) {
+	rawSalt := []byte("abcdef1234567890") // 16 bytes
+	userKey, userSalt := lockedProtonKey(t, "key-1", []byte("mailbox-pass"), rawSalt)
+	addrKey, _ := lockedProtonKey(t, "addr-key-1", []byte("mailbox-pass"), rawSalt)
+
+	f := fakeFetcher{
+		salts: proton.Salts{userSalt},
+		user:  proton.User{Keys: proton.Keys{userKey}},
+		addrs: []proton.Address{{ID: "addr-1", Keys: proton.Keys{addrKey}}},
+	}
+	pass := []byte("mailbox-pass")
+	if _, err := Unlock(context.Background(), f, pass); err != nil {
+		t.Fatalf("Unlock: %v", err)
+	}
+	assertZeroed(t, pass)
+}
+
+// TestUnlockZeroesMailboxPasswordOnError proves the wipe runs even when Unlock
+// returns early, so a failed unlock doesn't leave the password resident.
+func TestUnlockZeroesMailboxPasswordOnError(t *testing.T) {
+	f := fakeFetcher{saltsErr: errors.New("network error")}
+	pass := []byte("secret")
+	if _, err := Unlock(context.Background(), f, pass); err == nil {
+		t.Fatal("expected error when GetSalts fails")
+	}
+	assertZeroed(t, pass)
+}
