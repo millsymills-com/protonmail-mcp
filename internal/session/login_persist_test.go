@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	proton "github.com/ProtonMail/go-proton-api"
+	dbus "github.com/godbus/dbus/v5"
 	"github.com/zalando/go-keyring"
 
 	"github.com/millsmillsymills/protonmail-mcp/internal/keychain"
@@ -200,6 +201,62 @@ func TestRollbackSurfacesSecondaryFailureAndPoisons(t *testing.T) {
 	}
 	if !s.poisoned {
 		t.Fatal("Session must be marked poisoned when rollback's Clear fails")
+	}
+}
+
+// clearTrackingStore records whether Clear was called, so the backend-
+// unavailable rollback path can assert it skips the pointless Clear against a
+// dead backend.
+type clearTrackingStore struct {
+	*keychain.Keychain
+	saveErr      error
+	clearedCount int
+}
+
+func (c *clearTrackingStore) SaveCreds(_ keychain.Creds) error { return c.saveErr }
+func (c *clearTrackingStore) Clear() error {
+	c.clearedCount++
+	return c.Keychain.Clear()
+}
+
+func TestRollbackBackendUnavailableSkipsCleanupAndDoesNotPoison(t *testing.T) {
+	keyring.MockInit()
+	// A first write failing with a ServiceUnknown dbus error is the headless
+	// host case: nothing was persisted, so the keychain is NOT inconsistent.
+	cause := dbus.Error{
+		Name: "org.freedesktop.DBus.Error.ServiceUnknown",
+		Body: []any{"The name org.freedesktop.secrets was not provided by any .service files"},
+	}
+	store := &clearTrackingStore{Keychain: keychain.New(), saveErr: cause}
+	s := newSessionWithStore(store)
+
+	err := s.persistLoginState(
+		keychain.Creds{Username: "u", Password: "p"},
+		keychain.Session{UID: "uid", AccessToken: "at", RefreshToken: "rt"})
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	// dbus.Error is non-comparable (slice Body), so errors.Is can't match it by
+	// identity; assert the wrap stays errors.As-recoverable instead.
+	var gotDBus dbus.Error
+	if !errors.As(err, &gotDBus) || gotDBus.Name != cause.Name {
+		t.Fatalf("primary cause unreachable via errors.As: %v", err)
+	}
+	msg := err.Error()
+	if strings.Contains(msg, "inconsistent") {
+		t.Fatalf("backend-unavailable error must not claim the keychain is inconsistent: %v", err)
+	}
+	if strings.Contains(msg, "protonmail-mcp logout") {
+		t.Fatalf("backend-unavailable error must not advise running logout against the dead backend: %v", err)
+	}
+	if !strings.Contains(msg, "nothing was persisted") {
+		t.Fatalf("backend-unavailable error must say nothing was persisted: %v", err)
+	}
+	if s.poisoned {
+		t.Fatal("backend-unavailable rollback must NOT poison the Session")
+	}
+	if store.clearedCount != 0 {
+		t.Fatalf("backend-unavailable rollback must skip Clear; got %d calls", store.clearedCount)
 	}
 }
 
