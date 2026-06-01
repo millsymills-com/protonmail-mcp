@@ -3,6 +3,8 @@ package protonraw
 import (
 	"context"
 	"fmt"
+
+	"github.com/go-resty/resty/v2"
 )
 
 // CreateAddressRequest is the shape POSTed to /core/v4/addresses/setup.
@@ -26,12 +28,11 @@ func CreateAddress(ctx context.Context, d Doer, req CreateAddressRequest) (Creat
 	var out struct {
 		Address CreatedAddress `json:"Address"`
 	}
-	resp, err := d.R().SetContext(ctx).SetBody(req).Post("/core/v4/addresses/setup")
-	if err != nil {
-		return CreatedAddress{}, fmt.Errorf("create address %s@%s: %w", req.LocalPart, req.DomainID, err)
-	}
-	if err := decode(resp, &out); err != nil {
-		return CreatedAddress{}, fmt.Errorf("create address %s@%s: %w", req.LocalPart, req.DomainID, err)
+	label := fmt.Sprintf("create address %s@%s", req.LocalPart, req.DomainID)
+	if err := do(ctx, d, label, &out, func(r *resty.Request) (*resty.Response, error) {
+		return r.SetBody(req).Post("/core/v4/addresses/setup")
+	}); err != nil {
+		return CreatedAddress{}, err
 	}
 	return out.Address, nil
 }
