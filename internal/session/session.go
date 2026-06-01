@@ -37,6 +37,10 @@ type Session struct {
 	raw     *rawClient
 	kc      Store
 	current keychain.Session
+	// unlockMu single-flights keyring Unlock so concurrent first-use callers
+	// don't each run the salt/key network round-trips; it is taken only on the
+	// cache-miss path and never while holding mu (Unlock does network I/O).
+	unlockMu sync.Mutex
 	// keyrings is the lazily-unlocked, session-lifetime PGP keyring cache. Holds
 	// decrypted private key material; nil until first crypto use and dropped on
 	// logout/relogin. Never persisted, never logged.
@@ -110,8 +114,12 @@ type Service interface {
 	Keyrings(ctx context.Context) (*keyring.Keyrings, error)
 }
 
-// clearKeyringCache drops the cached keyrings. Caller must hold s.mu.
+// clearKeyringCache wipes the cached keyrings' private key material and drops
+// the reference. Caller must hold s.mu.
 func (s *Session) clearKeyringCache() {
+	if s.keyrings != nil {
+		s.keyrings.ClearPrivateParams()
+	}
 	s.keyrings = nil
 }
 
@@ -122,6 +130,18 @@ func (s *Session) clearKeyringCache() {
 func (s *Session) Keyrings(ctx context.Context) (*keyring.Keyrings, error) {
 	s.mu.RLock()
 	cached := s.keyrings
+	s.mu.RUnlock()
+	if cached != nil {
+		return cached, nil
+	}
+
+	// Single-flight the unlock: serialize cache-miss callers and re-check the
+	// cache after acquiring, so only the first runs the salt/key round-trips
+	// and a concurrent winner's keyrings are reused instead of unlocked twice.
+	s.unlockMu.Lock()
+	defer s.unlockMu.Unlock()
+	s.mu.RLock()
+	cached = s.keyrings
 	s.mu.RUnlock()
 	if cached != nil {
 		return cached, nil
