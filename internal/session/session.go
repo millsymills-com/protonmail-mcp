@@ -45,6 +45,11 @@ type Session struct {
 	// decrypted private key material; nil until first crypto use and dropped on
 	// logout/relogin. Never persisted, never logged.
 	keyrings *keyring.Keyrings
+	// keyFetcher resolves the KeyFetcher the cache-miss unlock runs against. nil
+	// in production, where it falls back to s.Client(ctx); tests set it to drive
+	// the unlock orchestration (LoadCreds, mailbox fallback, cache population)
+	// without standing up a live backend.
+	keyFetcher func(context.Context) (keyring.KeyFetcher, error)
 	// poisoned indicates the in-process Session and the keychain are known
 	// to be in inconsistent states because a Login persist rollback's Clear
 	// itself failed. Subsequent operations that would otherwise read from
@@ -147,7 +152,7 @@ func (s *Session) Keyrings(ctx context.Context) (*keyring.Keyrings, error) {
 		return cached, nil
 	}
 
-	c, err := s.Client(ctx)
+	f, err := s.fetcher(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +164,7 @@ func (s *Session) Keyrings(ctx context.Context) (*keyring.Keyrings, error) {
 	if mailbox == "" {
 		mailbox = creds.Password
 	}
-	krs, err := keyring.Unlock(ctx, c, []byte(mailbox))
+	krs, err := keyring.Unlock(ctx, f, []byte(mailbox))
 	if err != nil {
 		return nil, fmt.Errorf("unlock keyrings: %w", err)
 	}
@@ -167,6 +172,16 @@ func (s *Session) Keyrings(ctx context.Context) (*keyring.Keyrings, error) {
 	s.keyrings = krs
 	s.mu.Unlock()
 	return krs, nil
+}
+
+// fetcher resolves the KeyFetcher the cache-miss unlock runs against. It uses
+// the injected keyFetcher seam when set (tests), otherwise the live
+// *proton.Client.
+func (s *Session) fetcher(ctx context.Context) (keyring.KeyFetcher, error) {
+	if s.keyFetcher != nil {
+		return s.keyFetcher(ctx)
+	}
+	return s.Client(ctx)
 }
 
 // SetPersistDegradedForTest injects degraded state for tests that hold
