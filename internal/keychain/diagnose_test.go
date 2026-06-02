@@ -39,6 +39,39 @@ func dbusErrNamed(name, body string) dbus.Error {
 	return dbus.Error{Name: name, Body: []any{body}}
 }
 
+func TestIsBackendUnavailable(t *testing.T) {
+	serviceUnknown := dbusErrNamed(
+		secretServiceUnknownDBusName,
+		"The name org.freedesktop.secrets was not provided by any .service files")
+	wrappedServiceUnknown := fmt.Errorf("save username: %w", serviceUnknown)
+	noSessionBus := errors.New("dbus: couldn't determine address of session bus")
+	wrappedNoSessionBus := fmt.Errorf("save username: %w", noSessionBus)
+	otherDBus := dbusErrNamed("org.freedesktop.DBus.Error.AccessDenied", "denied")
+
+	tests := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{"nil is not backend-unavailable", nil, false},
+		{"service-unknown dbus error", serviceUnknown, true},
+		{"wrapped service-unknown dbus error", wrappedServiceUnknown, true},
+		{"no-session-bus error", noSessionBus, true},
+		{"wrapped no-session-bus error", wrappedNoSessionBus, true},
+		{"other dbus error is not backend-unavailable", otherDBus, false},
+		{"macOS locked keychain is not backend-unavailable", exitErrWithCode(t, interactionNotAllowedExitCode), false},
+		{"unrelated error is not backend-unavailable", errors.New("disk full"), false},
+		{"ErrNotFound is not backend-unavailable", ErrNotFound, false},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := IsBackendUnavailable(tc.err); got != tc.want {
+				t.Fatalf("IsBackendUnavailable(%v) = %v, want %v", tc.err, got, tc.want)
+			}
+		})
+	}
+}
+
 func TestDiagnoseKeychainErrFor(t *testing.T) {
 	interaction := exitErrWithCode(t, interactionNotAllowedExitCode)
 	wrapped := fmt.Errorf("set password: %w", exitErrWithCode(t, interactionNotAllowedExitCode))

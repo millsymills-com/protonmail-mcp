@@ -47,7 +47,7 @@ func runStatusWithHook(
 		if hook != nil {
 			hook(sess)
 		}
-		_, _ = fmt.Fprintln(out, "not logged in")
+		writeNotLoggedIn(out, getenv)
 		return statusResult(out, sess.Status())
 	}
 	if hook != nil {
@@ -70,6 +70,27 @@ func statusResult(out io.Writer, st session.Status) error {
 		return errStatusDegraded
 	}
 	return nil
+}
+
+// writeNotLoggedIn reports the absence of a session on the resolved backend,
+// then probes the other backend at the resolved state dir so a session stored
+// under a different PROTONMAIL_MCP_CREDENTIAL_BACKEND isn't silently reported as
+// "not logged in". The probe is read-only; it never switches backends.
+func writeNotLoggedIn(out io.Writer, getenv func(string) string) {
+	hint, found := session.ProbeOtherBackend(getenv)
+	if !found {
+		_, _ = fmt.Fprintln(out, "not logged in")
+		return
+	}
+	if hint.Backend == "file" {
+		_, _ = fmt.Fprintf(out,
+			"no session on backend=%s; a file-backend session exists at %s — set PROTONMAIL_MCP_CREDENTIAL_BACKEND=file\n",
+			session.BackendName(getenv), hint.Dir)
+		return
+	}
+	_, _ = fmt.Fprintf(out,
+		"no session on backend=%s; a keychain-backend session exists — set PROTONMAIL_MCP_CREDENTIAL_BACKEND=keychain\n",
+		session.BackendName(getenv))
 }
 
 func writePersistWarning(out io.Writer, st session.Status) {

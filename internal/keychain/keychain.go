@@ -231,9 +231,7 @@ func diagnoseKeychainErrFor(cause error, goos string) error {
 		}
 		return cause
 	}
-	var dbusErr dbus.Error
-	serviceUnknown := errors.As(cause, &dbusErr) && dbusErr.Name == secretServiceUnknownDBusName
-	if serviceUnknown || strings.Contains(cause.Error(), noSessionBusSubstr) {
+	if backendUnavailable(cause) {
 		return fmt.Errorf(
 			"%w (no D-Bus Secret Service is available on this host — set "+
 				"PROTONMAIL_MCP_CREDENTIAL_BACKEND=file and PROTONMAIL_MCP_STATE_DIR "+
@@ -241,4 +239,30 @@ func diagnoseKeychainErrFor(cause error, goos string) error {
 			cause)
 	}
 	return cause
+}
+
+// backendUnavailable reports whether cause is a no-Secret-Service failure: a
+// dbus.Error named ServiceUnknown (session bus up, secrets daemon absent) or a
+// plain no-session-bus error (no session bus at all). It is the single source
+// of truth shared by diagnoseKeychainErrFor's hint and the exported
+// IsBackendUnavailable classifier, so both detect exactly the same condition.
+func backendUnavailable(cause error) bool {
+	if cause == nil {
+		return false
+	}
+	var dbusErr dbus.Error
+	serviceUnknown := errors.As(cause, &dbusErr) && dbusErr.Name == secretServiceUnknownDBusName
+	return serviceUnknown || strings.Contains(cause.Error(), noSessionBusSubstr)
+}
+
+// IsBackendUnavailable reports whether err stems from the OS keyring backend
+// being unreachable on this host — no D-Bus Secret Service is running, the
+// headless-host failure where the very first keyring write fails before
+// anything is persisted. Callers use it to distinguish "the credential store is
+// dead" from "a write partially succeeded": in the former case nothing was
+// written, so there is no inconsistent state to clean up and `logout` would hit
+// the same dead backend. macOS locked-keychain and all other errors return
+// false. Matches the same condition diagnoseKeychainErr augments its hint for.
+func IsBackendUnavailable(err error) bool {
+	return backendUnavailable(err)
 }
