@@ -2,6 +2,7 @@
 
 # protonmail-mcp
 
+[![SafeSkill 91/100](https://img.shields.io/badge/SafeSkill-91%2F100_Verified%20Safe-brightgreen)](https://safeskill.dev/scan/millsymills-com-protonmail-mcp)
 A Model Context Protocol (MCP) server for [Proton Mail](https://proton.me/mail), letting Claude Code (or any MCP client) manage addresses, custom domains, mail settings, and encryption keys.
 
 ## Status
