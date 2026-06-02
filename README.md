@@ -1,4 +1,4 @@
-<img src="assets/logo.png" alt="protonmail-mcp logo" width="160" align="right">
+<img src="assets/logo.svg" alt="protonmail-mcp logo" width="160" align="right">
 
 # protonmail-mcp
 
