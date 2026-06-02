@@ -53,6 +53,12 @@ var loginFixtureSalt = []byte{
 // code against this constant.
 const loginFixture2FACode = "123456"
 
+// loginFixtureTOTPSecret is a valid base32 TOTP seed. The self-heal relogin
+// scenario stores it as a credential and the unattended path runs it through
+// generateTOTP — the fake server's lenient 2FA variant accepts whatever
+// time-based code that yields (the matcher ignores TwoFactorCode at replay).
+const loginFixtureTOTPSecret = "JBSWY3DPEHPK3PXP"
+
 // newFakeProtonAuthServer spins up an httptest.Server that speaks just enough
 // of the Proton auth API (/auth/v4/info + /auth/v4) to satisfy a single
 // password-only login with the fixture credentials above. SRP math is run
@@ -64,17 +70,25 @@ const loginFixture2FACode = "123456"
 // truth to fill the login_no_2fa cassette with a structurally valid SRP
 // exchange and synthetic auth tokens.
 func newFakeProtonAuthServer() (*httptest.Server, error) {
-	return newFakeProtonAuthServerWithTwoFA(false)
+	return newFakeProtonAuthServerWithTwoFA(false, false)
 }
 
 // newFakeProtonAuthServerTwoFA is the 2FA-enabled variant: the post-SRP
 // /auth/v4 response signals TwoFA.Enabled = HasTOTP, gating success behind
 // a /auth/v4/2fa POST that verifies the fixture code.
 func newFakeProtonAuthServerTwoFA() (*httptest.Server, error) {
-	return newFakeProtonAuthServerWithTwoFA(true)
+	return newFakeProtonAuthServerWithTwoFA(true, false)
 }
 
-func newFakeProtonAuthServerWithTwoFA(twoFA bool) (*httptest.Server, error) {
+// newFakeProtonAuthServerReloginTwoFA is the 2FA variant for the unattended
+// self-heal relogin scenario. The relogin generates its TOTP from the stored
+// secret via generateTOTP, so the submitted code is time-based and cannot
+// equal a fixed constant; this variant accepts any non-empty code.
+func newFakeProtonAuthServerReloginTwoFA() (*httptest.Server, error) {
+	return newFakeProtonAuthServerWithTwoFA(true, true)
+}
+
+func newFakeProtonAuthServerWithTwoFA(twoFA, acceptAnyCode bool) (*httptest.Server, error) {
 	// Pre-compute the SRP verifier for the fixture password against the
 	// signed modulus. This is the server-side persistent secret that
 	// would normally live in Proton's user DB.
@@ -181,7 +195,9 @@ func newFakeProtonAuthServerWithTwoFA(twoFA bool) (*httptest.Server, error) {
 			})
 			return
 		}
-		if !twoFA || req.TwoFactorCode != loginFixture2FACode {
+		codeOK := req.TwoFactorCode == loginFixture2FACode ||
+			(acceptAnyCode && req.TwoFactorCode != "")
+		if !twoFA || !codeOK {
 			writeJSON(w, http.StatusUnprocessableEntity, map[string]any{
 				"Code": 8002, "Error": "Incorrect 2FA code.",
 			})
