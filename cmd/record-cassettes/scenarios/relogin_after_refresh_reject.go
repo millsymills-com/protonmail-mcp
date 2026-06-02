@@ -28,11 +28,15 @@ func recordReloginAfterRefreshReject(ctx context.Context) (retErr error) {
 	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 		return err
 	}
-	// One-shot reject the cold-start /auth/refresh so the self-heal relogin
+	// One-shot reject the cold-start /auth/v4/refresh so the self-heal relogin
 	// fires; the synthetic 422 sits inside the recorder (via WithRealTransport)
 	// so it lands in the cassette, and the subsequent SRP login + 2FA reach the
-	// real backend and get recorded too.
-	injected := inject422RefreshRevoked(http.DefaultTransport, "/auth/refresh")
+	// real backend and get recorded too. The target must be the full versioned
+	// path: strings.Contains("/api/auth/v4/refresh", "/auth/refresh") is false,
+	// so a "/auth/refresh" target silently never fires and the cold-start
+	// refresh reaches real Proton and succeeds — yielding a cassette that omits
+	// the reject and relogin entirely.
+	injected := inject422RefreshRevoked(http.DefaultTransport, "/auth/v4/refresh")
 	rt, stop, err := testvcr.NewAtPath(target, testvcr.ModeRecord, testvcr.WithRealTransport(injected))
 	if err != nil {
 		return err
