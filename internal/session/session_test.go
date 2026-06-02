@@ -273,22 +273,25 @@ func TestColdStartReloginAttemptedWhenCredsStored(t *testing.T) {
 	}
 }
 
-// TestColdStartReloginsFromStoredCreds covers the self-heal success path:
-// Proton rejects the stored refresh token and an unattended relogin from the
-// stored credentials (TOTP from the stored secret) recovers a working client.
-// It needs a cassette recorded against real Proton (refresh reject → SRP login
-// + 2FA success); testvcr.New skips until it is recorded. See the followup
-// issue to record `relogin_after_refresh_reject`.
+// TestColdStartReloginsFromStoredCreds covers the self-heal success path: the
+// stored refresh token is rejected and an unattended relogin from the stored
+// credentials (TOTP from the stored secret) recovers a working client. The
+// cassette is recorded offline against the fake Proton SRP server (see
+// cmd/record-cassettes/scenarios/relogin_after_refresh_reject.go), so the
+// seeded creds match the fixture identity and proof verification is disabled —
+// a replayed SRP exchange can never reproduce the recording client's server
+// proof.
 func TestColdStartReloginsFromStoredCreds(t *testing.T) {
 	keyring.MockInit()
+	t.Setenv("PROTONMAIL_MCP_TEST_SKIP_PROOFS", "1")
 	kc := keychain.New()
 	if err := kc.SaveCreds(keychain.Creds{
-		Username: "u@example.test", Password: "pw", TOTPSecret: "REDACTED_TOTP_SECRET_1",
+		Username: "user@example.test", Password: "hunter2", TOTPSecret: "JBSWY3DPEHPK3PXP",
 	}); err != nil {
 		t.Fatal(err)
 	}
-	// Seed the scrubbed token placeholders so the replayed request bodies match
-	// the recorded /auth/refresh interaction (see the recorder scenario).
+	// Seed the scrubbed token placeholders so the replayed cold-start refresh
+	// body matches the recorded /auth/v4/refresh interaction (see the scenario).
 	if err := kc.SaveSession(keychain.Session{
 		UID: "REDACTED_UID_1", AccessToken: "REDACTED_ACCESSTOKEN_1", RefreshToken: "REDACTED_REFRESHTOKEN_1",
 	}); err != nil {
