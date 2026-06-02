@@ -67,6 +67,79 @@ func TestBackendName(t *testing.T) {
 	}
 }
 
+func TestProbeOtherBackend(t *testing.T) {
+	get := func(m map[string]string) func(string) string {
+		return func(k string) string { return m[k] }
+	}
+	seedFile := func(t *testing.T, dir string) {
+		t.Helper()
+		store, err := session.SelectStore(get(map[string]string{
+			"PROTONMAIL_MCP_CREDENTIAL_BACKEND": "file",
+			"PROTONMAIL_MCP_STATE_DIR":          dir,
+		}))
+		if err != nil {
+			t.Fatalf("seed store: %v", err)
+		}
+		if err := store.SaveSession(keychain.Session{UID: "u", AccessToken: "a", RefreshToken: "r"}); err != nil {
+			t.Fatalf("seed session: %v", err)
+		}
+	}
+
+	t.Run("keychain resolved, file session present -> hint", func(t *testing.T) {
+		keyring.MockInit()
+		dir := t.TempDir()
+		seedFile(t, dir)
+		hint, found := session.ProbeOtherBackend(get(map[string]string{
+			"PROTONMAIL_MCP_STATE_DIR": dir,
+		}))
+		if !found {
+			t.Fatal("expected to find the file-backend session")
+		}
+		if hint.Backend != "file" || hint.Dir != dir {
+			t.Fatalf("hint = %+v, want backend=file dir=%s", hint, dir)
+		}
+	})
+
+	t.Run("keychain resolved, no file session -> not found", func(t *testing.T) {
+		keyring.MockInit()
+		hint, found := session.ProbeOtherBackend(get(map[string]string{
+			"PROTONMAIL_MCP_STATE_DIR": t.TempDir(),
+		}))
+		if found {
+			t.Fatalf("expected no session, got hint %+v", hint)
+		}
+	})
+
+	t.Run("file resolved, keychain session present -> hint", func(t *testing.T) {
+		keyring.MockInit()
+		if err := keychain.New().SaveSession(
+			keychain.Session{UID: "u", AccessToken: "a", RefreshToken: "r"}); err != nil {
+			t.Fatalf("seed keychain: %v", err)
+		}
+		hint, found := session.ProbeOtherBackend(get(map[string]string{
+			"PROTONMAIL_MCP_CREDENTIAL_BACKEND": "file",
+			"PROTONMAIL_MCP_STATE_DIR":          t.TempDir(),
+		}))
+		if !found {
+			t.Fatal("expected to find the keychain-backend session")
+		}
+		if hint.Backend != "keychain" || hint.Dir != "" {
+			t.Fatalf("hint = %+v, want backend=keychain dir empty", hint)
+		}
+	})
+
+	t.Run("file resolved, no keychain session -> not found", func(t *testing.T) {
+		keyring.MockInit()
+		hint, found := session.ProbeOtherBackend(get(map[string]string{
+			"PROTONMAIL_MCP_CREDENTIAL_BACKEND": "file",
+			"PROTONMAIL_MCP_STATE_DIR":          t.TempDir(),
+		}))
+		if found {
+			t.Fatalf("expected no session, got hint %+v", hint)
+		}
+	})
+}
+
 // SelectStore's resolved name must agree with what BackendName reports, so
 // status never claims a backend SelectStore wouldn't pick.
 func TestSelectStoreUnknownBackendMatchesName(t *testing.T) {

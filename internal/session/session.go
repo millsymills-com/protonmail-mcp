@@ -620,6 +620,14 @@ func (s *Session) persistLoginState(creds keychain.Creds, sess keychain.Session)
 
 func (s *Session) rollbackLoginPersist(op string, cause error) error {
 	primary := fmt.Errorf("%s: %w", op, cause)
+	if keychain.IsBackendUnavailable(cause) {
+		// The first write failed before persisting anything, so there is no
+		// partial state to reconcile and no point clearing — `logout` would
+		// hit the same dead backend. Don't poison; report the dead backend.
+		return fmt.Errorf(
+			"%w (nothing was persisted; the credential backend is unreachable, "+
+				"so no cleanup is needed)", primary)
+	}
 	if rerr := s.kc.Clear(); rerr != nil {
 		// Clear failed — keychain may hold partial state that can't be
 		// reconciled here. Mark the Session poisoned so Client/Raw fail
