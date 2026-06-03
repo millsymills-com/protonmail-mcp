@@ -22,7 +22,7 @@ behavioural or hardening regressions in private patches.
 ## Mechanical findings
 
 Both tags live in the same upstream repository (`github.com/ProtonMail/go-crypto`).
-There is no separate "upstream" project — `v1.4.1` and `v1.4.1-proton` are
+There is no separate "upstream" project - `v1.4.1` and `v1.4.1-proton` are
 two siblings cut from the same history on 2026-03-18.
 
 ### Tag relationship
@@ -36,7 +36,7 @@ git -C <go-crypto> log --oneline v1.4.1-proton..v1.4.1  → 0 commits
 `v1.4.1-proton` -> `v1.4.1` is a **downgrade**, not a sync: nothing went
 upstream between the two tags, but 12 fork-only commits were dropped.
 
-This means there is **no risk of a missed upstream security fix** — the
+This means there is **no risk of a missed upstream security fix** - the
 only risk is dropping a security-relevant fork patch.
 
 ### Fork-only commits (dropped by the swap)
@@ -59,19 +59,19 @@ only risk is dropping a security-relevant fork patch.
 Keyword scan of all 12 commit **subjects** for
 `security|cve|fix|harden|timing|side-channel|leak|oracle`: **0 hits**. The
 bodies surface only PQC-internal `fix:` lines from the squashed-commits
-breakdown — those are covered explicitly below.
+breakdown - those are covered explicitly below.
 
 Within the PQC squash (commit `14eebf3`) there are three internal
 correctness commits:
 
-- `[9677cf4] feat: Avoid panic on key size in kmac` — panic-prevention in
+- `[9677cf4] feat: Avoid panic on key size in kmac` - panic-prevention in
   the PQC kmac wrapper.
-- `[1bd89db] fix: Kem key combiner should use the kmac correct key` —
+- `[1bd89db] fix: Kem key combiner should use the kmac correct key` -
   correctness fix in the PQC KEM combiner.
 - The squash's own "Fix misc bugs and improve tests" rollup line.
 
 All three are PQC-internal robustness/correctness fixes inside code paths
-that `v1.4.1` does not contain at all — there is nothing to regress against
+that `v1.4.1` does not contain at all - there is nothing to regress against
 when downgrading.
 
 ### File changes
@@ -82,19 +82,19 @@ when downgrading.
 
 The +8264 net is dominated by:
 
-- `openpgp/internal/ecc/curve25519/field/` — new in-tree, ASM-accelerated
+- `openpgp/internal/ecc/curve25519/field/` - new in-tree, ASM-accelerated
   curve25519 field implementation (`fe.go`, `fe_amd64.s`, `fe_arm64.s`,
   generic and noasm fallbacks). Replaces v1.4.1's delegation to the Go
   standard library's `golang.org/x/crypto/curve25519`. Both implementations
   are constant-time by design.
-- `openpgp/mlkem_ecdh/`, `openpgp/mldsa_eddsa/` — new PQC packages.
-- `openpgp/symmetric/` — new symmetric-subkey packages (AEAD + HMAC,
+- `openpgp/mlkem_ecdh/`, `openpgp/mldsa_eddsa/` - new PQC packages.
+- `openpgp/symmetric/` - new symmetric-subkey packages (AEAD + HMAC,
   experimental variants).
 - `openpgp/forwarding.go`, `openpgp/packet/forwarding.go`,
-  `openpgp/v2/forwarding.go` — new automatic-forwarding code.
+  `openpgp/v2/forwarding.go` - new automatic-forwarding code.
 - Additions to `openpgp/packet/{encrypted_key,private_key,public_key,
   signature}.go`, `openpgp/keys.go`, `openpgp/key_generation.go`, the v2
-  twins — all dispatch into the new PQC / forwarding / symmetric paths.
+  twins - all dispatch into the new PQC / forwarding / symmetric paths.
 - Test data and test files for the above.
 
 ### Surface used by protonmail-mcp
@@ -116,7 +116,7 @@ The serialized binary `PrivateKey` is produced by `go-proton-api`'s
 - Fingerprint computation per RFC 4880 / RFC 9580 (covered by both tags).
 - ASCII armoring per RFC 4880 (covered by both tags).
 
-None of the 12 dropped commits affect this surface — they all add new
+None of the 12 dropped commits affect this surface - they all add new
 algorithm/key-type families that protonmail-mcp does not invoke, generate,
 or accept.
 
@@ -126,14 +126,14 @@ passes; behavioural compatibility on the keys-used path is locked in.
 
 ## Decision
 
-> **TBD** — maintainer review required.
+> **TBD** - maintainer review required.
 
 This ADR proposes the swap is **safe** for protonmail-mcp's current surface.
 The maintainer should fill in either:
 
-- **Accept upstream `v1.4.1`** — confirm the assessment above and close
+- **Accept upstream `v1.4.1`** - confirm the assessment above and close
   #16 with this ADR.
-- **Revert to `v1.4.1-proton`** — name the specific concern (e.g. desire
+- **Revert to `v1.4.1-proton`** - name the specific concern (e.g. desire
   to follow proton-bridge's exact dependency closure, anticipation of
   using PQC or forwarding in v2) and open a follow-up to gate-check
   future swaps before they land.
@@ -163,7 +163,7 @@ If the decision is **revert**:
 
 - Pin back to `v1.4.1-proton` in the dependency closure (note: the pin
   has to be done via the modules that depend on `go-crypto`, since this
-  repo only references it transitively — adding a `replace` directive in
+  repo only references it transitively - adding a `replace` directive in
   `go.mod` is the standard fix; `go.mod` already uses one such directive
   to route `go-resty/resty/v2` to ProtonMail's fork, so the precedent is
   in place).
