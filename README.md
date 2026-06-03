@@ -103,8 +103,6 @@ Each tool advertises its full input schema and field-by-field description over M
 
 ## Security model
 
-See spec §8. tl;dr:
-
 - Credentials and refresh tokens stored in the macOS Keychain (default) or a 0600 state file (`file` backend for headless Linux deployments).
 - Logs redact any field name containing `password`, `passphrase`, `token`, `secret`, `totp`, `key`.
 - Writes opt-in via env flag — Claude Code's per-tool permission UI provides defense-in-depth.
