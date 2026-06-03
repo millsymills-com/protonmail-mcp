@@ -34,3 +34,6 @@ coverage.txt
 cov.out
 cov.out.func
 cov.html
+
+# Agent planning scaffolding (kept local, not shipped)
+docs/superpowers/
