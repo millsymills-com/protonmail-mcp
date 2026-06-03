@@ -34,9 +34,9 @@ cd protonmail-mcp
 go build -o ./protonmail-mcp ./cmd/protonmail-mcp
 ```
 
-Or `go install github.com/millsmillsymills/protonmail-mcp/cmd/protonmail-mcp@latest`.
+Or `go install github.com/millsmillsymills/protonmail-mcp/cmd/protonmail-mcp@latest`. Note that `go install @latest` ignores the `replace` directive in `go.mod` (the resty fork), so the clone + `go build` path above is the supported install; `@latest` may fail to build until a clean tag exists.
 
-`go.mod` already pins `go-proton-api` to a master HEAD pseudo-version and adds a `replace` directive routing `github.com/go-resty/resty/v2` to ProtonMail's fork. Both are required — do not remove them.
+`go.mod` already pins `go-proton-api` to a master HEAD pseudo-version and adds a `replace` directive routing `github.com/go-resty/resty/v2` to ProtonMail's fork. Both are required. Do not remove them.
 
 ## First-time login
 
@@ -46,7 +46,7 @@ Or `go install github.com/millsmillsymills/protonmail-mcp/cmd/protonmail-mcp@lat
 
 Prompts for your Proton email, password, and (if 2FA is enabled) an `otpauth://` URI or a one-shot 6-digit code. Pasting the URI lets the server refresh sessions silently; pasting a code requires re-login on token expiry.
 
-Credentials are stored in the macOS Keychain under service `protonmail-mcp` (default) or in `$PROTONMAIL_MCP_STATE_DIR` when `PROTONMAIL_MCP_CREDENTIAL_BACKEND=file`.
+Credentials are stored in the OS keychain (macOS Keychain / Linux Secret Service) under service `protonmail-mcp` (default) or in `$PROTONMAIL_MCP_STATE_DIR` when `PROTONMAIL_MCP_CREDENTIAL_BACKEND=file`.
 
 ```
 ./protonmail-mcp status
@@ -89,7 +89,7 @@ For headless Linux deployments (systemd + SSE + file backend), see [`docs/headle
 See `docs/superpowers/specs/2026-04-26-protonmail-mcp-design.md` §5 for the full inventory and field-by-field schemas. Key behaviors worth knowing:
 
 - **`proton_update_address`** updates the *global* account display name / signature (upstream's `SetDisplayName` / `SetSignature` are not per-address). The `id` parameter is accepted for forward compatibility but ignored. The tool description spells this out.
-- **`proton_update_core_settings`** toggles telemetry and crash reports — `SetUserSettingsLocale` is not exposed by upstream `go-proton-api` master, so locale update is intentionally absent.
+- **`proton_update_core_settings`** toggles telemetry and crash reports - `SetUserSettingsLocale` is not exposed by upstream `go-proton-api` master, so locale update is intentionally absent.
 - **`proton_list_address_keys`** uses `gopenpgp/v2` to extract the fingerprint + armored public key from each stored key. Private key material never leaves the process.
 - **DNS records** for custom domains are returned as structured JSON; orchestrate with your DNS provider's MCP (e.g. Gandi MCP) to publish them.
 
@@ -105,11 +105,11 @@ See `docs/superpowers/specs/2026-04-26-protonmail-mcp-design.md` §5 for the ful
 
 See spec §8. tl;dr:
 
-- Credentials and refresh tokens stored in the macOS Keychain (default) or a 0600 state file (`file` backend for headless Linux deployments).
+- Credentials and refresh tokens stored in the OS keychain (macOS Keychain / Linux Secret Service, default) or a 0600 state file (`file` backend for headless Linux deployments).
 - Logs redact any field name containing `password`, `passphrase`, `token`, `secret`, `totp`, `key`.
-- Writes opt-in via env flag — Claude Code's per-tool permission UI provides defense-in-depth.
-- Defaults to stdio — no network listener. An optional SSE transport (`PROTONMAIL_MCP_TRANSPORT=sse`) binds an HTTP listener on `PROTONMAIL_MCP_HOST`/`PROTONMAIL_MCP_PORT` (`127.0.0.1` by default). The endpoint requires a bearer token (`PROTONMAIL_MCP_SSE_TOKEN`, ≥16 chars); clients send `Authorization: Bearer <token>`. Authentication is enforced regardless of bind address, so even a loopback listener is not reachable by other local users without the token. The SDK's DNS-rebinding (Host-header) protection only applies on a loopback bind — a non-loopback bind logs a warning and relies on the bearer token alone. The connection is plain HTTP — terminate TLS at a reverse proxy if you bind a non-loopback address.
-- Sends `x-pm-appversion: macos-bridge@3.24.1` because Proton's API rejects unknown product names with code 2064. We impersonate proton-bridge (live-tested 2026-04-26 against `mail.proton.me`) — if Proton tightens the minimum (codes 5002/5003), bump the version in `internal/session/appversion.go` to whatever proton-bridge has tagged latest.
+- Writes opt-in via env flag - Claude Code's per-tool permission UI provides defense-in-depth.
+- Defaults to stdio - no network listener. An optional SSE transport (`PROTONMAIL_MCP_TRANSPORT=sse`) binds an HTTP listener on `PROTONMAIL_MCP_HOST`/`PROTONMAIL_MCP_PORT` (`127.0.0.1` by default). The endpoint requires a bearer token (`PROTONMAIL_MCP_SSE_TOKEN`, ≥16 chars); clients send `Authorization: Bearer <token>`. Authentication is enforced regardless of bind address, so even a loopback listener is not reachable by other local users without the token. The SDK's DNS-rebinding (Host-header) protection only applies on a loopback bind - a non-loopback bind logs a warning and relies on the bearer token alone. The connection is plain HTTP - terminate TLS at a reverse proxy if you bind a non-loopback address.
+- Sends `x-pm-appversion: macos-bridge@3.24.1` because Proton's API rejects unknown product names with code 2064. We impersonate proton-bridge (live-tested 2026-04-26 against `mail.proton.me`) - if Proton tightens the minimum (codes 5002/5003), bump the version in `internal/session/appversion.go` to whatever proton-bridge has tagged latest.
 
 ## Development
 
