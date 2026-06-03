@@ -14,6 +14,7 @@ INCLUDED=(
   "github.com/millsymills-com/protonmail-mcp/internal/log"
   "github.com/millsymills-com/protonmail-mcp/internal/keychain"
   "github.com/millsymills-com/protonmail-mcp/internal/keyring"
+  "github.com/millsymills-com/protonmail-mcp/internal/credfile"
 )
 
 profile="${1:-cov.out}"
