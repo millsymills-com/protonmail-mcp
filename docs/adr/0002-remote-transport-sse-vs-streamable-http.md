@@ -24,12 +24,12 @@ rather than an implicit default.
 
 ### Current shape
 
-- `internal/server/transport.go` — `transportConfig{ kind, host, port, token }`
+- `internal/server/transport.go` - `transportConfig{ kind, host, port, token }`
   and `transportConfigFromEnv`. `kind` is `"stdio"` or `"sse"`; the value is
   read from `PROTONMAIL_MCP_TRANSPORT`.
-- `internal/server/server.go` — single dispatch point:
+- `internal/server/server.go` - single dispatch point:
   `if cfg.kind == "sse" { return serveSSE(ctx, cfg, srv) }`, otherwise stdio.
-- `internal/server/sse.go` — `SSEMux` (wraps `mcp.NewSSEHandler`),
+- `internal/server/sse.go` - `SSEMux` (wraps `mcp.NewSSEHandler`),
   `bearerAuth`, `serveSSE`, `serveSSEListener`.
 
 The transport is isolated behind `transportConfig.kind` and `serveSSE`. The
@@ -43,11 +43,11 @@ so the bearer-auth wrapper, listener lifecycle, and graceful shutdown in
 
 The shipped SSE path is covered:
 
-- `internal/server/transport_test.go` — `TestTransportConfigFromEnv` (env
+- `internal/server/transport_test.go` - `TestTransportConfigFromEnv` (env
   parsing, token-length floor).
-- `internal/server/sse_serve_test.go` — `TestBearerAuth`,
+- `internal/server/sse_serve_test.go` - `TestBearerAuth`,
   `TestServeSSEListenerLifecycle`, `TestServeSSEBindFailure`.
-- `internal/server/testdata/cassettes/boot_dispatch.yaml` — boot/dispatch
+- `internal/server/testdata/cassettes/boot_dispatch.yaml` - boot/dispatch
   cassette.
 
 Streamable HTTP has none of this yet.
