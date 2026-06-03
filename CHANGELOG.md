@@ -17,16 +17,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - gopenpgp regression test for `proton_list_address_keys` after the
   `v2.10.0-proton` -> `v2.10.0` swap (#50).
 - CI: `gofmt` enforcement step (GO-005) (#36).
-- GitHub Pro baseline — branch protections and required-check configuration
+- GitHub Pro baseline - branch protections and required-check configuration
   (#46).
 - Cassette-based integration tests against real Proton API responses
   (replayed offline in CI). Recordings live under
   `testdata/cassettes/`; refresh with `make record SCENARIO=<name>` (#62).
 - `make coverage-check` enforces ≥90% weighted aggregate statement
   coverage and a ≥75% per-package floor across included packages (#62).
-- `cmd/record-cassettes/` — maintainer-only recording tool, gated by
+- `cmd/record-cassettes/` - maintainer-only recording tool, gated by
   `//go:build recording` (#62).
-- `cmd/testvcr-lint/` — scrub-leak scanner for committed cassettes,
+- `cmd/testvcr-lint/` - scrub-leak scanner for committed cassettes,
   wired into `prek` via `.pre-commit-config.yaml` (#62).
 - `CI_REQUIRE_CASSETTES=1` env switch flips `testvcr.New` from
   skip-on-missing to fatal failure for opt-in CI enforcement (#66).
