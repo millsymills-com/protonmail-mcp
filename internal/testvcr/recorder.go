@@ -18,7 +18,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/millsmillsymills/protonmail-mcp/internal/version"
+	"github.com/millsymills-com/protonmail-mcp/internal/version"
 	"gopkg.in/dnaeon/go-vcr.v4/pkg/recorder"
 )
 

@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/millsmillsymills/protonmail-mcp/internal/keychain"
-	"github.com/millsmillsymills/protonmail-mcp/internal/session"
-	"github.com/millsmillsymills/protonmail-mcp/internal/testvcr"
+	"github.com/millsymills-com/protonmail-mcp/internal/keychain"
+	"github.com/millsymills-com/protonmail-mcp/internal/session"
+	"github.com/millsymills-com/protonmail-mcp/internal/testvcr"
 	"github.com/zalando/go-keyring"
 )
 

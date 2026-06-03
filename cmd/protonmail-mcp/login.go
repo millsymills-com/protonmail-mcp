@@ -12,8 +12,8 @@ import (
 
 	"golang.org/x/term"
 
-	"github.com/millsmillsymills/protonmail-mcp/internal/proterr"
-	"github.com/millsmillsymills/protonmail-mcp/internal/session"
+	"github.com/millsymills-com/protonmail-mcp/internal/proterr"
+	"github.com/millsymills-com/protonmail-mcp/internal/session"
 )
 
 func runLogin(

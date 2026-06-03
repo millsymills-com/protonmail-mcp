@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/millsmillsymills/protonmail-mcp/internal/testharness"
+	"github.com/millsymills-com/protonmail-mcp/internal/testharness"
 )
 
 func TestCreateAddressHappy(t *testing.T) {

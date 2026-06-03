@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/millsmillsymills/protonmail-mcp/internal/testvcr"
+	"github.com/millsymills-com/protonmail-mcp/internal/testvcr"
 )
 
 func TestLintFlagsBearerToken(t *testing.T) {

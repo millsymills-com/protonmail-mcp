@@ -26,7 +26,7 @@ v1. 23 tools total: 12 reads (always registered) + 11 writes (registered when `P
 
 Requires Go 1.26+ (the toolchain is auto-bumped by `go-proton-api` master).
 
-The Go module path is `github.com/millsmillsymills/protonmail-mcp`. Build from a clone:
+The Go module path is `github.com/millsymills-com/protonmail-mcp`. Build from a clone:
 
 ```
 git clone https://github.com/millsymills-com/protonmail-mcp.git
@@ -34,7 +34,7 @@ cd protonmail-mcp
 go build -o ./protonmail-mcp ./cmd/protonmail-mcp
 ```
 
-Or `go install github.com/millsmillsymills/protonmail-mcp/cmd/protonmail-mcp@latest`. Note that `go install @latest` ignores the `replace` directive in `go.mod` (the resty fork), so the clone + `go build` path above is the supported install; `@latest` may fail to build until a clean tag exists.
+Or `go install github.com/millsymills-com/protonmail-mcp/cmd/protonmail-mcp@latest`. Note that `go install @latest` ignores the `replace` directive in `go.mod` (the resty fork), so the clone + `go build` path above is the supported install; `@latest` may fail to build until a clean tag exists.
 
 `go.mod` already pins `go-proton-api` to a master HEAD pseudo-version and adds a `replace` directive routing `github.com/go-resty/resty/v2` to ProtonMail's fork. Both are required. Do not remove them.
 

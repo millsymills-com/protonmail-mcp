@@ -8,8 +8,8 @@ import (
 
 	gokeyring "github.com/zalando/go-keyring"
 
-	"github.com/millsmillsymills/protonmail-mcp/internal/keychain"
-	"github.com/millsmillsymills/protonmail-mcp/internal/keyring"
+	"github.com/millsymills-com/protonmail-mcp/internal/keychain"
+	"github.com/millsymills-com/protonmail-mcp/internal/keyring"
 )
 
 func TestKeyringCacheClearedByClearMethod(t *testing.T) {

@@ -11,8 +11,8 @@ import (
 	srp "github.com/ProtonMail/go-srp"
 	"github.com/ProtonMail/gopenpgp/v2/crypto"
 
-	"github.com/millsmillsymills/protonmail-mcp/internal/keychain"
-	"github.com/millsmillsymills/protonmail-mcp/internal/keyring"
+	"github.com/millsymills-com/protonmail-mcp/internal/keychain"
+	"github.com/millsymills-com/protonmail-mcp/internal/keyring"
 )
 
 // fakeFetcher is a keyring.KeyFetcher backed by locally generated keys, so the

@@ -13,9 +13,9 @@ import (
 
 	"log/slog"
 
-	mcplog "github.com/millsmillsymills/protonmail-mcp/internal/log"
-	"github.com/millsmillsymills/protonmail-mcp/internal/server"
-	"github.com/millsmillsymills/protonmail-mcp/internal/session"
+	mcplog "github.com/millsymills-com/protonmail-mcp/internal/log"
+	"github.com/millsymills-com/protonmail-mcp/internal/server"
+	"github.com/millsymills-com/protonmail-mcp/internal/session"
 )
 
 // defaultAPIURL is Proton's production mail API base, used when

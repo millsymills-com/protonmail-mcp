@@ -13,7 +13,7 @@ import (
 
 	"github.com/go-resty/resty/v2"
 
-	"github.com/millsmillsymills/protonmail-mcp/internal/proterr"
+	"github.com/millsymills-com/protonmail-mcp/internal/proterr"
 )
 
 // Doer is implemented by *session.rawClient. We don't import session to avoid

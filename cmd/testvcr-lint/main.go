@@ -9,7 +9,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/millsmillsymills/protonmail-mcp/internal/testvcr"
+	"github.com/millsymills-com/protonmail-mcp/internal/testvcr"
 )
 
 var softRules = map[string]bool{

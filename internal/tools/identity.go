@@ -3,7 +3,7 @@ package tools
 import (
 	"context"
 
-	"github.com/millsmillsymills/protonmail-mcp/internal/proterr"
+	"github.com/millsymills-com/protonmail-mcp/internal/proterr"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 

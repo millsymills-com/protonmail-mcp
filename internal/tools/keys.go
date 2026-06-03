@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/ProtonMail/gopenpgp/v2/crypto"
-	"github.com/millsmillsymills/protonmail-mcp/internal/proterr"
+	"github.com/millsymills-com/protonmail-mcp/internal/proterr"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 

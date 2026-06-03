@@ -9,7 +9,7 @@ import (
 	proton "github.com/ProtonMail/go-proton-api"
 	srp "github.com/ProtonMail/go-srp"
 	"github.com/ProtonMail/gopenpgp/v2/crypto"
-	"github.com/millsmillsymills/protonmail-mcp/internal/proterr"
+	"github.com/millsymills-com/protonmail-mcp/internal/proterr"
 )
 
 // newTestKeyRing generates an unlocked in-memory keyring for tests.
