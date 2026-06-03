@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	proton "github.com/ProtonMail/go-proton-api"
-	"github.com/millsmillsymills/protonmail-mcp/internal/proterr"
+	"github.com/millsymills-com/protonmail-mcp/internal/proterr"
 )
 
 func TestMap(t *testing.T) {

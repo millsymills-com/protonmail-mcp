@@ -6,10 +6,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/millsmillsymills/protonmail-mcp/internal/keyring"
-	"github.com/millsmillsymills/protonmail-mcp/internal/proterr"
-	"github.com/millsmillsymills/protonmail-mcp/internal/session"
-	"github.com/millsmillsymills/protonmail-mcp/internal/testharness"
+	"github.com/millsymills-com/protonmail-mcp/internal/keyring"
+	"github.com/millsymills-com/protonmail-mcp/internal/proterr"
+	"github.com/millsymills-com/protonmail-mcp/internal/session"
+	"github.com/millsymills-com/protonmail-mcp/internal/testharness"
 )
 
 // keyringErrSession wraps a real session.Service but forces Keyrings to fail,

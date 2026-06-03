@@ -7,7 +7,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/millsmillsymills/protonmail-mcp/internal/testharness"
+	"github.com/millsymills-com/protonmail-mcp/internal/testharness"
 )
 
 // TestReadToolsRoundTrip exercises every read-only tool against the in-process

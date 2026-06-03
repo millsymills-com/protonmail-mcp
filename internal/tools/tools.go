@@ -7,8 +7,8 @@ import (
 	"os"
 
 	proton "github.com/ProtonMail/go-proton-api"
-	"github.com/millsmillsymills/protonmail-mcp/internal/proterr"
-	"github.com/millsmillsymills/protonmail-mcp/internal/session"
+	"github.com/millsymills-com/protonmail-mcp/internal/proterr"
+	"github.com/millsymills-com/protonmail-mcp/internal/session"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 

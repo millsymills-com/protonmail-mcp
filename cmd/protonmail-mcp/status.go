@@ -7,7 +7,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/millsmillsymills/protonmail-mcp/internal/session"
+	"github.com/millsymills-com/protonmail-mcp/internal/session"
 )
 
 // errStatusDegraded signals that status printed its output but token

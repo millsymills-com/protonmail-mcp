@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"testing"
 
-	mcplog "github.com/millsmillsymills/protonmail-mcp/internal/log"
+	mcplog "github.com/millsymills-com/protonmail-mcp/internal/log"
 )
 
 func TestRedactsSensitiveFields(t *testing.T) {

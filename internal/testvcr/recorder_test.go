@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/millsmillsymills/protonmail-mcp/internal/testvcr"
+	"github.com/millsymills-com/protonmail-mcp/internal/testvcr"
 )
 
 func TestModeFromEnv(t *testing.T) {

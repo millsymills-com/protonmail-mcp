@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/millsmillsymills/protonmail-mcp/internal/keychain"
+	"github.com/millsymills-com/protonmail-mcp/internal/keychain"
 )
 
 const (

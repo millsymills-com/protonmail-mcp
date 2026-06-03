@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/millsmillsymills/protonmail-mcp/internal/proterr"
+	"github.com/millsymills-com/protonmail-mcp/internal/proterr"
 )
 
 func TestRequired_Empty(t *testing.T) {

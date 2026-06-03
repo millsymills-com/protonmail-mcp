@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/millsmillsymills/protonmail-mcp/cmd/record-cassettes/scenarios"
+	"github.com/millsymills-com/protonmail-mcp/cmd/record-cassettes/scenarios"
 )
 
 // main accepts one or more scenario names and runs them sequentially in a

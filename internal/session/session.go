@@ -15,9 +15,9 @@ import (
 
 	proton "github.com/ProtonMail/go-proton-api"
 	"github.com/go-resty/resty/v2"
-	"github.com/millsmillsymills/protonmail-mcp/internal/keychain"
-	"github.com/millsmillsymills/protonmail-mcp/internal/keyring"
-	"github.com/millsmillsymills/protonmail-mcp/internal/proterr"
+	"github.com/millsymills-com/protonmail-mcp/internal/keychain"
+	"github.com/millsymills-com/protonmail-mcp/internal/keyring"
+	"github.com/millsymills-com/protonmail-mcp/internal/proterr"
 )
 
 // Store is the persistence surface a Session needs. *keychain.Keychain and

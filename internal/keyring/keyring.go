@@ -9,7 +9,7 @@ import (
 
 	proton "github.com/ProtonMail/go-proton-api"
 	"github.com/ProtonMail/gopenpgp/v2/crypto"
-	"github.com/millsmillsymills/protonmail-mcp/internal/proterr"
+	"github.com/millsymills-com/protonmail-mcp/internal/proterr"
 )
 
 // KeyFetcher is the subset of *proton.Client the unlocker needs. *proton.Client

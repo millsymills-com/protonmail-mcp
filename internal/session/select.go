@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/millsmillsymills/protonmail-mcp/internal/credfile"
-	"github.com/millsmillsymills/protonmail-mcp/internal/keychain"
+	"github.com/millsymills-com/protonmail-mcp/internal/credfile"
+	"github.com/millsymills-com/protonmail-mcp/internal/keychain"
 )
 
 const defaultBackend = "keychain"

@@ -31,9 +31,9 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/zalando/go-keyring"
 
-	"github.com/millsmillsymills/protonmail-mcp/internal/keychain"
-	"github.com/millsmillsymills/protonmail-mcp/internal/session"
-	"github.com/millsmillsymills/protonmail-mcp/internal/tools"
+	"github.com/millsymills-com/protonmail-mcp/internal/keychain"
+	"github.com/millsymills-com/protonmail-mcp/internal/session"
+	"github.com/millsymills-com/protonmail-mcp/internal/tools"
 )
 
 // Option configures BootDevServer behaviour.
