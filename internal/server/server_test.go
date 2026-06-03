@@ -68,9 +68,8 @@ func TestBootRegistersToolsAndDispatches(t *testing.T) {
 }
 
 // TestRunWithOptionsHonoursCancelledContext exercises the RunWithOptions
-// entry point. A pre-cancelled context returns the cancellation error
-// without blocking on stdin, so coverage reaches the registration + Run
-// call without an integration harness.
+// entry point. A pre-cancelled context must unblock the call without an
+// integration harness, so coverage reaches the registration + Run call.
 func TestRunWithOptionsHonoursCancelledContext(t *testing.T) {
 	keyring.MockInit()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -78,10 +77,12 @@ func TestRunWithOptionsHonoursCancelledContext(t *testing.T) {
 	done := make(chan error, 1)
 	go func() { done <- server.RunWithOptions(ctx, "https://mail.proton.me/api", nil) }()
 	select {
-	case err := <-done:
-		if err == nil {
-			t.Fatal("expected an error from a cancelled context")
-		}
+	// The invariant is prompt return, not a specific error. With stdin at
+	// EOF (CI, /dev/null) the StdioTransport can return nil before the
+	// cancelled context is observed; an interactive stdin returns ctx.Err().
+	// Asserting err != nil races those two paths, so only require that the
+	// cancel unblocks the call. Mirrors TestRunDefaultsExercise below.
+	case <-done:
 	case <-time.After(5 * time.Second):
 		t.Fatal("RunWithOptions did not return within 5s of context cancel")
 	}
