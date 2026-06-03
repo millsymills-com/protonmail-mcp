@@ -1,6 +1,5 @@
 // Package proterr maps go-proton-api and HTTP errors to stable codes consumed
-// by tool handlers and surfaced over MCP. See docs/superpowers/specs for the
-// full taxonomy.
+// by tool handlers and surfaced over MCP.
 package proterr
 
 import (
