@@ -86,7 +86,7 @@ For headless Linux deployments (systemd + SSE + file backend), see [`docs/headle
 
 ## Tool reference
 
-See `docs/superpowers/specs/2026-04-26-protonmail-mcp-design.md` §5 for the full inventory and field-by-field schemas. Key behaviors worth knowing:
+Each tool advertises its full input schema and field-by-field description over MCP (`tools/list`); the handlers live in `internal/tools/`. Key behaviors worth knowing:
 
 - **`proton_update_address`** updates the *global* account display name / signature (upstream's `SetDisplayName` / `SetSignature` are not per-address). The `id` parameter is accepted for forward compatibility but ignored. The tool description spells this out.
 - **`proton_update_core_settings`** toggles telemetry and crash reports - `SetUserSettingsLocale` is not exposed by upstream `go-proton-api` master, so locale update is intentionally absent.
@@ -102,8 +102,6 @@ See `docs/superpowers/specs/2026-04-26-protonmail-mcp-design.md` §5 for the ful
 `proton_create_address`, `proton_update_address`, `proton_set_address_status`, `proton_delete_address`, `proton_add_custom_domain`, `proton_verify_custom_domain`, `proton_remove_custom_domain`, `proton_set_catchall`, `proton_disable_catchall`, `proton_update_mail_settings`, `proton_update_core_settings`.
 
 ## Security model
-
-See spec §8. tl;dr:
 
 - Credentials and refresh tokens stored in the OS keychain (macOS Keychain / Linux Secret Service, default) or a 0600 state file (`file` backend for headless Linux deployments).
 - Logs redact any field name containing `password`, `passphrase`, `token`, `secret`, `totp`, `key`.
