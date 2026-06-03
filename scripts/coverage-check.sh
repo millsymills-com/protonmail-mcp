@@ -4,18 +4,10 @@ set -euo pipefail
 AGGREGATE_MIN=90.0
 PER_PKG_MIN=75.0
 
-INCLUDED=(
-  "github.com/millsymills-com/protonmail-mcp/cmd/protonmail-mcp"
-  "github.com/millsymills-com/protonmail-mcp/internal/server"
-  "github.com/millsymills-com/protonmail-mcp/internal/tools"
-  "github.com/millsymills-com/protonmail-mcp/internal/session"
-  "github.com/millsymills-com/protonmail-mcp/internal/protonraw"
-  "github.com/millsymills-com/protonmail-mcp/internal/proterr"
-  "github.com/millsymills-com/protonmail-mcp/internal/log"
-  "github.com/millsymills-com/protonmail-mcp/internal/keychain"
-  "github.com/millsymills-com/protonmail-mcp/internal/keyring"
-  "github.com/millsymills-com/protonmail-mcp/internal/credfile"
-)
+INCLUDED=()
+while IFS= read -r pkg; do
+  [[ -n "$pkg" ]] && INCLUDED+=("$pkg")
+done < "$(dirname "$0")/../cover-pkgs.txt"
 
 profile="${1:-cov.out}"
 fail=0
