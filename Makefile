@@ -10,7 +10,7 @@ test-race:
 	$(GO) test ./... -race
 
 coverage:
-	$(GO) test ./... -coverprofile=cov.out -coverpkg=$(COVER_PKGS)
+	$(GO) test ./... -race -coverprofile=cov.out -coverpkg=$(COVER_PKGS)
 
 coverage-check: coverage
 	./scripts/coverage-check.sh cov.out
