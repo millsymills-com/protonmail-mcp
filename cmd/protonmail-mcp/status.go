@@ -82,6 +82,12 @@ func writeNotLoggedIn(out io.Writer, getenv func(string) string) {
 		_, _ = fmt.Fprintln(out, "not logged in")
 		return
 	}
+	if hint.Unreadable {
+		_, _ = fmt.Fprintf(out,
+			"no session on backend=%s; a session may exist on backend=%s but its store could not be read: %v\n",
+			session.BackendName(getenv), hint.Backend, hint.Err)
+		return
+	}
 	if hint.Backend == "file" {
 		_, _ = fmt.Fprintf(out,
 			"no session on backend=%s; a file-backend session exists at %s — set PROTONMAIL_MCP_CREDENTIAL_BACKEND=file\n",

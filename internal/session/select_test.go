@@ -1,6 +1,8 @@
 package session_test
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/millsmillsymills/protonmail-mcp/internal/keychain"
@@ -107,6 +109,23 @@ func TestProbeOtherBackend(t *testing.T) {
 		}))
 		if found {
 			t.Fatalf("expected no session, got hint %+v", hint)
+		}
+	})
+
+	t.Run("keychain resolved, corrupt file -> unreadable hint not 'not logged in'", func(t *testing.T) {
+		keyring.MockInit()
+		dir := t.TempDir()
+		if err := os.WriteFile(filepath.Join(dir, "credentials.json"), []byte("{not json"), 0o600); err != nil {
+			t.Fatalf("seed corrupt file: %v", err)
+		}
+		hint, found := session.ProbeOtherBackend(get(map[string]string{
+			"PROTONMAIL_MCP_STATE_DIR": dir,
+		}))
+		if !found {
+			t.Fatal("corrupt file masked as 'not logged in'")
+		}
+		if !hint.Unreadable || hint.Backend != "file" || hint.Err == nil {
+			t.Fatalf("hint = %+v, want unreadable file-backend hint with Err set", hint)
 		}
 	})
 
