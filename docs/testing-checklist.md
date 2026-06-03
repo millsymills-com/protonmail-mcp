@@ -30,7 +30,7 @@ Run via Claude Code (or any MCP host) connected to `./protonmail-mcp`. All 12 re
 - [ ] `proton_get_core_settings` - telemetry / crash-report flags match the web UI
 - [ ] `proton_list_address_keys` for the primary address - fingerprints match what `gpg --list-keys` shows after importing the armored public key
 - [ ] `proton_search_messages` with a known query - returns matching message metadata
-- [ ] `proton_get_message` for one returned id - returns headers; with `include_body=true` decrypts the plaintext body when the keyring is unlocked
+- [ ] `proton_get_message` for one returned id - returns metadata; with `include_headers=true` returns raw + parsed headers; with `include_body=true` decrypts the plaintext body when the keyring is unlocked
 
 ## Write tools (`PROTONMAIL_MCP_ENABLE_WRITES=1`)
 
@@ -59,4 +59,4 @@ Use a throwaway custom domain you don't mind churning. With writes enabled, all 
 ## Cleanup
 
 - [ ] `./protonmail-mcp logout`
-- [ ] `security find-generic-password -s protonmail-mcp -a "<your-proton-email>"` returns "not found" (macOS-only; on Linux the credentials live in the Secret Service, e.g. check with `secret-tool`)
+- [ ] `security find-generic-password -s protonmail-mcp -a username` returns "not found" (macOS-only; on Linux the credentials live in the Secret Service, e.g. check with `secret-tool`)
