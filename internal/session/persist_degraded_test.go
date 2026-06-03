@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/millsmillsymills/protonmail-mcp/internal/keychain"
-	"github.com/millsmillsymills/protonmail-mcp/internal/session"
+	"github.com/millsymills-com/protonmail-mcp/internal/keychain"
+	"github.com/millsymills-com/protonmail-mcp/internal/session"
 	"github.com/zalando/go-keyring"
 )
 

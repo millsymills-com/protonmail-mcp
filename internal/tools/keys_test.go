@@ -8,7 +8,7 @@ import (
 
 	"github.com/ProtonMail/gopenpgp/v2/crypto"
 
-	"github.com/millsmillsymills/protonmail-mcp/internal/testharness"
+	"github.com/millsymills-com/protonmail-mcp/internal/testharness"
 )
 
 func TestListAddressKeysHappyCassette(t *testing.T) {

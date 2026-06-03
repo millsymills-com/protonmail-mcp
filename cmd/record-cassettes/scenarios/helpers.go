@@ -10,9 +10,9 @@ import (
 
 	proton "github.com/ProtonMail/go-proton-api"
 
-	"github.com/millsmillsymills/protonmail-mcp/internal/keychain"
-	"github.com/millsmillsymills/protonmail-mcp/internal/session"
-	"github.com/millsmillsymills/protonmail-mcp/internal/testvcr"
+	"github.com/millsymills-com/protonmail-mcp/internal/keychain"
+	"github.com/millsymills-com/protonmail-mcp/internal/session"
+	"github.com/millsymills-com/protonmail-mcp/internal/testvcr"
 )
 
 const toolsCassetteDir = "internal/tools/testdata/cassettes"

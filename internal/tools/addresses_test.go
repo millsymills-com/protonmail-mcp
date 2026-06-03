@@ -5,8 +5,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/millsmillsymills/protonmail-mcp/internal/testharness"
-	"github.com/millsmillsymills/protonmail-mcp/internal/tools"
+	"github.com/millsymills-com/protonmail-mcp/internal/testharness"
+	"github.com/millsymills-com/protonmail-mcp/internal/tools"
 )
 
 func TestListAddressesHappyCassette(t *testing.T) {

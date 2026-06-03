@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/millsmillsymills/protonmail-mcp/internal/testharness"
+	"github.com/millsymills-com/protonmail-mcp/internal/testharness"
 )
 
 // TestToolErrorPathsUpstream exercises each tool's "API call failed →

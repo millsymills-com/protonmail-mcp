@@ -3,7 +3,7 @@ package tools
 import (
 	"testing"
 
-	"github.com/millsmillsymills/protonmail-mcp/internal/protonraw"
+	"github.com/millsymills-com/protonmail-mcp/internal/protonraw"
 )
 
 func TestToDomainDTO_FullPopulation(t *testing.T) {

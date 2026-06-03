@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/go-resty/resty/v2"
-	"github.com/millsmillsymills/protonmail-mcp/internal/protonraw"
+	"github.com/millsymills-com/protonmail-mcp/internal/protonraw"
 )
 
 type fakeDoer struct{ rc *resty.Client }

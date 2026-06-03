@@ -1,4 +1,4 @@
-module github.com/millsmillsymills/protonmail-mcp
+module github.com/millsymills-com/protonmail-mcp
 
 go 1.26.4
 

@@ -4,8 +4,8 @@ import (
 	"context"
 
 	proton "github.com/ProtonMail/go-proton-api"
-	"github.com/millsmillsymills/protonmail-mcp/internal/proterr"
-	"github.com/millsmillsymills/protonmail-mcp/internal/protonraw"
+	"github.com/millsymills-com/protonmail-mcp/internal/proterr"
+	"github.com/millsymills-com/protonmail-mcp/internal/protonraw"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 

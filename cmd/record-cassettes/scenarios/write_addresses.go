@@ -10,10 +10,10 @@ import (
 	"path/filepath"
 
 	proton "github.com/ProtonMail/go-proton-api"
-	"github.com/millsmillsymills/protonmail-mcp/internal/keychain"
-	"github.com/millsmillsymills/protonmail-mcp/internal/protonraw"
-	"github.com/millsmillsymills/protonmail-mcp/internal/session"
-	"github.com/millsmillsymills/protonmail-mcp/internal/testvcr"
+	"github.com/millsymills-com/protonmail-mcp/internal/keychain"
+	"github.com/millsymills-com/protonmail-mcp/internal/protonraw"
+	"github.com/millsymills-com/protonmail-mcp/internal/session"
+	"github.com/millsymills-com/protonmail-mcp/internal/testvcr"
 )
 
 // writeAddressFixtureDomainID is the placeholder consumer tests pass as the

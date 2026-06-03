@@ -10,7 +10,7 @@ import (
 	dbus "github.com/godbus/dbus/v5"
 	"github.com/zalando/go-keyring"
 
-	"github.com/millsmillsymills/protonmail-mcp/internal/keychain"
+	"github.com/millsymills-com/protonmail-mcp/internal/keychain"
 )
 
 // failingStore wraps *keychain.Keychain so individual methods can fail

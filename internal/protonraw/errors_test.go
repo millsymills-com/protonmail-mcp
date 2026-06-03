@@ -9,8 +9,8 @@ import (
 
 	"github.com/go-resty/resty/v2"
 
-	"github.com/millsmillsymills/protonmail-mcp/internal/proterr"
-	"github.com/millsmillsymills/protonmail-mcp/internal/protonraw"
+	"github.com/millsymills-com/protonmail-mcp/internal/proterr"
+	"github.com/millsymills-com/protonmail-mcp/internal/protonraw"
 )
 
 // stubTransport returns a fixed response (or error) for every request.
