@@ -1,5 +1,5 @@
 GO ?= go
-COVER_PKGS := github.com/millsymills-com/protonmail-mcp/cmd/protonmail-mcp,github.com/millsymills-com/protonmail-mcp/internal/server,github.com/millsymills-com/protonmail-mcp/internal/tools,github.com/millsymills-com/protonmail-mcp/internal/session,github.com/millsymills-com/protonmail-mcp/internal/protonraw,github.com/millsymills-com/protonmail-mcp/internal/proterr,github.com/millsymills-com/protonmail-mcp/internal/log,github.com/millsymills-com/protonmail-mcp/internal/keychain,github.com/millsymills-com/protonmail-mcp/internal/keyring,github.com/millsymills-com/protonmail-mcp/internal/credfile
+COVER_PKGS := $(shell paste -sd, cover-pkgs.txt)
 
 .PHONY: test test-race coverage coverage-check verify-cassettes record
 
