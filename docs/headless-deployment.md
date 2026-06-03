@@ -4,7 +4,7 @@ Run `protonmail-mcp` as a loopback SSE service with a file credential backend.
 
 The SSE endpoint exposes the authenticated Proton session, so it always
 requires a bearer token (`PROTONMAIL_MCP_SSE_TOKEN`, at least 16 characters).
-Generate one and keep it secret — every MCP client must send it as
+Generate one and keep it secret - every MCP client must send it as
 `Authorization: Bearer <token>`:
 
 ```bash
@@ -15,7 +15,7 @@ openssl rand -hex 32   # use the output as PROTONMAIL_MCP_SSE_TOKEN
 every request regardless of bind address, but the SDK's DNS-rebinding
 (Host-header) protection only applies on a loopback bind. Binding a non-loopback
 address (e.g. `0.0.0.0`) logs a warning and leaves the bearer token as the only
-access control — terminate TLS at a reverse proxy in front of it.
+access control - terminate TLS at a reverse proxy in front of it.
 
 ## 1. One-time bootstrap (interactive, on the box)
 
@@ -56,14 +56,14 @@ WantedBy=multi-user.target
 ```
 
 `StateDirectory=protonmail-mcp` makes systemd provide `/var/lib/protonmail-mcp`
-(0700, owned by the service user) and sets `$STATE_DIRECTORY` — so the bootstrap
+(0700, owned by the service user) and sets `$STATE_DIRECTORY` - so the bootstrap
 in step 1 and the service resolve the same path.
 
 ## 3. Self-heal and its limit
 
 If the refresh token is revoked, the service re-logins from the stored
 credentials (TOTP generated from the stored secret) on the next call. **If Proton
-answers with a CAPTCHA challenge, it cannot self-heal** — re-run step 1 manually.
+answers with a CAPTCHA challenge, it cannot self-heal** - re-run step 1 manually.
 
 ## 4. Troubleshooting: no Secret Service / D-Bus on a headless host
 

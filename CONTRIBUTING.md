@@ -29,7 +29,7 @@ fork. Do not remove it.
 This repo is graded against the canonical MCP standards under
 `consistency-check/docs/standards/`. The audit tool lives in the
 maintainer's local workspace (not currently published), so external
-contributors don't need to run it — the maintainer re-runs it on PRs
+contributors don't need to run it - the maintainer re-runs it on PRs
 when needed:
 
 ```sh
