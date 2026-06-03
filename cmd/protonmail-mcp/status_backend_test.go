@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"context"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -89,6 +91,36 @@ func TestStatusReportsPlainNotLoggedInWhenNoSessionAnywhere(t *testing.T) {
 	}
 	if strings.Contains(got, "a file-backend session exists") {
 		t.Fatalf("must not print a cross-backend hint when no session anywhere; got: %s", got)
+	}
+}
+
+func TestStatusReportsUnreadableOtherBackend(t *testing.T) {
+	keyring.MockInit()
+	dir := t.TempDir()
+	// Corrupt the file-backend store, then run status with the default
+	// (keychain) backend so the probe finds the file store present but
+	// unreadable. Status must surface that recoverable state by name instead
+	// of printing a bare "not logged in".
+	if err := os.WriteFile(filepath.Join(dir, "credentials.json"), []byte("{not json"), 0o600); err != nil {
+		t.Fatalf("seed corrupt store: %v", err)
+	}
+
+	var out bytes.Buffer
+	code := run(context.Background(), []string{"status"},
+		[]string{"PROTONMAIL_MCP_STATE_DIR=" + dir},
+		strings.NewReader(""), &out, &out, nil)
+	if code != 0 {
+		t.Fatalf("status exit code = %d, want 0; out: %s", code, out.String())
+	}
+	got := out.String()
+	if strings.Contains(got, "\nnot logged in\n") {
+		t.Fatalf("status should surface the unreadable-store hint, not bare not-logged-in; got: %s", got)
+	}
+	if !strings.Contains(got, "its store could not be read") {
+		t.Fatalf("status missing unreadable-store hint; got: %s", got)
+	}
+	if !strings.Contains(got, "backend=file") {
+		t.Fatalf("status did not name the file backend as the unreadable store; got: %s", got)
 	}
 }
 
