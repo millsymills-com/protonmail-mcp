@@ -83,6 +83,9 @@ func isLoopbackHost(host string) bool {
 func serveSSEListener(ctx context.Context, ln net.Listener, token string, srv *mcp.Server) error {
 	httpSrv := &http.Server{Handler: bearerAuth(token, SSEMux(srv)), ReadHeaderTimeout: 10 * time.Second}
 	errCh := make(chan error, 1)
+	// Single background Serve goroutine with an explicit lifecycle: Shutdown
+	// fires on ctx cancellation and errCh is drained below. An errgroup buys
+	// nothing for one fallible task and would only obscure that handshake.
 	go func() { errCh <- httpSrv.Serve(ln) }()
 	select {
 	case <-ctx.Done():
