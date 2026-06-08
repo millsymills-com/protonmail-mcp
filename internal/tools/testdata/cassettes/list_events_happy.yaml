@@ -1,0 +1,212 @@
+---
+version: 2
+interactions:
+    - id: 0
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 319
+        host: mail.proton.me
+        body: '{"GrantType":"refresh_token","RedirectURI":"https://protonmail.ch","RefreshToken":"REDACTED_REFRESHTOKEN_1","ResponseType":"token","State":"REDACTED_STATE_1","UID":"REDACTED_UID_1"}'
+        headers:
+            Content-Type:
+                - application/json
+            User-Agent:
+                - go-resty/2.10.0 (https://github.com/go-resty/resty)
+            X-Pm-Appversion:
+                - macos-bridge@3.24.1
+        url: https://mail.proton.me/api/auth/v4/refresh
+        method: POST
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: -1
+        uncompressed: true
+        body: '{"AccessToken":"REDACTED_ACCESSTOKEN_1","Code":1000,"ExpiresIn":86400,"LocalID":0,"RefreshCounter":2,"RefreshToken":"REDACTED_REFRESHTOKEN_1","Scope":"full self parent user loggedin paid nondelinquent mail verified settings","Scopes":["full","self","parent","user","loggedin","paid","nondelinquent","mail","verified","settings"],"TokenType":"Bearer","UID":"REDACTED_UID_2","Uid":"REDACTED_UID_1"}'
+        headers:
+            Access:
+                - application/vnd.protonmail.api+json;apiversion=4
+            Content-Type:
+                - application/json
+            Date:
+                - Mon, 01 Jan 2001 00:00:00 GMT
+        status: 200 OK
+        code: 200
+        duration: 537.394084ms
+    - id: 1
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        host: mail.proton.me
+        headers:
+            Authorization:
+                - REDACTED
+            User-Agent:
+                - go-resty/2.10.0 (https://github.com/go-resty/resty)
+            X-Pm-Appversion:
+                - macos-bridge@3.24.1
+            X-Pm-Uid:
+                - REDACTED
+        url: https://mail.proton.me/api/calendar/v1
+        method: GET
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: -1
+        uncompressed: true
+        body: '{"Code":1000,"Calendars":[{"ID":"c1","Name":"Personal","Description":"","Color":"#3b82f6","Display":1,"Type":0,"Flags":1},{"ID":"c2","Name":"Shared","Description":"","Color":"#10b981","Display":1,"Type":0,"Flags":1}]}'
+        headers:
+            Access:
+                - application/vnd.protonmail.api+json;apiversion=4
+            Content-Type:
+                - application/json
+            Date:
+                - Mon, 01 Jan 2001 00:00:00 GMT
+        status: 200 OK
+        code: 200
+        duration: 312.000000ms
+    - id: 2
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        host: mail.proton.me
+        headers:
+            Authorization:
+                - REDACTED
+            User-Agent:
+                - go-resty/2.10.0 (https://github.com/go-resty/resty)
+            X-Pm-Appversion:
+                - macos-bridge@3.24.1
+            X-Pm-Uid:
+                - REDACTED
+        url: https://mail.proton.me/api/calendar/v1/c1/events
+        method: GET
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: -1
+        uncompressed: true
+        body: '{"Code":1000,"Total":1}'
+        headers:
+            Access:
+                - application/vnd.protonmail.api+json;apiversion=4
+            Content-Type:
+                - application/json
+            Date:
+                - Mon, 01 Jan 2001 00:00:00 GMT
+        status: 200 OK
+        code: 200
+        duration: 120.000000ms
+    - id: 3
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        host: mail.proton.me
+        headers:
+            Authorization:
+                - REDACTED
+            User-Agent:
+                - go-resty/2.10.0 (https://github.com/go-resty/resty)
+            X-Pm-Appversion:
+                - macos-bridge@3.24.1
+            X-Pm-Uid:
+                - REDACTED
+        url: https://mail.proton.me/api/calendar/v1/c1/events?End=1782863999&Page=0&PageSize=150&Start=1780272000
+        method: GET
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: -1
+        uncompressed: true
+        body: "{\"Code\":1000,\"Events\":[{\"ID\":\"e1\",\"UID\":\"u1\",\"CalendarID\":\"c1\",\"StartTime\":1780304400,\"EndTime\":1780308000,\"FullDay\":0,\"SharedEvents\":[{\"Type\":1,\"Data\":\"-----BEGIN PGP MESSAGE-----\\nComment: https://gopenpgp.org\\nVersion: GopenPGP 2.10.0\\n\\nwV4DABA7ufvHPjMSAQdAiLebQtTCwzQRiIiGTE2xuIy2z1al8bgdheOLyLBOx0Yw\\npKMt58kGN4CkLm7hwUzw42LkNS0a8WCyZu0JnGQHqgvSoiq2QJ5qqARQATgZ3WgB\\n0sADAZWZOufqGytXGFGd2yDD/7mOIb9FVeKwQFEnsqFzwHgzTUaSaGAA2pa7olfE\\nVmeO/br8OClyPXaS23RL+awvhOaJ8I50N2hcpxAfwT7x+Na7mtDq+ao/JswfWobK\\nkOOuqTJjwKRBOPwsNrMYIHCsWj18Bu7eZfV8391LgfJwTwfGreIFBcJBawVZNmkQ\\nlgt30ytKbdA8eOJ1an8doaQ8VjdhrMNZRqfJwvZVb/UavVbjEbDgUfL4Tk9T8M8/\\n9z660RiM\\n=T0ji\\n-----END PGP MESSAGE-----\"}]}]}"
+        headers:
+            Access:
+                - application/vnd.protonmail.api+json;apiversion=4
+            Content-Type:
+                - application/json
+            Date:
+                - Mon, 01 Jan 2001 00:00:00 GMT
+        status: 200 OK
+        code: 200
+        duration: 140.000000ms
+    - id: 4
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        host: mail.proton.me
+        headers:
+            Authorization:
+                - REDACTED
+            User-Agent:
+                - go-resty/2.10.0 (https://github.com/go-resty/resty)
+            X-Pm-Appversion:
+                - macos-bridge@3.24.1
+            X-Pm-Uid:
+                - REDACTED
+        url: https://mail.proton.me/api/calendar/v1/c2/events
+        method: GET
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: -1
+        uncompressed: true
+        body: '{"Code":1000,"Total":2}'
+        headers:
+            Access:
+                - application/vnd.protonmail.api+json;apiversion=4
+            Content-Type:
+                - application/json
+            Date:
+                - Mon, 01 Jan 2001 00:00:00 GMT
+        status: 200 OK
+        code: 200
+        duration: 120.000000ms
+    - id: 5
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        host: mail.proton.me
+        headers:
+            Authorization:
+                - REDACTED
+            User-Agent:
+                - go-resty/2.10.0 (https://github.com/go-resty/resty)
+            X-Pm-Appversion:
+                - macos-bridge@3.24.1
+            X-Pm-Uid:
+                - REDACTED
+        url: https://mail.proton.me/api/calendar/v1/c2/events?End=1782863999&Page=0&PageSize=150&Start=1780272000
+        method: GET
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: -1
+        uncompressed: true
+        body: "{\"Code\":1000,\"Events\":[{\"ID\":\"e2\",\"UID\":\"u2\",\"CalendarID\":\"c2\",\"StartTime\":1780300800,\"EndTime\":1780304400,\"FullDay\":0,\"SharedEvents\":[{\"Type\":0,\"Data\":\"BEGIN:VCALENDAR\\r\\nVERSION:2.0\\r\\nBEGIN:VEVENT\\r\\nUID:u2\\r\\nSUMMARY:Team Sync\\r\\nEND:VEVENT\\r\\nEND:VCALENDAR\"}]},{\"ID\":\"e3\",\"UID\":\"u3\",\"CalendarID\":\"c2\",\"StartTime\":1780300800,\"EndTime\":1780304400,\"FullDay\":0,\"SharedEvents\":[{\"Type\":1,\"Data\":\"!!!notpgp!!!\"}]}]}"
+        headers:
+            Access:
+                - application/vnd.protonmail.api+json;apiversion=4
+            Content-Type:
+                - application/json
+            Date:
+                - Mon, 01 Jan 2001 00:00:00 GMT
+        status: 200 OK
+        code: 200
+        duration: 140.000000ms
