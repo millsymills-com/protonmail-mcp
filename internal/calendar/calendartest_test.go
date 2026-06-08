@@ -96,4 +96,4 @@ func (f *calFixture) Resolver() fakeResolver {
 	return fakeResolver{members: f.members, pass: f.pass, keys: f.keys, addrs: f.addrs}
 }
 
-func b64(b []byte) string { return base64.StdEncoding.EncodeToString(b) } //nolint:unused // used by sibling _test.go files
+func b64(b []byte) string { return base64.StdEncoding.EncodeToString(b) }
