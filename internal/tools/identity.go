@@ -52,7 +52,7 @@ func registerIdentity(server *mcp.Server, d Deps) {
 
 	addTool(server, d, &mcp.Tool{
 		Name:        "proton_session_status",
-		Description: "Reports whether a session is currently authenticated and whether token persistence is healthy.",
+		Description: "Reports whether a session is currently authenticated, whether token persistence is healthy, and whether the session can unlock the mailbox keyring for decryption.",
 	}, func(ctx context.Context, d Deps, _ sessionStatusInput) (sessionStatusOutput, *proterr.Error) {
 		c, err := d.Session.Client(ctx)
 		st := d.Session.Status()

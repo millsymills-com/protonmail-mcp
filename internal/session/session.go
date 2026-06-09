@@ -99,7 +99,6 @@ var ErrMailboxPasswordRequired = errors.New(
 type Status struct {
 	PersistDegraded bool
 	PersistError    string
-	Scope           string
 	KeyringUnlock   string
 }
 
@@ -110,7 +109,6 @@ func (s *Session) Status() Status {
 	return Status{
 		PersistDegraded: s.persistDegraded,
 		PersistError:    s.persistErrReason,
-		Scope:           s.current.Scope,
 		KeyringUnlock:   keyringUnlockState(s.current.Scope),
 	}
 }
@@ -120,6 +118,12 @@ func (s *Session) Status() Status {
 // state); a non-empty scope without it cannot (e.g. "twofactor", the
 // pre-2FA state); an empty scope is unknown — the session predates scope
 // tracking, so capability can't be asserted without attempting an unlock.
+//
+// "full" is Proton's documented full-access scope token (the twofactor→full
+// upgrade described in #195); it is also what the /auth/v4/2fa capture path
+// records. The literal has not been pinned against a recorded live fixture, so
+// a wrong assumption would misclassify; treated as the known convention until
+// confirmed.
 func keyringUnlockState(scope string) string {
 	if scope == "" {
 		return "unknown"
