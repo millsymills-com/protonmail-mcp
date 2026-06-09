@@ -41,7 +41,7 @@ func Unlock(ctx context.Context, f KeyFetcher, mailboxPassword []byte) (*Keyring
 	defer zero(mailboxPassword)
 	salts, err := f.GetSalts(ctx)
 	if err != nil {
-		// A 403/Code 9101 here means the session token lacks the scope to unlock
+		// A 403/Code 9100 here means the session token lacks the scope to unlock
 		// the keyring (not a wrong password). Tag it so the mapper surfaces an
 		// actionable re-login hint shared by every decryption path, rather than a
 		// generic permission_denied.

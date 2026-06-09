@@ -17,11 +17,11 @@ func TestScopeDenied(t *testing.T) {
 		err  error
 		want bool
 	}{
-		{"403-9101", &proton.APIError{Status: http.StatusForbidden, Code: 9101}, true},
-		{"wrapped-403-9101", fmt.Errorf("get salts: %w", &proton.APIError{Status: http.StatusForbidden, Code: 9101}), true},
-		{"value-403-9101", fmt.Errorf("get salts: %w", proton.APIError{Status: http.StatusForbidden, Code: 9101}), true},
+		{"403-9100", &proton.APIError{Status: http.StatusForbidden, Code: 9100}, true},
+		{"wrapped-403-9100", fmt.Errorf("get salts: %w", &proton.APIError{Status: http.StatusForbidden, Code: 9100}), true},
+		{"value-403-9100", fmt.Errorf("get salts: %w", proton.APIError{Status: http.StatusForbidden, Code: 9100}), true},
 		{"403-other-code", &proton.APIError{Status: http.StatusForbidden, Code: 2001}, false},
-		{"401-9101", &proton.APIError{Status: http.StatusUnauthorized, Code: 9101}, false},
+		{"401-9100", &proton.APIError{Status: http.StatusUnauthorized, Code: 9100}, false},
 		{"not-api-error", fmt.Errorf("plain"), false},
 		{"nil", nil, false},
 	}
@@ -41,7 +41,7 @@ func TestScopeDenied(t *testing.T) {
 func TestMapKeyringUnlockScope(t *testing.T) {
 	err := fmt.Errorf("get salts: %w: %w",
 		proterr.ErrKeyringUnlockScope,
-		&proton.APIError{Status: http.StatusForbidden, Code: 9101})
+		&proton.APIError{Status: http.StatusForbidden, Code: 9100})
 
 	got := proterr.Map(err)
 	if got == nil {
@@ -61,7 +61,7 @@ func TestMapKeyringUnlockScope(t *testing.T) {
 // TestMapPlain403StillPermissionDenied is the regression guard: a 403 NOT
 // tagged as a keyring-unlock scope denial must still map to permission_denied.
 func TestMapPlain403StillPermissionDenied(t *testing.T) {
-	got := proterr.Map(&proton.APIError{Status: http.StatusForbidden, Code: 9101})
+	got := proterr.Map(&proton.APIError{Status: http.StatusForbidden, Code: 9100})
 	if got == nil || got.Code != "proton/permission_denied" {
 		t.Fatalf("untagged 403 = %+v, want proton/permission_denied", got)
 	}
