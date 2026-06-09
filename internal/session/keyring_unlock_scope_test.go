@@ -47,7 +47,7 @@ func TestStatusKeyringUnlockFromScope(t *testing.T) {
 // literals and the keyringUnlockState comment together.
 func TestKeyringUnlockStateMatchesRecordedScopes(t *testing.T) {
 	const fullScope = "full self parent user loggedin paid nondelinquent mail verified settings"
-	const pre2FAScope = "self parent user n"
+	const pre2FAScope = "self parent user twofactor"
 
 	if got := keyringUnlockState(fullScope); got != "ok" {
 		t.Fatalf("recorded post-2FA scope classified %q, want ok", got)
