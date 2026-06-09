@@ -24,6 +24,7 @@ func RegisterAll() {
 	registerReadTools()
 	registerRefreshRevoked()
 	registerReloginAfterRefreshReject()
+	registerSaltsUnderscopedDenied()
 	registerServerBoot()
 	registerTokenRotation()
 	registerWriteAddresses()
