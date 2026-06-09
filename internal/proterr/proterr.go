@@ -61,6 +61,22 @@ func errToMCP(err error) *Error {
 		return nil
 	}
 
+	// Under-scoped session: the salts fetch in the keyring-unlock path was
+	// scope-denied (403 / Code 9101) and tagged by keyring.Unlock. Checked
+	// before the APIError probe because the chain still carries that 403; the
+	// sentinel deliberately overrides the generic permission_denied mapping so
+	// the operator gets an actionable re-login hint instead of an opaque ACL
+	// denial. A genuine 403 without this sentinel still maps via mapStatus.
+	if errors.Is(err, ErrKeyringUnlockScope) {
+		return &Error{
+			Code: "proton/keyring_unlock_scope",
+			Message: "This session can't unlock the mailbox keyring, so all decryption " +
+				"(message bodies and calendar events) fails.",
+			Hint: "Re-run `protonmail-mcp login` and complete two-factor to obtain a " +
+				"full-scope session.",
+		}
+	}
+
 	// Proton API error: carries the HTTP status. Check before NetError because
 	// the resty pipeline wraps APIError with fmt.Errorf(...%w...). go-proton-api
 	// can wrap APIError as either a value or a pointer (Error() is on the value
@@ -145,6 +161,25 @@ func RefreshRejected(err error) bool {
 	}
 	return apiErr.Status == http.StatusUnauthorized ||
 		apiErr.Code == proton.AuthRefreshTokenInvalid
+}
+
+// scopeDeniedCode is the Proton error code returned by GET keys/salts when the
+// session token lacks the scope to unlock the mailbox keyring. go-proton-api
+// has no named constant for it in the pinned version, so it is defined here.
+const scopeDeniedCode proton.Code = 9101
+
+// ScopeDenied reports whether err is the Proton salts scope denial (HTTP 403,
+// Code 9101) raised in the keyring-unlock path when a session token lacks the
+// scope to unlock the mailbox keyring. keyring.Unlock uses it to tag the
+// failure with [ErrKeyringUnlockScope]; it is the single source of truth for
+// classifying the scope denial so message-body and calendar decryption share
+// one contract.
+func ScopeDenied(err error) bool {
+	apiErr, ok := extractAPIError(err)
+	if !ok {
+		return false
+	}
+	return apiErr.Status == http.StatusForbidden && apiErr.Code == scopeDeniedCode
 }
 
 // extractAPIError returns the proton.APIError carried by err, whether wrapped
