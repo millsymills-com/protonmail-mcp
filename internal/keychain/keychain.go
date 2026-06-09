@@ -23,6 +23,7 @@ const (
 	keyUID          = "session_uid"
 	keyAccessToken  = "access_token"
 	keyRefreshToken = "refresh_token"
+	keyScope        = "session_scope"
 )
 
 // Creds is the long-lived credential bundle written by `protonmail-mcp login`.
@@ -37,10 +38,15 @@ type Creds struct {
 }
 
 // Session is the short-lived auth state. Both tokens are rotated by go-proton-api.
+// Scope is the token's Proton scope (e.g. "full" once two-factor completes,
+// "twofactor" before); empty for sessions persisted before scope was tracked.
+// It is observability metadata for keyring-unlock capability, never an
+// authorization input — Proton enforces scope server-side on the token itself.
 type Session struct {
 	UID          string
 	AccessToken  string
 	RefreshToken string
+	Scope        string
 }
 
 // keyring operations are indirected through package vars so tests can
@@ -140,7 +146,7 @@ func (k *Keychain) SaveSession(s Session) error {
 	if err := keyringSet(service, keyRefreshToken, s.RefreshToken); err != nil {
 		return fmt.Errorf("save refresh token: %w", diagnoseKeychainErr(err))
 	}
-	return nil
+	return saveOptional(keyScope, s.Scope)
 }
 
 func (k *Keychain) LoadSession() (Session, error) {
@@ -156,13 +162,17 @@ func (k *Keychain) LoadSession() (Session, error) {
 	if err != nil {
 		return Session{}, fmt.Errorf("load refresh token: %w", diagnoseKeychainErr(err))
 	}
-	return Session{UID: uid, AccessToken: at, RefreshToken: rt}, nil
+	scope, err := keyringGet(service, keyScope)
+	if err != nil && !errors.Is(err, keyring.ErrNotFound) {
+		return Session{}, fmt.Errorf("load scope: %w", diagnoseKeychainErr(err))
+	}
+	return Session{UID: uid, AccessToken: at, RefreshToken: rt, Scope: scope}, nil
 }
 
 func (k *Keychain) Clear() error {
 	keys := []string{
 		keyUsername, keyPassword, keyTOTPSecret, keyMailboxPass,
-		keyUID, keyAccessToken, keyRefreshToken,
+		keyUID, keyAccessToken, keyRefreshToken, keyScope,
 	}
 	for _, key := range keys {
 		if err := keyringDelete(service, key); err != nil && !errors.Is(err, keyring.ErrNotFound) {

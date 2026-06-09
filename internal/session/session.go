@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 
@@ -91,22 +92,44 @@ var ErrTOTPRequired = errors.New("2FA required but no TOTP provided")
 var ErrMailboxPasswordRequired = errors.New(
 	"mailbox password required (two-password mode) but none provided")
 
-// Status reports persistence-layer health. PersistDegraded is true when
-// the most recent SaveSession write failed; in-memory tokens still work
-// for the current process.
+// Status reports session health. PersistDegraded is true when the most recent
+// SaveSession write failed; in-memory tokens still work for the current
+// process. KeyringUnlock classifies whether the current token's scope can
+// unlock the mailbox keyring ("ok", "under_scoped", or "unknown").
 type Status struct {
 	PersistDegraded bool
 	PersistError    string
+	Scope           string
+	KeyringUnlock   string
 }
 
-// Status returns a snapshot of the persistence-layer health.
+// Status returns a snapshot of session health.
 func (s *Session) Status() Status {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return Status{
 		PersistDegraded: s.persistDegraded,
 		PersistError:    s.persistErrReason,
+		Scope:           s.current.Scope,
+		KeyringUnlock:   keyringUnlockState(s.current.Scope),
 	}
+}
+
+// keyringUnlockState classifies a Proton token scope by whether it can unlock
+// the mailbox keyring. A scope containing "full" can (the post-two-factor
+// state); a non-empty scope without it cannot (e.g. "twofactor", the
+// pre-2FA state); an empty scope is unknown — the session predates scope
+// tracking, so capability can't be asserted without attempting an unlock.
+func keyringUnlockState(scope string) string {
+	if scope == "" {
+		return "unknown"
+	}
+	for _, f := range strings.Fields(scope) {
+		if f == "full" {
+			return "ok"
+		}
+	}
+	return "under_scoped"
 }
 
 // Service is the session surface the tools package depends on. *Session
@@ -341,6 +364,7 @@ func (s *Session) Client(ctx context.Context) (*proton.Client, error) {
 			UID:          a.UID,
 			AccessToken:  a.AccessToken,
 			RefreshToken: a.RefreshToken,
+			Scope:        a.Scope,
 		})
 	})
 
@@ -352,11 +376,18 @@ func (s *Session) Client(ctx context.Context) (*proton.Client, error) {
 		UID:          refreshed.UID,
 		AccessToken:  refreshed.AccessToken,
 		RefreshToken: refreshed.RefreshToken,
+		Scope:        refreshed.Scope,
 	}
 	if rotated.AccessToken == "" {
 		// Some go-proton-api versions return zero-valued Auth on a no-op refresh.
 		// In that case, keep the values we already loaded from keychain.
 		rotated = sess
+	}
+	if rotated.Scope == "" {
+		// A refresh that rotated tokens but omitted scope must not erase the
+		// scope we loaded from the keychain — Status would otherwise flip a
+		// full-scope session to "unknown".
+		rotated.Scope = sess.Scope
 	}
 	s.client = c
 	s.current = rotated
@@ -389,6 +420,12 @@ func (s *Session) Raw(ctx context.Context) *rawClient {
 
 func (s *Session) OnAuthRotated(next keychain.Session) {
 	s.mu.Lock()
+	if next.Scope == "" {
+		// go-proton-api's auth handler omits scope on a plain token refresh;
+		// preserve the scope already established (e.g. "full" from login) rather
+		// than regressing it to unknown.
+		next.Scope = s.current.Scope
+	}
 	s.current = next
 	s.raw.setAuth(next.AccessToken, next.UID)
 	s.mu.Unlock()
@@ -547,6 +584,7 @@ func (s *Session) loginLocked(ctx context.Context, in LoginInput) error {
 			UID:          a.UID,
 			AccessToken:  a.AccessToken,
 			RefreshToken: a.RefreshToken,
+			Scope:        a.Scope,
 		})
 	})
 
@@ -554,6 +592,7 @@ func (s *Session) loginLocked(ctx context.Context, in LoginInput) error {
 		UID:          auth.UID,
 		AccessToken:  auth.AccessToken,
 		RefreshToken: auth.RefreshToken,
+		Scope:        auth.Scope,
 	}
 	if err := s.persistLoginState(keychain.Creds{
 		Username:        in.Username,

@@ -23,6 +23,7 @@ type sessionStatusOutput struct {
 	Email           string `json:"email,omitempty"`
 	PersistDegraded bool   `json:"persist_degraded,omitempty"`
 	PersistError    string `json:"persist_error,omitempty"`
+	KeyringUnlock   string `json:"keyring_unlock,omitempty" jsonschema:"whether the session can unlock the mailbox keyring for decryption: 'ok', 'under_scoped' (re-login completing two-factor), or 'unknown'"`
 }
 
 func registerIdentity(server *mcp.Server, d Deps) {
@@ -58,6 +59,7 @@ func registerIdentity(server *mcp.Server, d Deps) {
 		out := sessionStatusOutput{
 			PersistDegraded: st.PersistDegraded,
 			PersistError:    st.PersistError,
+			KeyringUnlock:   st.KeyringUnlock,
 		}
 		if err != nil {
 			return out, nil
