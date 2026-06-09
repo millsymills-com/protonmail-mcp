@@ -14,7 +14,7 @@ var ErrKeyringLocked = errors.New("keyring locked or unusable")
 
 // ErrKeyringUnlockScope signals the session's token lacks the scope needed to
 // unlock the mailbox keyring: the salts fetch in the unlock path returned a
-// scope denial (HTTP 403 / Proton Code 9101). Distinct from ErrKeyringLocked
+// scope denial (HTTP 403 / Proton Code 9100). Distinct from ErrKeyringLocked
 // (wrong mailbox password) and from a generic resource-level 403 — the cause is
 // an under-scoped session, the remedy is re-login completing two-factor. It
 // affects every decryption path (message bodies and calendar events) because

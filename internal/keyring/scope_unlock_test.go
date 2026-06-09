@@ -25,11 +25,11 @@ func (saltsErrFetcher) GetAddresses(context.Context) ([]proton.Address, error) {
 	return nil, nil
 }
 
-// TestUnlockTagsScopeDeniedSalts proves a 403/Code 9101 from GetSalts — the
+// TestUnlockTagsScopeDeniedSalts proves a 403/Code 9100 from GetSalts — the
 // under-scoped-session failure shared by message-body and calendar decryption
 // — is tagged ErrKeyringUnlockScope and maps to the actionable code.
 func TestUnlockTagsScopeDeniedSalts(t *testing.T) {
-	f := saltsErrFetcher{err: &proton.APIError{Status: http.StatusForbidden, Code: 9101}}
+	f := saltsErrFetcher{err: &proton.APIError{Status: http.StatusForbidden, Code: 9100}}
 
 	_, err := keyring.Unlock(t.Context(), f, []byte("pw"))
 	if err == nil {

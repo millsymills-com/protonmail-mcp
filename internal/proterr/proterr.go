@@ -62,7 +62,7 @@ func errToMCP(err error) *Error {
 	}
 
 	// Under-scoped session: the salts fetch in the keyring-unlock path was
-	// scope-denied (403 / Code 9101) and tagged by keyring.Unlock. Checked
+	// scope-denied (403 / Code 9100) and tagged by keyring.Unlock. Checked
 	// before the APIError probe because the chain still carries that 403; the
 	// sentinel deliberately overrides the generic permission_denied mapping so
 	// the operator gets an actionable re-login hint instead of an opaque ACL
@@ -164,12 +164,16 @@ func RefreshRejected(err error) bool {
 }
 
 // scopeDeniedCode is the Proton error code returned by GET keys/salts when the
-// session token lacks the scope to unlock the mailbox keyring. go-proton-api
-// has no named constant for it in the pinned version, so it is defined here.
-const scopeDeniedCode proton.Code = 9101
+// session token lacks the scope to unlock the mailbox keyring. go-proton-api has
+// no named constant for it in the pinned version, so it is defined here and
+// anchored to a recorded wire response:
+// internal/proterr/testdata/cassettes/salts_underscoped_denied.yaml captures
+// {"Code":9100,"Details":{"MissingScopes":["full","locked"]}} at HTTP 403 from a
+// pre-2FA (under-scoped) token.
+const scopeDeniedCode proton.Code = 9100
 
 // ScopeDenied reports whether err is the Proton salts scope denial (HTTP 403,
-// Code 9101) raised in the keyring-unlock path when a session token lacks the
+// Code 9100) raised in the keyring-unlock path when a session token lacks the
 // scope to unlock the mailbox keyring. keyring.Unlock uses it to tag the
 // failure with [ErrKeyringUnlockScope]; it is the single source of truth for
 // classifying the scope denial so message-body and calendar decryption share
