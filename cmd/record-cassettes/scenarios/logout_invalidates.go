@@ -32,9 +32,13 @@ func recordLogoutInvalidates(ctx context.Context) (retErr error) {
 	}()
 
 	kc := keychain.New()
+	email, password, err := testvcr.RecordCredentials()
+	if err != nil {
+		return err
+	}
 	in := session.LoginInput{
-		Username:   os.Getenv("RECORD_EMAIL"),
-		Password:   os.Getenv("RECORD_PASSWORD"),
+		Username:   email,
+		Password:   password,
 		TOTPSecret: os.Getenv("RECORD_TOTP_SECRET"),
 	}
 	sess := session.New(defaultAPIURL(), kc, session.WithTransport(rt))

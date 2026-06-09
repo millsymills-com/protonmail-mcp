@@ -52,6 +52,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   the prior hardcoded root list (#66).
 
 ### Fixed
+- `testvcr`: route recorder login credentials through `RecordCredentials`, a
+  single boundary that trims `RECORD_EMAIL` identically to the scrubber (so a
+  stray-whitespace address can no longer log in untrimmed while the scrubber
+  rewrites a different one, leaking the real address) and fails fast on
+  empty/whitespace-only credentials instead of an opaque upstream
+  `WrongPassword`. `make record` documents single-quoting / `read -rs` for
+  credential env (#207).
 - `proterr`: expose `ErrToMCP` alias for the canonical mapping name (PROTO-010)
   (#38, #42).
 - `log`: redact `key` field names in addition to the existing redaction set

@@ -38,10 +38,9 @@ func recordSaltsUnderscopedDenied(ctx context.Context) (retErr error) {
 		return err
 	}
 
-	email := os.Getenv("RECORD_EMAIL")
-	password := os.Getenv("RECORD_PASSWORD")
-	if email == "" || password == "" {
-		return fmt.Errorf("RECORD_EMAIL or RECORD_PASSWORD unset")
+	email, password, err := testvcr.RecordCredentials()
+	if err != nil {
+		return err
 	}
 
 	rt, stop, err := testvcr.NewAtPath(target, testvcr.ModeRecord)
