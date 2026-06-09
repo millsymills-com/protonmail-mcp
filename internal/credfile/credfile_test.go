@@ -51,6 +51,21 @@ func TestSessionRoundTrip(t *testing.T) {
 	}
 }
 
+func TestSessionScopeRoundTrips(t *testing.T) {
+	s := newTmp(t)
+	in := keychain.Session{UID: "uid", AccessToken: "at", RefreshToken: "rt", Scope: "full"}
+	if err := s.SaveSession(in); err != nil {
+		t.Fatalf("SaveSession: %v", err)
+	}
+	got, err := s.LoadSession()
+	if err != nil {
+		t.Fatalf("LoadSession: %v", err)
+	}
+	if got.Scope != "full" {
+		t.Fatalf("Scope = %q, want full", got.Scope)
+	}
+}
+
 func TestCredsAndSessionCoexist(t *testing.T) {
 	s := newTmp(t)
 	if err := s.SaveCreds(keychain.Creds{Username: "u"}); err != nil {

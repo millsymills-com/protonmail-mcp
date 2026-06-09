@@ -23,6 +23,7 @@ type sessionStatusOutput struct {
 	Email           string `json:"email,omitempty"`
 	PersistDegraded bool   `json:"persist_degraded,omitempty"`
 	PersistError    string `json:"persist_error,omitempty"`
+	KeyringUnlock   string `json:"keyring_unlock,omitempty" jsonschema:"whether the session can unlock the mailbox keyring for decryption: 'ok', 'under_scoped' (re-login completing two-factor), or 'unknown'"`
 }
 
 func registerIdentity(server *mcp.Server, d Deps) {
@@ -51,13 +52,14 @@ func registerIdentity(server *mcp.Server, d Deps) {
 
 	addTool(server, d, &mcp.Tool{
 		Name:        "proton_session_status",
-		Description: "Reports whether a session is currently authenticated and whether token persistence is healthy.",
+		Description: "Reports whether a session is currently authenticated, whether token persistence is healthy, and whether the session can unlock the mailbox keyring for decryption.",
 	}, func(ctx context.Context, d Deps, _ sessionStatusInput) (sessionStatusOutput, *proterr.Error) {
 		c, err := d.Session.Client(ctx)
 		st := d.Session.Status()
 		out := sessionStatusOutput{
 			PersistDegraded: st.PersistDegraded,
 			PersistError:    st.PersistError,
+			KeyringUnlock:   st.KeyringUnlock,
 		}
 		if err != nil {
 			return out, nil
