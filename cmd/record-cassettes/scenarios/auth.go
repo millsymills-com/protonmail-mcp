@@ -9,6 +9,7 @@ import (
 
 	"github.com/millsymills-com/protonmail-mcp/internal/keychain"
 	"github.com/millsymills-com/protonmail-mcp/internal/session"
+	"github.com/millsymills-com/protonmail-mcp/internal/testvcr"
 )
 
 func defaultAPIURL() string {
@@ -32,10 +33,9 @@ func loginAndPersistSession(ctx context.Context, kc *keychain.Keychain) (*sessio
 	if cachedSess != nil {
 		return cachedSess, nil
 	}
-	email := os.Getenv("RECORD_EMAIL")
-	password := os.Getenv("RECORD_PASSWORD")
-	if email == "" || password == "" {
-		return nil, fmt.Errorf("RECORD_EMAIL or RECORD_PASSWORD unset")
+	email, password, err := testvcr.RecordCredentials()
+	if err != nil {
+		return nil, err
 	}
 	in := session.LoginInput{
 		Username:   email,

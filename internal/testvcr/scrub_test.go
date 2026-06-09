@@ -67,6 +67,32 @@ func TestScrubJSONBodyReplacesSensitiveKeys(t *testing.T) {
 	}
 }
 
+// TestScrubRewritesEmailWithPaddedEnv pins the scrubber to RecordEmail: the
+// recorder authenticates with the trimmed address, so the scrubber must match
+// cassette bodies against that same trimmed value or a whitespace-padded
+// RECORD_EMAIL leaks the real address into the recording.
+func TestScrubRewritesEmailWithPaddedEnv(t *testing.T) {
+	t.Setenv("RECORD_EMAIL", " me@protonmail.com\n")
+	body := `{"User":{"Email":"me@protonmail.com","Name":"me"}}`
+	i := &cassette.Interaction{
+		Response: cassette.Response{Body: body, Headers: http.Header{"Content-Type": []string{"application/json"}}},
+	}
+	if err := saveHook(i); err != nil {
+		t.Fatal(err)
+	}
+	var got map[string]any
+	if err := json.Unmarshal([]byte(i.Response.Body), &got); err != nil {
+		t.Fatal(err)
+	}
+	user := got["User"].(map[string]any)
+	if user["Email"] != "user@example.test" {
+		t.Fatalf("email not rewritten with padded env: %v", user["Email"])
+	}
+	if user["Name"] == "me" {
+		t.Fatalf("local part not rewritten with padded env: %v", user["Name"])
+	}
+}
+
 // TestScrubReplacesPGPKeysWithFixture pins the scrubber's PGP substitution
 // behaviour. Real Proton key payloads embed the account UID inside the
 // armored packet (so the raw email leaks through) and the matching

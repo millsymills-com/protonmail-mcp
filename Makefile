@@ -18,6 +18,11 @@ coverage-check: coverage
 verify-cassettes:
 	$(GO) run ./cmd/testvcr-lint
 
+# Set RECORD_EMAIL / RECORD_PASSWORD / RECORD_TOTP_SECRET in the environment
+# first. Single-quote credentials or set them with `read -rs` so the shell does
+# not interpolate `$`, backticks, or `!` into the secret: an unquoted
+# `export RECORD_PASSWORD=...` silently truncates anything after a `$`, and the
+# recorder would otherwise authenticate with a mangled credential.
 record:
 ifndef SCENARIO
 	$(error SCENARIO is required, e.g. make record SCENARIO=whoami_happy)

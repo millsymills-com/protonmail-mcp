@@ -139,7 +139,7 @@ type bodyScrubber struct {
 // just a different TLD), and a Name/DisplayName or address carrying one of
 // those local parts would otherwise survive scrubbing.
 func newBodyScrubber() *bodyScrubber {
-	email := strings.TrimSpace(os.Getenv("RECORD_EMAIL"))
+	email := RecordEmail()
 	var localParts []string
 	if at := strings.IndexByte(email, '@'); at > 0 {
 		localParts = append(localParts, email[:at])
