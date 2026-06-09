@@ -39,15 +39,23 @@ func TestRecordCredentialsKeepsPasswordRaw(t *testing.T) {
 func TestRecordCredentialsFailsFastOnEmptyEmail(t *testing.T) {
 	t.Setenv("RECORD_EMAIL", "   ")
 	t.Setenv("RECORD_PASSWORD", "hunter2")
-	if _, _, err := RecordCredentials(); err == nil {
+	email, password, err := RecordCredentials()
+	if err == nil {
 		t.Fatal("want error for whitespace-only RECORD_EMAIL")
+	}
+	if email != "" || password != "" {
+		t.Fatalf("credentials returned alongside error: email=%q password set=%v", email, password != "")
 	}
 }
 
 func TestRecordCredentialsFailsFastOnWhitespacePassword(t *testing.T) {
 	t.Setenv("RECORD_EMAIL", "me@protonmail.com")
 	t.Setenv("RECORD_PASSWORD", "   ")
-	if _, _, err := RecordCredentials(); err == nil {
+	email, password, err := RecordCredentials()
+	if err == nil {
 		t.Fatal("want error for whitespace-only RECORD_PASSWORD (shell truncation)")
+	}
+	if email != "" || password != "" {
+		t.Fatalf("credentials returned alongside error: email=%q password set=%v", email, password != "")
 	}
 }

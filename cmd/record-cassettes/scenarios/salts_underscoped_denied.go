@@ -77,7 +77,7 @@ func recordSaltsUnderscopedDenied(ctx context.Context) (retErr error) {
 	defer c.Close()
 
 	if auth.TwoFA.Enabled == 0 {
-		return fmt.Errorf("account %q has no 2FA enabled; its login token is already full-scope, so salts would succeed and cannot capture a scope denial", email)
+		return fmt.Errorf("RECORD_EMAIL account has no 2FA enabled; its login token is already full-scope, so salts would succeed and cannot capture a scope denial")
 	}
 
 	if _, err := c.GetSalts(ctx); err == nil {
