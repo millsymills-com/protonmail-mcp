@@ -12,6 +12,15 @@ var ErrNoSession = errors.New("no session in keychain")
 // distinct from transient proton/upstream transport failures.
 var ErrKeyringLocked = errors.New("keyring locked or unusable")
 
+// ErrKeyringUnlockScope signals the session's token lacks the scope needed to
+// unlock the mailbox keyring: the salts fetch in the unlock path returned a
+// scope denial (HTTP 403 / Proton Code 9101). Distinct from ErrKeyringLocked
+// (wrong mailbox password) and from a generic resource-level 403 — the cause is
+// an under-scoped session, the remedy is re-login completing two-factor. It
+// affects every decryption path (message bodies and calendar events) because
+// they all route through the same keyring unlock.
+var ErrKeyringUnlockScope = errors.New("session lacks keyring-unlock scope")
+
 // ErrBodyUndecryptable signals a specific message body cannot be decrypted even
 // though the keyring is unlocked: it's empty/plaintext/unparseable, encrypted to
 // a key we don't hold, or its address has no usable keyring. Distinct from
