@@ -187,3 +187,23 @@ func TestGetEventHappyCassette(t *testing.T) {
 		t.Errorf("identifiers: got calendar_id=%q event_id=%q", ev["calendar_id"], ev["event_id"])
 	}
 }
+
+// TestGetEventFetchError drives getEvent past the keyring resolution (a fixed
+// in-memory keyring) onto an unrecorded event GET, exercising the
+// GetCalendarEvent failure branch.
+func TestGetEventFetchError(t *testing.T) {
+	h := testharness.BootWithCassette(t, "whoami_happy",
+		testharness.WithSessionService(newFixedCalKeyring(t)))
+	defer h.Close()
+
+	_, err := h.Call(context.Background(), "proton_get_event", map[string]any{
+		"calendar_id": "c1",
+		"event_id":    "missing",
+	})
+	if err == nil {
+		t.Fatal("expected error when the event GET is unrecorded")
+	}
+	if !strings.Contains(err.Error(), "proton/") {
+		t.Fatalf("error did not surface a proton/* code: %v", err)
+	}
+}

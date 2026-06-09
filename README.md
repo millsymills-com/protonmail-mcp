@@ -6,7 +6,7 @@ A Model Context Protocol (MCP) server for [Proton Mail](https://proton.me/mail),
 
 ## Status
 
-v1. 23 tools total: 12 reads (always registered) + 11 writes (registered when `PROTONMAIL_MCP_ENABLE_WRITES=1`).
+v1. 26 tools total: 15 reads (always registered) + 11 writes (registered when `PROTONMAIL_MCP_ENABLE_WRITES=1`).
 
 | Capability | v1 | Notes |
 |---|---|---|
@@ -20,7 +20,8 @@ v1. 23 tools total: 12 reads (always registered) + 11 writes (registered when `P
 | Encryption key generation / set primary | **deferred to v1.5** | requires keyring unlock + signed KeyList |
 | Mail search + header inspection | yes | metadata + raw headers; `proton_get_message` with `include_body=true` decrypts the plaintext body when the keyring unlocks |
 | Mail send / draft / label mutations | **v2** | |
-| Calendar / Drive | **v3** | |
+| Calendar (list calendars, list events with recurrence expansion, get event) | yes | read-only; upstream exposes no event-write methods |
+| Drive | **v3** | |
 
 ## Install
 
