@@ -7,12 +7,14 @@ import (
 )
 
 // RecordEmail returns RECORD_EMAIL normalized the same way the scrubber matches
-// it. The scrubber rewrites the trimmed value out of recorded cassettes, so the
-// login path MUST authenticate with the trimmed value too — otherwise a
-// stray-whitespace RECORD_EMAIL logs in under one address while the scrubber
-// rewrites a different one, leaking the real address into the recording.
+// it: trimmed and lowercased. The scrubber rewrites this value out of recorded
+// cassettes, so the login path MUST authenticate with the identical form —
+// otherwise a stray-whitespace or mixed-case RECORD_EMAIL logs in under one
+// form while the scrubber rewrites a different one, leaking the real address
+// into the recording. Lowercasing is safe for login (Proton usernames are
+// case-insensitive) and matches the canonical form Proton echoes in responses.
 func RecordEmail() string {
-	return strings.TrimSpace(os.Getenv("RECORD_EMAIL"))
+	return strings.ToLower(strings.TrimSpace(os.Getenv("RECORD_EMAIL")))
 }
 
 // RecordCredentials reads the RECORD_* login env shared by every recording

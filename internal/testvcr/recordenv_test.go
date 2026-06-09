@@ -9,6 +9,13 @@ func TestRecordEmailTrimsWhitespace(t *testing.T) {
 	}
 }
 
+func TestRecordEmailLowercases(t *testing.T) {
+	t.Setenv("RECORD_EMAIL", "Me@ProtonMail.com")
+	if got := RecordEmail(); got != "me@protonmail.com" {
+		t.Fatalf("RecordEmail() = %q, want lowercased (Proton usernames are case-insensitive)", got)
+	}
+}
+
 func TestRecordCredentialsTrimsEmailToMatchScrubber(t *testing.T) {
 	t.Setenv("RECORD_EMAIL", " me@protonmail.com ")
 	t.Setenv("RECORD_PASSWORD", "hunter2")

@@ -257,13 +257,15 @@ func (s *bodyScrubber) replacePGPArmor(k, v string) (string, bool) {
 	}
 }
 
-// matchesLocalPart reports whether v exactly equals one of the account's
-// address local parts. Proton's Name/DisplayName fields hold a local part
-// standalone, so the full-string ReplaceAll in rewriteIdentifiers misses
-// them. Exact-match (not substring) avoids collateral on short local parts.
+// matchesLocalPart reports whether v equals one of the account's address
+// local parts, case-insensitively — Proton treats local parts as
+// case-insensitive, so a cassette can echo a different casing than the env.
+// Proton's Name/DisplayName fields hold a local part standalone, so the
+// full-string replace in rewriteIdentifiers misses them. Exact-match (not
+// substring) avoids collateral on short local parts.
 func (s *bodyScrubber) matchesLocalPart(v string) bool {
 	for _, lp := range s.localParts {
-		if v == lp {
+		if strings.EqualFold(v, lp) {
 			return true
 		}
 	}
@@ -388,21 +390,59 @@ func scrubRFC2822Headers(raw string) string {
 // the sibling addresses intact.
 var protonAddressTLDs = []string{"@protonmail.com", "@protonmail.ch", "@proton.me", "@pm.me"}
 
+// rewriteIdentifiers matches case-insensitively throughout: email addresses
+// and DNS names are case-insensitive, so Proton can echo a casing that differs
+// from the env value (e.g. canonical lowercase for a mixed-case RECORD_EMAIL),
+// and a case-sensitive replace would leak the variant into the cassette.
 func (s *bodyScrubber) rewriteIdentifiers(in string) string {
 	out := in
 	if s.email != "" {
-		out = strings.ReplaceAll(out, s.email, "user@example.test")
+		out = replaceAllFold(out, s.email, "user@example.test")
 	}
 	for _, lp := range s.localParts {
 		for _, tld := range protonAddressTLDs {
-			out = strings.ReplaceAll(out, lp+tld, "user@example.test")
+			out = replaceAllFold(out, lp+tld, "user@example.test")
 		}
 	}
 	if s.throwawayDomain != "" {
-		out = strings.ReplaceAll(out, s.throwawayDomain, "throwaway.example.test")
+		out = replaceAllFold(out, s.throwawayDomain, "throwaway.example.test")
 	}
 	if s.domain != "" {
-		out = strings.ReplaceAll(out, s.domain, "example.test")
+		out = replaceAllFold(out, s.domain, "example.test")
 	}
 	return out
+}
+
+// asciiLower lowercases A-Z only. Unlike strings.ToLower it is guaranteed to
+// preserve byte length, so indexes found in the folded string are valid in the
+// original — which replaceAllFold relies on. Proton addresses and DNS names
+// are ASCII, so ASCII folding is sufficient.
+func asciiLower(s string) string {
+	return strings.Map(func(r rune) rune {
+		if r >= 'A' && r <= 'Z' {
+			return r + ('a' - 'A')
+		}
+		return r
+	}, s)
+}
+
+// replaceAllFold is strings.ReplaceAll with ASCII-case-insensitive matching of
+// old. The replacement is inserted verbatim.
+func replaceAllFold(s, old, repl string) string {
+	if old == "" {
+		return s
+	}
+	hay, needle := asciiLower(s), asciiLower(old)
+	var b strings.Builder
+	i := 0
+	for {
+		j := strings.Index(hay[i:], needle)
+		if j < 0 {
+			b.WriteString(s[i:])
+			return b.String()
+		}
+		b.WriteString(s[i : i+j])
+		b.WriteString(repl)
+		i += j + len(old)
+	}
 }
