@@ -1,6 +1,7 @@
 package tools
 
 import (
+	"context"
 	"strconv"
 	"testing"
 	"time"
@@ -339,6 +340,26 @@ func TestCalendarWindowFilter(t *testing.T) {
 	}
 	if got := v.Get("End"); got != wantEnd {
 		t.Errorf("End: want %s, got %s", wantEnd, got)
+	}
+}
+
+func TestGetEvent_MissingCalendarID(t *testing.T) {
+	_, perr := getEvent(context.Background(), Deps{}, getEventIn{EventID: "e1"})
+	if perr == nil {
+		t.Fatal("expected validation error for missing calendar_id")
+	}
+	if perr.Code != "proton/validation" {
+		t.Errorf("code: want proton/validation, got %s", perr.Code)
+	}
+}
+
+func TestGetEvent_MissingEventID(t *testing.T) {
+	_, perr := getEvent(context.Background(), Deps{}, getEventIn{CalendarID: "c1"})
+	if perr == nil {
+		t.Fatal("expected validation error for missing event_id")
+	}
+	if perr.Code != "proton/validation" {
+		t.Errorf("code: want proton/validation, got %s", perr.Code)
 	}
 }
 

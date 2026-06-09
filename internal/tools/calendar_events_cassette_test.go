@@ -148,3 +148,42 @@ func TestListEventsHappyCassette(t *testing.T) {
 		prev = s
 	}
 }
+
+func TestGetEventHappyCassette(t *testing.T) {
+	h := testharness.BootWithCassette(t, "get_event_happy",
+		testharness.WithSessionService(newFixedCalKeyring(t)))
+	defer h.Close()
+
+	out, err := h.Call(context.Background(), "proton_get_event", map[string]any{
+		"calendar_id": "c1",
+		"event_id":    "e1",
+	})
+	if err != nil {
+		t.Fatalf("call: %v", err)
+	}
+
+	ev, ok := out["event"].(map[string]any)
+	if !ok {
+		t.Fatalf("envelope missing 'event' map: %#v", out)
+	}
+
+	// get_event returns the master event, not expanded occurrences.
+	if !strings.Contains(calEventsICS, "SUMMARY:Weekly Standup") {
+		t.Fatal("calEventsICS drifted from the expected SUMMARY; regenerate the cassette")
+	}
+	if ev["summary"] != "Weekly Standup" {
+		t.Errorf("summary: want %q, got %q", "Weekly Standup", ev["summary"])
+	}
+	if ev["location"] != "Room 1" {
+		t.Errorf("location: want %q, got %q", "Room 1", ev["location"])
+	}
+	if ev["recurrence_rule"] != "FREQ=WEEKLY;BYDAY=MO" {
+		t.Errorf("recurrence_rule: want %q, got %q", "FREQ=WEEKLY;BYDAY=MO", ev["recurrence_rule"])
+	}
+	if recurring, _ := ev["is_recurring_instance"].(bool); !recurring {
+		t.Errorf("is_recurring_instance: want true, got %v", ev["is_recurring_instance"])
+	}
+	if ev["calendar_id"] != "c1" || ev["event_id"] != "e1" {
+		t.Errorf("identifiers: got calendar_id=%q event_id=%q", ev["calendar_id"], ev["event_id"])
+	}
+}

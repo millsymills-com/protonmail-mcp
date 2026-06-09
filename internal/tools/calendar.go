@@ -72,6 +72,12 @@ func registerCalendar(server *mcp.Server, d Deps) {
 		Description: "Lists calendar events in a time window (RFC3339 start/end). Recurring events are expanded to concrete occurrences. calendar_id is optional; all active calendars are searched when omitted. Read-only.",
 		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
 	}, listEvents)
+
+	addTool(server, d, &mcp.Tool{
+		Name:        "proton_get_event",
+		Description: "Returns one calendar event's full decrypted detail (summary, description, location, recurrence rule, attendees, organizer). Returns the master event; use proton_list_events for occurrences. Read-only.",
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, getEvent)
 }
 
 func listCalendars(ctx context.Context, d Deps, _ listCalendarsIn) (listCalendarsOut, *proterr.Error) {
@@ -175,6 +181,69 @@ func occurrencesFor(ev proton.CalendarEvent, calKR *crypto.KeyRing, start, end t
 		})
 	}
 	return out, trunc, nil
+}
+
+type eventDetailDTO struct {
+	eventOccurrenceDTO
+	Description    string `json:"description,omitempty"`
+	Organizer      string `json:"organizer,omitempty"`
+	RecurrenceRule string `json:"recurrence_rule,omitempty"`
+}
+
+type getEventIn struct {
+	CalendarID string `json:"calendar_id" jsonschema:"the calendar holding the event"`
+	EventID    string `json:"event_id" jsonschema:"the event to fetch"`
+}
+type getEventOut struct {
+	Event eventDetailDTO `json:"event"`
+}
+
+func getEvent(ctx context.Context, d Deps, in getEventIn) (getEventOut, *proterr.Error) {
+	if perr := required("calendar_id", in.CalendarID); perr != nil {
+		return getEventOut{}, perr
+	}
+	if perr := required("event_id", in.EventID); perr != nil {
+		return getEventOut{}, perr
+	}
+	c, perr := client(ctx, d)
+	if perr != nil {
+		return getEventOut{}, perr
+	}
+	calKR, err := d.Session.CalendarKeyring(ctx, in.CalendarID)
+	if err != nil {
+		return getEventOut{}, proterr.Map(err)
+	}
+	ev, err := c.GetCalendarEvent(ctx, in.CalendarID, in.EventID)
+	if err != nil {
+		return getEventOut{}, proterr.Map(err)
+	}
+	ics, err := calendar.DecryptSharedICS(ev, calKR)
+	if err != nil {
+		return getEventOut{}, proterr.Map(err)
+	}
+	fields, err := calendar.ParseICS(ics)
+	if err != nil {
+		return getEventOut{}, proterr.Map(err)
+	}
+	base := time.Unix(ev.StartTime, 0).UTC()
+	endT := time.Unix(ev.EndTime, 0).UTC()
+	return getEventOut{Event: eventDetailDTO{
+		eventOccurrenceDTO: eventOccurrenceDTO{
+			CalendarID: ev.CalendarID,
+			EventID:    ev.ID,
+			UID:        ev.UID,
+			Summary:    fields.Summary,
+			Location:   fields.Location,
+			Start:      base.Format(time.RFC3339),
+			End:        endT.Format(time.RFC3339),
+			AllDay:     bool(ev.FullDay),
+			Recurring:  fields.RecurrenceRule != "",
+			Attendees:  toAttendeeDTOs(fields.Attendees),
+		},
+		Description:    fields.Description,
+		Organizer:      fields.Organizer,
+		RecurrenceRule: fields.RecurrenceRule,
+	}}, nil
 }
 
 func toAttendeeDTOs(in []calendar.Attendee) []attendeeDTO {
