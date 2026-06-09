@@ -12,6 +12,7 @@ import (
 	proton "github.com/ProtonMail/go-proton-api"
 	"github.com/ProtonMail/gopenpgp/v2/crypto"
 	"github.com/millsymills-com/protonmail-mcp/internal/keyring"
+	"github.com/millsymills-com/protonmail-mcp/internal/proterr"
 )
 
 // KeyResolver is the subset of *proton.Client needed to resolve a calendar
@@ -63,7 +64,7 @@ func ResolveKeyring(ctx context.Context, c KeyResolver, krs *keyring.Keyrings, c
 		break
 	}
 	if passphrase == nil {
-		return nil, fmt.Errorf("no calendar member matched an unlocked address keyring for %s", calendarID)
+		return nil, fmt.Errorf("no calendar member matched an unlocked address keyring for %s: %w", calendarID, proterr.ErrKeyringLocked)
 	}
 
 	keys, err := c.GetCalendarKeys(ctx, calendarID)
@@ -72,10 +73,10 @@ func ResolveKeyring(ctx context.Context, c KeyResolver, krs *keyring.Keyrings, c
 	}
 	calKR, err := keys.Unlock(passphrase)
 	if err != nil {
-		return nil, fmt.Errorf("unlock calendar keyring %s: %w", calendarID, err)
+		return nil, fmt.Errorf("unlock calendar keyring %s: %w: %w", calendarID, proterr.ErrKeyringLocked, err)
 	}
 	if calKR.CountDecryptionEntities() == 0 {
-		return nil, fmt.Errorf("calendar keyring %s: no key unlocked with the resolved passphrase", calendarID)
+		return nil, fmt.Errorf("calendar keyring %s: no key unlocked with the resolved passphrase: %w", calendarID, proterr.ErrKeyringLocked)
 	}
 	return calKR, nil
 }

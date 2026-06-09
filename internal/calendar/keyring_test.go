@@ -2,12 +2,14 @@ package calendar_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	proton "github.com/ProtonMail/go-proton-api"
 	"github.com/ProtonMail/gopenpgp/v2/crypto"
 	"github.com/millsymills-com/protonmail-mcp/internal/calendar"
 	"github.com/millsymills-com/protonmail-mcp/internal/keyring"
+	"github.com/millsymills-com/protonmail-mcp/internal/proterr"
 )
 
 // fakeResolver returns canned calendar metadata, built per-test by the fixture
@@ -66,6 +68,9 @@ func TestResolveKeyring_AddressKeyringAbsent(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error when no address keyring matches a member")
 	}
+	if !errors.Is(err, proterr.ErrKeyringLocked) {
+		t.Fatalf("error = %v, want classified as ErrKeyringLocked", err)
+	}
 }
 
 func TestResolveKeyring_NoMatchingEmail(t *testing.T) {
@@ -77,5 +82,8 @@ func TestResolveKeyring_NoMatchingEmail(t *testing.T) {
 	_, err := calendar.ResolveKeyring(context.Background(), r, krs, "cal-1")
 	if err == nil {
 		t.Fatal("expected error when no member email matches an address")
+	}
+	if !errors.Is(err, proterr.ErrKeyringLocked) {
+		t.Fatalf("error = %v, want classified as ErrKeyringLocked", err)
 	}
 }
