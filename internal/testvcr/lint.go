@@ -54,7 +54,7 @@ var lintRules = []lintRule{
 	// The escape sequence `\\n` is the literal characters backslash-n that
 	// appear in the YAML body, not a real newline.
 	{"pgp-proton", regexp.MustCompile(`BEGIN PGP (?:PRIVATE KEY BLOCK|MESSAGE|SIGNATURE)-----\\nVersion: ProtonMail`)},
-	{"proton-email", regexp.MustCompile(`@protonmail\.|@proton\.me|@pm\.me`)},
+	{"proton-email", regexp.MustCompile(`(?i)@protonmail\.|@proton\.me|@pm\.me`)},
 }
 
 const staleThreshold = 90 * 24 * time.Hour

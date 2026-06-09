@@ -52,6 +52,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   the prior hardcoded root list (#66).
 
 ### Fixed
+- `testvcr`: match identifiers case-insensitively when scrubbing — Proton
+  usernames and DNS names are case-insensitive, so a mixed-case `RECORD_EMAIL`
+  could log in while lowercase echoes in response bodies survived scrubbing.
+  `RecordEmail` now also lowercases, the scrubber's identifier rewrites and
+  local-part matches fold case, and the `proton-email` lint rule flags
+  case-variant residuals (#211).
 - `testvcr`: route recorder login credentials through `RecordCredentials`, a
   single boundary that trims `RECORD_EMAIL` identically to the scrubber (so a
   stray-whitespace address can no longer log in untrimmed while the scrubber
