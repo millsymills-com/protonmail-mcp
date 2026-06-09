@@ -123,7 +123,7 @@ func (s *Session) Status() Status {
 // upgrade described in #195); it is also what the /auth/v4/2fa capture path
 // records. The literal has not been pinned against a recorded live fixture, so
 // a wrong assumption would misclassify; treated as the known convention until
-// confirmed.
+// confirmed (#200).
 func keyringUnlockState(scope string) string {
 	if scope == "" {
 		return "unknown"
