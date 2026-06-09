@@ -119,11 +119,12 @@ func (s *Session) Status() Status {
 // pre-2FA state); an empty scope is unknown — the session predates scope
 // tracking, so capability can't be asserted without attempting an unlock.
 //
-// "full" is Proton's documented full-access scope token (the twofactor→full
-// upgrade described in #195); it is also what the /auth/v4/2fa capture path
-// records. The literal has not been pinned against a recorded live fixture, so
-// a wrong assumption would misclassify; treated as the known convention until
-// confirmed (#200).
+// "full" is Proton's full-access scope token, confirmed against recorded
+// fixtures: a post-2FA /auth/v4/refresh carries Scope "full self parent user
+// loggedin paid nondelinquent mail verified settings" (token_rotation.yaml),
+// while a pre-2FA /auth/v4 response carries "self parent user n" with no "full"
+// (logout_invalidates.yaml). Presence of the "full" token is therefore the
+// correct gate; TestKeyringUnlockStateMatchesRecordedScopes pins both.
 func keyringUnlockState(scope string) string {
 	if scope == "" {
 		return "unknown"
