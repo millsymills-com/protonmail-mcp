@@ -93,6 +93,52 @@ func TestScrubRewritesEmailWithPaddedEnv(t *testing.T) {
 	}
 }
 
+// TestScrubRewritesEmailCaseInsensitively pins the case axis of the same leak
+// class: Proton usernames are case-insensitive at login, and responses can
+// echo a casing that differs from RECORD_EMAIL. Every variant — env mixed-case
+// vs body lowercase, body mixed-case, standalone local part in another case —
+// must be rewritten or the real address survives into the cassette.
+func TestScrubRewritesEmailCaseInsensitively(t *testing.T) {
+	t.Setenv("RECORD_EMAIL", "Me@ProtonMail.com")
+	body := `{"User":{"Email":"me@protonmail.com","Name":"ME"},"Aliases":["ME@PROTONMAIL.COM"]}`
+	i := &cassette.Interaction{
+		Response: cassette.Response{Body: body, Headers: http.Header{"Content-Type": []string{"application/json"}}},
+	}
+	if err := saveHook(i); err != nil {
+		t.Fatal(err)
+	}
+	if lower := strings.ToLower(i.Response.Body); strings.Contains(lower, "me@protonmail.com") {
+		t.Fatalf("case-variant address survived scrubbing: %s", i.Response.Body)
+	}
+	var got map[string]any
+	if err := json.Unmarshal([]byte(i.Response.Body), &got); err != nil {
+		t.Fatal(err)
+	}
+	user := got["User"].(map[string]any)
+	if user["Email"] != "user@example.test" {
+		t.Fatalf("email not rewritten across case variants: %v", user["Email"])
+	}
+	if user["Name"] != "user" {
+		t.Fatalf("case-variant local part not rewritten: %v", user["Name"])
+	}
+}
+
+// TestScrubRewritesDomainCaseInsensitively extends the same guarantee to the
+// custom-domain rewrites: DNS names are case-insensitive too.
+func TestScrubRewritesDomainCaseInsensitively(t *testing.T) {
+	t.Setenv("RECORD_DOMAIN", "myalias.dev")
+	body := `{"Domain":"MyAlias.Dev"}`
+	i := &cassette.Interaction{
+		Response: cassette.Response{Body: body, Headers: http.Header{"Content-Type": []string{"application/json"}}},
+	}
+	if err := saveHook(i); err != nil {
+		t.Fatal(err)
+	}
+	if got := i.Response.Body; got != `{"Domain":"example.test"}` {
+		t.Fatalf("case-variant domain not rewritten: %s", got)
+	}
+}
+
 // TestScrubReplacesPGPKeysWithFixture pins the scrubber's PGP substitution
 // behaviour. Real Proton key payloads embed the account UID inside the
 // armored packet (so the raw email leaks through) and the matching

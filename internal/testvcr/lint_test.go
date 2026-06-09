@@ -90,8 +90,11 @@ func TestLintAllowsFixturePGP(t *testing.T) {
 }
 
 func TestLintFlagsProtonEmail(t *testing.T) {
-	// Proton issues addresses on three TLDs — all three must trip the rule.
-	cases := []string{"alice@protonmail.com", "bob@proton.me", "carol@pm.me"}
+	// Proton issues addresses on three TLDs — all three must trip the rule,
+	// in any casing: the scrubber matches case-insensitively, so a residual
+	// case variant means a scrub bug and must not slip past the lint.
+	cases := []string{"alice@protonmail.com", "bob@proton.me", "carol@pm.me",
+		"Alice@ProtonMail.com", "BOB@PROTON.ME", "Carol@PM.me"}
 	for _, body := range cases {
 		t.Run(body, func(t *testing.T) {
 			dir := t.TempDir()
