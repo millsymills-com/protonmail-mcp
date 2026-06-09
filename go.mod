@@ -8,9 +8,11 @@ require (
 	github.com/ProtonMail/go-srp v0.0.7
 	github.com/ProtonMail/gopenpgp/v2 v2.10.0
 	github.com/bradenaw/juniper v0.15.3
+	github.com/emersion/go-ical v0.0.0-20250609112844-439c63cef608
 	github.com/go-resty/resty/v2 v2.17.2
 	github.com/godbus/dbus/v5 v5.2.2
 	github.com/modelcontextprotocol/go-sdk v1.6.1
+	github.com/teambition/rrule-go v1.8.2
 	github.com/zalando/go-keyring v0.2.8
 	golang.org/x/term v0.43.0
 	gopkg.in/dnaeon/go-vcr.v4 v4.0.6

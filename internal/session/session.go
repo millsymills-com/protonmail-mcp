@@ -15,7 +15,9 @@ import (
 	"testing"
 
 	proton "github.com/ProtonMail/go-proton-api"
+	"github.com/ProtonMail/gopenpgp/v2/crypto"
 	"github.com/go-resty/resty/v2"
+	"github.com/millsymills-com/protonmail-mcp/internal/calendar"
 	"github.com/millsymills-com/protonmail-mcp/internal/keychain"
 	"github.com/millsymills-com/protonmail-mcp/internal/keyring"
 	"github.com/millsymills-com/protonmail-mcp/internal/proterr"
@@ -46,6 +48,11 @@ type Session struct {
 	// decrypted private key material; nil until first crypto use and dropped on
 	// logout/relogin. Never persisted, never logged.
 	keyrings *keyring.Keyrings
+	// calKeyrings caches unlocked calendar keyrings by calendar ID for the
+	// session lifetime, resolved on first use from the address keyrings. Holds
+	// decrypted private key material; dropped on the same logout/relogin reset
+	// as keyrings. Never persisted, never logged.
+	calKeyrings map[string]*crypto.KeyRing
 	// keyFetcher resolves the KeyFetcher the cache-miss unlock runs against. nil
 	// in production, where it falls back to s.Client(ctx); tests set it to drive
 	// the unlock orchestration (LoadCreds, mailbox fallback, cache population)
@@ -145,15 +152,20 @@ type Service interface {
 	Status() Status
 	Client(ctx context.Context) (*proton.Client, error)
 	Keyrings(ctx context.Context) (*keyring.Keyrings, error)
+	CalendarKeyring(ctx context.Context, calendarID string) (*crypto.KeyRing, error)
 }
 
 // clearKeyringCache wipes the cached keyrings' private key material and drops
-// the reference. Caller must hold s.mu.
+// the references. Caller must hold s.mu.
 func (s *Session) clearKeyringCache() {
 	if s.keyrings != nil {
 		s.keyrings.ClearPrivateParams()
 	}
 	s.keyrings = nil
+	for id, kr := range s.calKeyrings {
+		kr.ClearPrivateParams()
+		delete(s.calKeyrings, id)
+	}
 }
 
 // Keyrings returns the session's unlocked PGP keyrings, unlocking them on
@@ -200,6 +212,44 @@ func (s *Session) Keyrings(ctx context.Context) (*keyring.Keyrings, error) {
 	s.keyrings = krs
 	s.mu.Unlock()
 	return krs, nil
+}
+
+// CalendarKeyring returns the unlocked keyring for calendarID, resolving it on
+// first use from the session's address keyrings and caching it for the session
+// lifetime. The returned keyring holds decrypted private key material.
+func (s *Session) CalendarKeyring(ctx context.Context, calendarID string) (*crypto.KeyRing, error) {
+	s.mu.RLock()
+	cached := s.calKeyrings[calendarID]
+	s.mu.RUnlock()
+	if cached != nil {
+		return cached, nil
+	}
+
+	krs, err := s.Keyrings(ctx)
+	if err != nil {
+		return nil, err
+	}
+	c, err := s.Client(ctx)
+	if err != nil {
+		return nil, err
+	}
+	calKR, err := calendar.ResolveKeyring(ctx, c, krs, calendarID)
+	if err != nil {
+		return nil, fmt.Errorf("resolve calendar keyring: %w", err)
+	}
+
+	s.mu.Lock()
+	if s.calKeyrings == nil {
+		s.calKeyrings = map[string]*crypto.KeyRing{}
+	}
+	if existing := s.calKeyrings[calendarID]; existing != nil {
+		s.mu.Unlock()
+		calKR.ClearPrivateParams()
+		return existing, nil
+	}
+	s.calKeyrings[calendarID] = calKR
+	s.mu.Unlock()
+	return calKR, nil
 }
 
 // fetcher resolves the KeyFetcher the cache-miss unlock runs against. It uses
@@ -457,6 +507,9 @@ func (s *Session) Logout() error {
 	}
 	s.current = keychain.Session{}
 	s.raw.setAuth("", "")
+	// Wipe decrypted key material before Clear so a keychain failure can't
+	// leave unlocked user/calendar keyrings live in memory.
+	s.clearKeyringCache()
 	if err := s.kc.Clear(); err != nil {
 		// Leave poisoned flag set if it was set — Clear failed again, so
 		// state is still inconsistent.
@@ -466,7 +519,6 @@ func (s *Session) Logout() error {
 	s.persistDegraded = false
 	s.persistErrReason = ""
 	s.reloginExhausted = false
-	s.clearKeyringCache()
 	return nil
 }
 
