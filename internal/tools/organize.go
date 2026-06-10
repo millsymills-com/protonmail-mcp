@@ -21,12 +21,12 @@ func validateMessageIDs(ids []string) *proterr.Error {
 
 func validateLabelAction(action string) *proterr.Error {
 	if action != "add" && action != "remove" {
-		return &proterr.Error{Code: "proton/validation", Message: `action must be "add" or "remove"`}
+		return &proterr.Error{Code: "proton/validation", Message: `action must be "add" or "remove", got ` + quoteTrunc(action)}
 	}
 	return nil
 }
 
-type labelMessageIn struct {
+type labelMessagesIn struct {
 	MessageIDs []string `json:"message_ids"`
 	LabelID    string   `json:"label_id"`
 	Action     string   `json:"action" jsonschema:"add or remove"`
@@ -42,16 +42,16 @@ func registerOrganize(server *mcp.Server, d Deps) {
 		return
 	}
 	addTool(server, d, &mcp.Tool{
-		Name:        "proton_label_message",
-		Description: "Adds or removes a label on one or more messages. Moving to Trash is action=add with label_id \"3\" (see proton_list_labels). Reversible.",
-	}, labelMessage)
+		Name:        "proton_label_messages",
+		Description: "Adds or removes a label on one or more messages. Moving to Trash is action=add with label_id \"3\" (see proton_list_labels). Reversible. Not atomic across many IDs: requests are chunked (150/batch) and a mid-batch failure leaves earlier batches applied.",
+	}, labelMessages)
 	addTool(server, d, &mcp.Tool{
 		Name:        "proton_mark_messages",
-		Description: "Marks one or more messages read (read=true) or unread (read=false). Reversible.",
+		Description: "Marks one or more messages read (read=true) or unread (read=false). Reversible. Not atomic across many IDs: requests are chunked (150/batch) and a mid-batch failure leaves earlier batches applied.",
 	}, markMessages)
 }
 
-func labelMessage(ctx context.Context, d Deps, in labelMessageIn) (organizeOut, *proterr.Error) {
+func labelMessages(ctx context.Context, d Deps, in labelMessagesIn) (organizeOut, *proterr.Error) {
 	if perr := validateMessageIDs(in.MessageIDs); perr != nil {
 		return organizeOut{}, perr
 	}

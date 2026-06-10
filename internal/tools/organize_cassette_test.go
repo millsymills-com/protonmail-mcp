@@ -18,14 +18,23 @@ func TestLabelMessageHappyCassette(t *testing.T) {
 	}
 	msgs, _ := page["messages"].([]any)
 	if len(msgs) == 0 {
-		t.Skip("cassette has no messages to label")
+		t.Fatalf("cassette has no messages; re-record organize_label_happy")
 	}
 	id, _ := msgs[0].(map[string]any)["id"].(string)
-	out, err := h.Call(ctx, "proton_label_message", map[string]any{
+	out, err := h.Call(ctx, "proton_label_messages", map[string]any{
 		"message_ids": []any{id}, "label_id": "10", "action": "add",
 	})
 	if err != nil {
 		t.Fatalf("label: %v", err)
+	}
+	if ok, _ := out["ok"].(bool); !ok {
+		t.Fatalf("want ok=true, got %#v", out)
+	}
+	out, err = h.Call(ctx, "proton_label_messages", map[string]any{
+		"message_ids": []any{id}, "label_id": "10", "action": "remove",
+	})
+	if err != nil {
+		t.Fatalf("unlabel: %v", err)
 	}
 	if ok, _ := out["ok"].(bool); !ok {
 		t.Fatalf("want ok=true, got %#v", out)

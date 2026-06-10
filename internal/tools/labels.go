@@ -25,7 +25,7 @@ type listLabelsOut struct {
 func registerLabels(server *mcp.Server, d Deps) {
 	addTool(server, d, &mcp.Tool{
 		Name:        "proton_list_labels",
-		Description: "Lists the account's labels and folders, including system labels (Inbox=0, AllDrafts=1, Sent=7, Trash=3, Spam=4, Archive=6, Starred=10). Use the returned IDs with proton_label_message; label_id \"3\" moves a message to Trash.",
+		Description: "Lists the account's labels and folders, including system labels (Inbox=0, AllDrafts=1, Sent=7, Trash=3, Spam=4, Archive=6, Starred=10). Use the returned IDs with proton_label_messages; label_id \"3\" moves a message to Trash.",
 		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
 	}, listLabels)
 }
