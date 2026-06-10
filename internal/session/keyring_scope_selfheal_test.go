@@ -6,8 +6,12 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"net/http/httptest"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	proton "github.com/ProtonMail/go-proton-api"
 
@@ -31,6 +35,21 @@ func (scopeDeniedFetcher) GetAddresses(context.Context) ([]proton.Address, error
 	return nil, errors.New("GetAddresses must not be reached on a salts scope denial")
 }
 
+// transientFetcher fails the unlock at GetSalts with a non-scope error (HTTP 500
+// / Code 2001), so keyring.Unlock returns an error that is NOT the #195 scope
+// sentinel — modelling a transient outage on the post-relogin retry-unlock.
+type transientFetcher struct{}
+
+func (transientFetcher) GetSalts(context.Context) (proton.Salts, error) {
+	return nil, &proton.APIError{Status: http.StatusInternalServerError, Code: 2001}
+}
+func (transientFetcher) GetUser(context.Context) (proton.User, error) {
+	return proton.User{}, errors.New("GetUser must not be reached on a salts error")
+}
+func (transientFetcher) GetAddresses(context.Context) ([]proton.Address, error) {
+	return nil, errors.New("GetAddresses must not be reached on a salts error")
+}
+
 // TestKeyringsSelfHealsUnderScopedSession proves the success path: an
 // under-scoped session whose first unlock is scope-denied self-heals via one
 // relogin (the seam swaps in a full-scope fetcher), the unlock then succeeds and
@@ -45,10 +64,10 @@ func TestKeyringsSelfHealsUnderScopedSession(t *testing.T) {
 	s.keyFetcher = func(context.Context) (keyring.KeyFetcher, error) { return current, nil }
 
 	var reloginCalls int
-	s.reloginScope = func(context.Context) bool {
+	s.reloginScope = func(context.Context) (bool, error) {
 		reloginCalls++
 		current = lockedFetcher(t, pass) // fresh full-scope session can unlock
-		return true
+		return true, nil
 	}
 
 	krs, err := s.Keyrings(t.Context())
@@ -102,7 +121,7 @@ func TestKeyringsScopeSelfHealLatchHoldsOnUnfixableDenial(t *testing.T) {
 		scopeDeniedFetcher{}, // stays scope-denied even after the "successful" relogin
 	)
 	var reloginCalls int
-	s.reloginScope = func(context.Context) bool { reloginCalls++; return true }
+	s.reloginScope = func(context.Context) (bool, error) { reloginCalls++; return true, nil }
 
 	if _, err := s.Keyrings(t.Context()); !errors.Is(err, proterr.ErrKeyringUnlockScope) {
 		t.Fatalf("first call: want ErrKeyringUnlockScope, got %v", err)
@@ -142,5 +161,152 @@ func TestKeyringsScopeSelfHealLogsNoSecrets(t *testing.T) {
 	}
 	if !strings.Contains(logged, "self-heal relogin") {
 		t.Fatalf("expected a structured self-heal log line, got:\n%s", logged)
+	}
+}
+
+// TestKeyringsScopeSelfHealConcurrentSingleRelogin proves the self-heal stays
+// inside the unlockMu single-flight: two concurrent first-callers on a
+// scope-denied session trigger exactly one relogin (not two hammering Proton's
+// login endpoint), and the waiter reuses the winner's healed keyrings via the
+// post-lock cache re-check rather than re-running the relogin.
+func TestKeyringsScopeSelfHealConcurrentSingleRelogin(t *testing.T) {
+	const pass = "mailbox-pw"
+	current := keyring.KeyFetcher(scopeDeniedFetcher{})
+	s := &Session{
+		kc:  &credKC{creds: keychain.Creds{Password: pass}},
+		raw: newRawClient("http://invalid.test", nil),
+	}
+	s.keyFetcher = func(context.Context) (keyring.KeyFetcher, error) { return current, nil }
+
+	var reloginCalls atomic.Int32
+	s.reloginScope = func(context.Context) (bool, error) {
+		reloginCalls.Add(1)
+		current = lockedFetcher(t, pass)
+		return true, nil
+	}
+
+	var wg sync.WaitGroup
+	results := make([]*keyring.Keyrings, 2)
+	errs := make([]error, 2)
+	for i := range results {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			results[i], errs[i] = s.Keyrings(t.Context())
+		}()
+	}
+	wg.Wait()
+
+	for i := range results {
+		if errs[i] != nil {
+			t.Fatalf("caller %d: %v", i, errs[i])
+		}
+		if results[i] == nil || results[i].User == nil {
+			t.Fatalf("caller %d: expected an unlocked user keyring", i)
+		}
+	}
+	if results[0] != results[1] {
+		t.Fatal("both callers must observe the same cached keyrings")
+	}
+	if got := reloginCalls.Load(); got != 1 {
+		t.Fatalf("relogin ran %d times, want exactly 1 under single-flight", got)
+	}
+}
+
+// TestKeyringsScopeSelfHealNonScopeRetryErrorLeavesLatch proves a transient
+// failure on the post-relogin retry-unlock is surfaced verbatim and does NOT
+// spend the one-attempt latch: a relogin succeeds, but the retry GetSalts hits a
+// non-scope error (500). The caller gets that error (not the scope sentinel) and
+// the latch stays reset so a genuine 9100 after the blip can still self-heal.
+func TestKeyringsScopeSelfHealNonScopeRetryErrorLeavesLatch(t *testing.T) {
+	const pass = "mailbox-pw"
+	current := keyring.KeyFetcher(scopeDeniedFetcher{})
+	s := &Session{
+		kc:  &credKC{creds: keychain.Creds{Password: pass}},
+		raw: newRawClient("http://invalid.test", nil),
+	}
+	s.keyFetcher = func(context.Context) (keyring.KeyFetcher, error) { return current, nil }
+	s.reloginScope = func(context.Context) (bool, error) {
+		current = transientFetcher{} // relogin "worked" but retry-unlock now 500s
+		return true, nil
+	}
+
+	_, err := s.Keyrings(t.Context())
+	if err == nil {
+		t.Fatal("expected the transient retry-unlock error to surface")
+	}
+	if errors.Is(err, proterr.ErrKeyringUnlockScope) {
+		t.Fatalf("transient error must not be reported as a scope denial, got %v", err)
+	}
+	if s.scopeReloginSpent() {
+		t.Fatal("a transient retry failure must not spend the self-heal latch")
+	}
+}
+
+// TestKeyringsScopeSelfHealSurfacesCaptchaError proves Keyrings surfaces a
+// CAPTCHA challenge from the self-heal relogin instead of the generic scope
+// hint: when reloginForScope reports (false, captcha), the caller gets the
+// captcha error (the actionable verification step) and the latch holds.
+func TestKeyringsScopeSelfHealSurfacesCaptchaError(t *testing.T) {
+	captcha := &proterr.Error{Code: "proton/captcha", Message: "Human verification required."}
+	s := newSessionWithFetcher(
+		&credKC{creds: keychain.Creds{Password: "pw"}},
+		scopeDeniedFetcher{},
+	)
+	s.reloginScope = func(context.Context) (bool, error) { return false, captcha }
+
+	_, err := s.Keyrings(t.Context())
+	if !errors.Is(err, captcha) {
+		t.Fatalf("want the CAPTCHA challenge surfaced, got %v", err)
+	}
+	if errors.Is(err, proterr.ErrKeyringUnlockScope) {
+		t.Fatal("CAPTCHA must replace the generic scope hint, not fall through to it")
+	}
+	if !s.scopeReloginSpent() {
+		t.Fatal("latch must hold after a CAPTCHA-blocked self-heal")
+	}
+}
+
+// TestReloginForScopeSurfacesCaptcha drives the production reloginForScope body
+// (no seam): the relogin login returns Proton's human-verification challenge
+// (Code 9001), and reloginForScope reports (false, captcha) so the caller can
+// surface the actionable verification step instead of the generic scope hint.
+func TestReloginForScopeSurfacesCaptcha(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Date", time.Now().UTC().Format(http.TimeFormat))
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		_, _ = w.Write([]byte(`{"Code":9001,"Error":"Human verification required"}`))
+	}))
+	defer srv.Close()
+
+	kc := &credKC{creds: keychain.Creds{Username: "u@example.test", Password: "pw"}}
+	s := New(srv.URL, kc)
+
+	relogged, challenge := s.reloginForScope(t.Context())
+	if relogged {
+		t.Fatal("relogin must not report success when Proton demands human verification")
+	}
+	var pe *proterr.Error
+	if !errors.As(challenge, &pe) || pe.Code != "proton/captcha" {
+		t.Fatalf("want a proton/captcha challenge surfaced, got %v", challenge)
+	}
+}
+
+// TestLogoutResetsScopeReloginLatch proves the scope self-heal latch is cleared
+// by an explicit Logout, so an operator who re-authenticates recovers a session
+// that latched on an unfixable denial. Without the reset a latched session would
+// stay un-healable until process restart.
+func TestLogoutResetsScopeReloginLatch(t *testing.T) {
+	s := &Session{kc: &credKC{}, raw: newRawClient("http://invalid.test", nil)}
+	s.mu.Lock()
+	s.scopeReloginExhausted = true
+	s.mu.Unlock()
+
+	if err := s.Logout(); err != nil {
+		t.Fatalf("Logout: %v", err)
+	}
+	if s.scopeReloginSpent() {
+		t.Fatal("Logout must reset the scope self-heal latch")
 	}
 }

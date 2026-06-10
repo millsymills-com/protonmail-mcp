@@ -91,8 +91,9 @@ type Session struct {
 	// reloginScope is a test seam for the scope-insufficiency self-heal relogin.
 	// nil in production, where reloginForScope runs reloginLocked under s.mu;
 	// tests set it to simulate a relogin outcome (and swap keyFetcher) without
-	// standing up a live login.
-	reloginScope func(context.Context) bool
+	// standing up a live login. It mirrors reloginForScope's (relogged, challenge)
+	// contract: a non-nil challenge is the CAPTCHA error surfaced to the caller.
+	reloginScope func(context.Context) (bool, error)
 }
 
 // ErrSessionInconsistent is returned when a prior Login persist rollback
@@ -220,24 +221,43 @@ func (s *Session) Keyrings(ctx context.Context) (*keyring.Keyrings, error) {
 	if !proterr.ScopeDenied(err) || s.scopeReloginSpent() {
 		return nil, err
 	}
+	return s.healScopeDenial(ctx, err)
+}
+
+// healScopeDenial runs one unattended relogin to recover from a keyring-unlock
+// scope denial and retries the unlock. On success it caches and returns the
+// keyrings. It surfaces a CAPTCHA challenge verbatim (so the operator gets the
+// verification step, not the generic scope hint) and latches. A non-scope
+// failure on the retry — a transient network/keychain error, not the unfixable
+// 9100 — is returned without latching, so a one-off blip does not spend the
+// session's one-attempt self-heal budget. A recurring 9100 or an
+// ineligible-creds decline falls through to scopeDenied and latches.
+func (s *Session) healScopeDenial(
+	ctx context.Context, scopeDenied error,
+) (*keyring.Keyrings, error) {
 	slog.Info("session: keyring unlock denied for insufficient scope; attempting one self-heal relogin")
-	if s.reloginForScope(ctx) {
+	relogged, challenge := s.reloginForScope(ctx)
+	if relogged {
 		healed, rerr := s.unlockOnce(ctx)
 		if rerr == nil {
 			slog.Info("session: self-heal relogin restored keyring-unlock scope")
 			s.storeKeyrings(healed)
 			return healed, nil
 		}
-		// Login produced a working client but its token still can't unlock (an
-		// unfixable 9100): fall through to the actionable error, and latch below
-		// so the next cache-miss does not relogin-loop.
-		err = rerr
+		if !proterr.ScopeDenied(rerr) {
+			slog.Warn("session: self-heal retry-unlock failed for a non-scope reason; latch left intact")
+			return nil, rerr
+		}
+		// Fresh token still can't unlock (an unfixable 9100): latch and surface it.
+		scopeDenied = rerr
+	} else if challenge != nil {
+		scopeDenied = challenge
 	}
 	s.mu.Lock()
 	s.scopeReloginExhausted = true
 	s.mu.Unlock()
 	slog.Warn("session: self-heal relogin did not restore keyring-unlock scope; latch held until next login")
-	return nil, err
+	return nil, scopeDenied
 }
 
 // unlockOnce runs one keyring unlock against the current fetcher and the stored
@@ -277,12 +297,15 @@ func (s *Session) scopeReloginSpent() bool {
 }
 
 // reloginForScope runs one unattended relogin to upgrade an under-scoped
-// session to a full-scope one, returning true when a working client was
-// produced. It holds s.mu only around the login mutation and releases it before
+// session to a full-scope one. It returns (true, nil) when a working client was
+// produced; (false, challenge) when Proton demanded human verification (the
+// CAPTCHA error, which the caller surfaces instead of the generic scope hint);
+// and (false, nil) when no usable creds were stored or the relogin otherwise
+// failed. It holds s.mu only around the login mutation and releases it before
 // returning, so the caller's network retry-unlock never runs under s.mu
 // (reloginLocked requires s.mu; keyring.Unlock does I/O and must not). It logs
 // the mapped outcome only — never creds or tokens.
-func (s *Session) reloginForScope(ctx context.Context) bool {
+func (s *Session) reloginForScope(ctx context.Context) (bool, error) {
 	if s.reloginScope != nil {
 		return s.reloginScope(ctx)
 	}
@@ -290,12 +313,12 @@ func (s *Session) reloginForScope(ctx context.Context) bool {
 	c, captcha := s.reloginLocked(ctx)
 	s.mu.Unlock()
 	if c != nil {
-		return true
+		return true, nil
 	}
 	if captcha != nil {
 		slog.Warn("session: self-heal relogin for keyring scope needs human verification")
 	}
-	return false
+	return false, captcha
 }
 
 // CalendarKeyring returns the unlocked keyring for calendarID, resolving it on
@@ -638,10 +661,13 @@ func (s *Session) reloginLocked(ctx context.Context) (*proton.Client, error) {
 		// self-heal could not run instead of seeing only the refresh error.
 		if !errors.Is(err, keychain.ErrNotFound) {
 			slog.Warn("session: self-heal aborted, could not load stored credentials", "err", err)
+		} else {
+			slog.Info("session: self-heal relogin skipped, no stored credentials")
 		}
 		return nil, nil
 	}
 	if creds.Username == "" || creds.Password == "" {
+		slog.Info("session: self-heal relogin skipped, stored credentials incomplete")
 		return nil, nil
 	}
 	rerr := s.loginLocked(ctx, LoginInput{
