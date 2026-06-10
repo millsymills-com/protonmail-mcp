@@ -3,6 +3,7 @@ package tools
 import (
 	"context"
 	"net/mail"
+	"strconv"
 
 	"github.com/ProtonMail/gluon/rfc822"
 	proton "github.com/ProtonMail/go-proton-api"
@@ -19,7 +20,7 @@ func parseRecipients(in []string) ([]*mail.Address, *proterr.Error) {
 	for _, s := range in {
 		a, err := mail.ParseAddress(s)
 		if err != nil {
-			return nil, &proterr.Error{Code: "proton/validation", Message: "invalid email address: " + s}
+			return nil, &proterr.Error{Code: "proton/validation", Message: "invalid email address: " + quoteTrunc(s)}
 		}
 		out = append(out, a)
 	}
@@ -40,6 +41,16 @@ func resolveMIMEType(s string) (rfc822.MIMEType, *proterr.Error) {
 	}
 }
 
+// quoteTrunc renders caller input safely for an error message: quoted (so
+// control characters can't leak into MCP text content) and capped so an
+// oversized input can't bloat the error.
+func quoteTrunc(s string) string {
+	if len(s) > 100 {
+		s = s[:100] + "…"
+	}
+	return strconv.Quote(s)
+}
+
 // resolveSender returns the address to send from: the one named by addressID,
 // or the account's primary sending address (enabled, send-allowed, lowest
 // Order) when addressID is empty.
@@ -48,6 +59,9 @@ func resolveSender(ctx context.Context, c *proton.Client, addressID string) (pro
 		a, err := c.GetAddress(ctx, addressID)
 		if err != nil {
 			return proton.Address{}, proterr.Map(err)
+		}
+		if a.Status != proton.AddressStatusEnabled || !bool(a.Send) {
+			return proton.Address{}, &proterr.Error{Code: "proton/validation", Message: "address " + addressID + " cannot send (disabled or receive-only)"}
 		}
 		return a, nil
 	}

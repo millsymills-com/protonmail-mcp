@@ -1,6 +1,7 @@
 package tools
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/ProtonMail/gluon/rfc822"
@@ -41,5 +42,19 @@ func TestResolveMIMETypeDefaultAndOverride(t *testing.T) {
 	}
 	if _, perr := resolveMIMEType("application/json"); perr == nil || perr.Code != "proton/validation" {
 		t.Fatalf("want validation error for unsupported mime, got %+v", perr)
+	}
+}
+
+func TestParseRecipientsErrorNamesBadEntry(t *testing.T) {
+	_, perr := parseRecipients([]string{"a@example.test", "bogus"})
+	if perr == nil || !strings.Contains(perr.Message, `"bogus"`) {
+		t.Fatalf("want error naming the bad entry, got %+v", perr)
+	}
+}
+
+func TestResolveMIMETypeExplicitPlain(t *testing.T) {
+	mt, perr := resolveMIMEType("text/plain")
+	if perr != nil || mt != rfc822.TextPlain {
+		t.Fatalf("want TextPlain, got %v %+v", mt, perr)
 	}
 }
