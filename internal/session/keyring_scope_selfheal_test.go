@@ -243,6 +243,50 @@ func TestKeyringsScopeSelfHealNonScopeRetryErrorLeavesLatch(t *testing.T) {
 	}
 }
 
+// TestKeyringsScopeSelfHealNonScopeRetryErrorBoundAcrossCalls pins the bound
+// across two calls: a persistent non-scope retry error must not let Keyrings
+// re-trigger a relogin on every subsequent call. The first call self-heals
+// (relogin upgrades scope) but the retry-unlock hits a persistent 500; the
+// relogin leaves the fetcher at that 500. On the second call the first
+// unlockOnce returns the non-scope error directly (scope is already fixed), so
+// it never re-enters healScopeDenial — relogin stays at exactly one total.
+func TestKeyringsScopeSelfHealNonScopeRetryErrorBoundAcrossCalls(t *testing.T) {
+	const pass = "mailbox-pw"
+	current := keyring.KeyFetcher(scopeDeniedFetcher{})
+	s := &Session{
+		kc:  &credKC{creds: keychain.Creds{Password: pass}},
+		raw: newRawClient("http://invalid.test", nil),
+	}
+	s.keyFetcher = func(context.Context) (keyring.KeyFetcher, error) { return current, nil }
+
+	var reloginCalls atomic.Int32
+	s.reloginScope = func(context.Context) (bool, error) {
+		reloginCalls.Add(1)
+		current = transientFetcher{} // relogin upgraded scope; retry-unlock now 500s persistently
+		return true, nil
+	}
+
+	_, err1 := s.Keyrings(t.Context())
+	if err1 == nil || errors.Is(err1, proterr.ErrKeyringUnlockScope) {
+		t.Fatalf("first call: want the non-scope retry error surfaced, got %v", err1)
+	}
+
+	_, err2 := s.Keyrings(t.Context())
+	if err2 == nil || errors.Is(err2, proterr.ErrKeyringUnlockScope) {
+		t.Fatalf("second call: want the non-scope error surfaced verbatim, got %v", err2)
+	}
+
+	if got := reloginCalls.Load(); got != 1 {
+		t.Fatalf("relogin ran %d times across two calls, want exactly 1 (a persistent non-scope error must not re-trigger relogin)", got)
+	}
+	if s.scopeReloginSpent() {
+		t.Fatal("a persistent non-scope retry failure must never spend the self-heal latch")
+	}
+	if s.keyrings != nil {
+		t.Fatal("cache must stay empty while the unlock keeps failing")
+	}
+}
+
 // TestKeyringsScopeSelfHealSurfacesCaptchaError proves Keyrings surfaces a
 // CAPTCHA challenge from the self-heal relogin instead of the generic scope
 // hint: when reloginForScope reports (false, captcha), the caller gets the
