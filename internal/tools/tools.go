@@ -29,6 +29,7 @@ func Register(server *mcp.Server, d Deps) {
 	registerSettings(server, d)
 	registerKeys(server, d)
 	registerMessages(server, d)
+	registerLabels(server, d)
 	registerCalendar(server, d)
 }
 
