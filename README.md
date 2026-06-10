@@ -8,7 +8,7 @@ A Model Context Protocol (MCP) server for [Proton Mail](https://proton.me/mail),
 
 Stage: S2 — read and write tools, writes env-gated default-off, CI green, lockfile committed. Full Proton-parity surface (the climb to S3) is tracked in the feature-parity roadmap.
 
-v2. 33 tools total: 16 reads (always registered) + 15 writes (`PROTONMAIL_MCP_ENABLE_WRITES=1`) + 1 dangerous write (`PROTONMAIL_MCP_ENABLE_WRITES=1` + `PROTONMAIL_MCP_ENABLE_DANGEROUS=1`).
+v2. 32 tools total: 16 reads (always registered) + 15 writes (`PROTONMAIL_MCP_ENABLE_WRITES=1`) + 1 dangerous write (`PROTONMAIL_MCP_ENABLE_WRITES=1` + `PROTONMAIL_MCP_ENABLE_DANGEROUS=1`).
 
 | Capability | v1 | Notes |
 |---|---|---|
