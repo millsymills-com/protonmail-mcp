@@ -12,9 +12,42 @@ import (
 	"github.com/millsymills-com/protonmail-mcp/internal/session"
 )
 
+// recordOrganizeLabel records search + star/unstar (label "10") of the first
+// message. No keyring unlock needed. Star then unstar to leave the mailbox as
+// found. Desc must match the filter proton_search_messages sends
+// (messages.go sets Desc: proton.Bool(true)); the VCR matcher compares
+// canonical JSON bodies, so a bare MessageFilter{} would never replay.
+func recordOrganizeLabel(ctx context.Context) error {
+	return recordRawTool(ctx, "organize_label_happy", toolsCassetteDir,
+		func(ctx context.Context, s *session.Session) error {
+			c, err := s.Client(ctx)
+			if err != nil {
+				return fmt.Errorf("client: %w", err)
+			}
+			meta, err := c.GetMessageMetadataPage(ctx, 0, 1, proton.MessageFilter{
+				Desc: proton.Bool(true),
+			})
+			if err != nil {
+				return fmt.Errorf("metadata page: %w", err)
+			}
+			if len(meta) == 0 {
+				return fmt.Errorf("no messages to label; account inbox is empty")
+			}
+			id := meta[0].ID
+			if err := c.LabelMessages(ctx, []string{id}, proton.StarredLabel); err != nil {
+				return fmt.Errorf("label: %w", err)
+			}
+			if err := c.UnlabelMessages(ctx, []string{id}, proton.StarredLabel); err != nil {
+				return fmt.Errorf("unlabel: %w", err)
+			}
+			return nil
+		})
+}
+
 func registerMailWriteFlows() {
 	Register("list_labels_happy", recordListLabels)
 	Register("create_draft_happy", recordCreateDraft)
+	Register("organize_label_happy", recordOrganizeLabel)
 }
 
 // recordListLabels captures GetLabels for all three label types. No keyring
