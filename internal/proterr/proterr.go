@@ -77,6 +77,21 @@ func errToMCP(err error) *Error {
 		}
 	}
 
+	// Rejected two-factor code at /auth/v4/2fa. Checked before the APIError probe
+	// because the chain still carries the underlying 8002 APIError, which alone
+	// would map to the generic proton/validation; the sentinel must win so the
+	// operator gets the 2FA-specific remediation.
+	if errors.Is(err, ErrTOTPRejected) {
+		return &Error{
+			Code: "proton/2fa_rejected",
+			Message: "Proton rejected the two-factor code. The password was accepted, " +
+				"but the TOTP did not verify.",
+			Hint: "Check that the otpauth secret matches this account's current " +
+				"authenticator, and that the host clock is synced (TOTP is time-based; " +
+				"a clock skew over ~30s rejects every code). Then re-run `protonmail-mcp login`.",
+		}
+	}
+
 	// Proton API error: carries the HTTP status. Check before NetError because
 	// the resty pipeline wraps APIError with fmt.Errorf(...%w...). go-proton-api
 	// can wrap APIError as either a value or a pointer (Error() is on the value
@@ -184,6 +199,19 @@ func ScopeDenied(err error) bool {
 		return false
 	}
 	return apiErr.Status == http.StatusForbidden && apiErr.Code == scopeDeniedCode
+}
+
+// IsTOTPRejected reports whether err is Proton's rejection of a submitted TOTP
+// (Code 8002). Proton reuses PasswordWrong (8002) for both a wrong password and
+// a rejected two-factor code, so callers MUST only use this at the 2FA-submit
+// step, where a password failure is impossible. The session login path uses it
+// to tag the failure with [ErrTOTPRejected].
+func IsTOTPRejected(err error) bool {
+	apiErr, ok := extractAPIError(err)
+	if !ok {
+		return false
+	}
+	return apiErr.Code == proton.PasswordWrong
 }
 
 // extractAPIError returns the proton.APIError carried by err, whether wrapped

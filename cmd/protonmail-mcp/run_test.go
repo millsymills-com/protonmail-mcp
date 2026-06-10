@@ -214,6 +214,35 @@ func TestLoginWith2FA(t *testing.T) {
 	}
 }
 
+// TestLoginWith2FARejected covers the runLogin branch where Proton rejects the
+// submitted two-factor code (HTTP 422 / Code 8002). The password (SRP) step
+// succeeds; the /auth/v4/2fa submit fails. The CLI must surface the actionable
+// proton/2fa_rejected mapping, not the raw "Incorrect login credentials" text.
+func TestLoginWith2FARejected(t *testing.T) {
+	keyring.MockInit()
+	t.Setenv("PROTONMAIL_MCP_TEST_SKIP_PROOFS", "1")
+	rt := testvcr.New(t, "login_2fa_rejected")
+	stdin := strings.NewReader("user@example.test\nhunter2\n000000\n")
+	stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
+	code := run(context.Background(),
+		[]string{"login"},
+		[]string{"PROTONMAIL_MCP_API_URL=https://mail.proton.me/api"},
+		stdin,
+		stdout,
+		stderr,
+		rt,
+	)
+	if code == 0 {
+		t.Fatalf("expected non-zero exit for rejected 2FA, stdout=%s", stdout.String())
+	}
+	if !strings.Contains(stderr.String(), "proton/2fa_rejected") {
+		t.Fatalf("stderr should surface proton/2fa_rejected, got: %s", stderr.String())
+	}
+	if _, err := keychain.New().LoadSession(); err == nil {
+		t.Fatal("session must not be persisted after a rejected 2FA login")
+	}
+}
+
 func TestLoginNo2FA(t *testing.T) {
 	keyring.MockInit()
 	// The cassette was recorded against a fake Proton SRP server (see

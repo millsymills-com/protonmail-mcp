@@ -47,6 +47,19 @@ func TestMap(t *testing.T) {
 			fmt.Errorf("parse armored body: %w", proterr.ErrBodyUndecryptable),
 			"proton/body_undecryptable",
 		},
+		{
+			"totp-rejected",
+			fmt.Errorf("submit 2fa: %w", proterr.ErrTOTPRejected),
+			"proton/2fa_rejected",
+		},
+		{
+			// The sentinel must win even when the underlying 8002 APIError
+			// (which alone maps to proton/validation) is still in the chain.
+			"totp-rejected-wraps-apierror",
+			fmt.Errorf("%w: %w", proterr.ErrTOTPRejected,
+				&proton.APIError{Status: http.StatusUnprocessableEntity, Code: proton.PasswordWrong}),
+			"proton/2fa_rejected",
+		},
 		{"503", &proton.APIError{Status: http.StatusServiceUnavailable}, "proton/upstream"},
 		{"unknown-status", &proton.APIError{Status: 418}, "proton/upstream"},
 		//nolint:revive // line-length-limit: test signatures with go-sdk types exceed 100 chars; cannot be split readably
@@ -86,6 +99,28 @@ func TestRefreshRejected(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			if got := proterr.RefreshRejected(tc.err); got != tc.want {
 				t.Fatalf("RefreshRejected(%v) = %v, want %v", tc.err, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestIsTOTPRejected(t *testing.T) {
+	tests := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{"nil", nil, false},
+		{"8002", &proton.APIError{Status: http.StatusUnprocessableEntity, Code: proton.PasswordWrong}, true},
+		{"wrapped-8002", fmt.Errorf("auth2fa: %w", &proton.APIError{Status: http.StatusUnprocessableEntity, Code: proton.PasswordWrong}), true},
+		{"generic-422", &proton.APIError{Status: http.StatusUnprocessableEntity, Code: 2001}, false},
+		{"401", &proton.APIError{Status: http.StatusUnauthorized}, false},
+		{"net-error", &proton.NetError{Cause: errors.New("dial tcp: refused"), Message: "down"}, false},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := proterr.IsTOTPRejected(tc.err); got != tc.want {
+				t.Fatalf("IsTOTPRejected(%v) = %v, want %v", tc.err, got, tc.want)
 			}
 		})
 	}
