@@ -243,6 +243,47 @@ func TestKeyringsScopeSelfHealNonScopeRetryErrorLeavesLatch(t *testing.T) {
 	}
 }
 
+// TestKeyringsScopeSelfHealNonScopeRetryStaysBounded proves the un-latched
+// non-scope retry path does NOT reopen an unbounded-relogin loop: once a relogin
+// upgrades the session, the fetcher it installed is what the NEXT cache-miss
+// unlocks against. A persistently failing salts endpoint (500) therefore surfaces
+// at the second call's first unlock — which is no longer a 9100 scope denial — so
+// healScopeDenial is never re-entered and the relogin runs exactly once across
+// both calls, even though the latch was deliberately left reset. This pins the
+// bound that makes leaving the latch intact on a non-scope error safe.
+func TestKeyringsScopeSelfHealNonScopeRetryStaysBounded(t *testing.T) {
+	const pass = "mailbox-pw"
+	current := keyring.KeyFetcher(scopeDeniedFetcher{})
+	s := &Session{
+		kc:  &credKC{creds: keychain.Creds{Password: pass}},
+		raw: newRawClient("http://invalid.test", nil),
+	}
+	s.keyFetcher = func(context.Context) (keyring.KeyFetcher, error) { return current, nil }
+
+	var reloginCalls atomic.Int32
+	s.reloginScope = func(context.Context) (bool, error) {
+		reloginCalls.Add(1)
+		current = transientFetcher{} // scope upgraded, but salts now persistently 500s
+		return true, nil
+	}
+
+	for call := 1; call <= 2; call++ {
+		_, err := s.Keyrings(t.Context())
+		if err == nil {
+			t.Fatalf("call %d: expected the persistent non-scope error to surface", call)
+		}
+		if errors.Is(err, proterr.ErrKeyringUnlockScope) {
+			t.Fatalf("call %d: non-scope error must not be reported as a scope denial, got %v", call, err)
+		}
+		if s.scopeReloginSpent() {
+			t.Fatalf("call %d: a non-scope retry failure must not spend the self-heal latch", call)
+		}
+	}
+	if got := reloginCalls.Load(); got != 1 {
+		t.Fatalf("relogin ran %d times across two calls, want exactly 1 (no relogin loop)", got)
+	}
+}
+
 // TestKeyringsScopeSelfHealSurfacesCaptchaError proves Keyrings surfaces a
 // CAPTCHA challenge from the self-heal relogin instead of the generic scope
 // hint: when reloginForScope reports (false, captcha), the caller gets the
