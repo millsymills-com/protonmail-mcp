@@ -43,6 +43,18 @@ func WritesEnabled() bool {
 	return false
 }
 
+// DangerousEnabled returns true when PROTONMAIL_MCP_ENABLE_DANGEROUS is set to a
+// truthy value. It gates irreversible operations (permanent delete) that sit
+// above the ENABLE_WRITES tier; a dangerous tool registers only when both this
+// and WritesEnabled() are true.
+func DangerousEnabled() bool {
+	switch os.Getenv("PROTONMAIL_MCP_ENABLE_DANGEROUS") {
+	case "1", "true", "True", "TRUE", "yes", "Yes", "YES":
+		return true
+	}
+	return false
+}
+
 // addTool registers a handler that returns the honest (Out, *proterr.Error)
 // contract, adapting it to the MCP SDK's (*CallToolResult, Out, error) shape.
 // A non-nil *proterr.Error becomes an IsError result; the transport-level
