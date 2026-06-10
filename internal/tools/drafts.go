@@ -112,32 +112,42 @@ type updateDraftIn struct {
 	MIMEType      string   `json:"mime_type,omitempty" jsonschema:"text/plain (default) or text/html"`
 }
 
+// draftFields holds the pure draft content shared by create and update.
+type draftFields struct {
+	To       []string
+	CC       []string
+	BCC      []string
+	Subject  string
+	Body     string
+	MIMEType string
+}
+
 // draftTemplate validates and parses the pure inputs; Sender is left nil so
 // handlers can run this before any network call and attach the resolved
 // sender afterwards.
-func draftTemplate(to, cc, bcc []string, subject, body, mimeType string) (proton.DraftTemplate, *proterr.Error) {
-	toL, perr := parseRecipients(to)
+func draftTemplate(f draftFields) (proton.DraftTemplate, *proterr.Error) {
+	toL, perr := parseRecipients(f.To)
 	if perr != nil {
 		return proton.DraftTemplate{}, perr
 	}
-	ccL, perr := parseRecipients(cc)
+	ccL, perr := parseRecipients(f.CC)
 	if perr != nil {
 		return proton.DraftTemplate{}, perr
 	}
-	bccL, perr := parseRecipients(bcc)
+	bccL, perr := parseRecipients(f.BCC)
 	if perr != nil {
 		return proton.DraftTemplate{}, perr
 	}
-	mt, perr := resolveMIMEType(mimeType)
+	mt, perr := resolveMIMEType(f.MIMEType)
 	if perr != nil {
 		return proton.DraftTemplate{}, perr
 	}
 	return proton.DraftTemplate{
-		Subject:  subject,
+		Subject:  f.Subject,
 		ToList:   toL,
 		CCList:   ccL,
 		BCCList:  bccL,
-		Body:     body,
+		Body:     f.Body,
 		MIMEType: mt,
 	}, nil
 }
@@ -169,7 +179,7 @@ func registerDrafts(server *mcp.Server, d Deps) {
 }
 
 func createDraft(ctx context.Context, d Deps, in createDraftIn) (draftOut, *proterr.Error) {
-	tmpl, perr := draftTemplate(in.To, in.CC, in.BCC, in.Subject, in.Body, in.MIMEType)
+	tmpl, perr := draftTemplate(draftFields{To: in.To, CC: in.CC, BCC: in.BCC, Subject: in.Subject, Body: in.Body, MIMEType: in.MIMEType})
 	if perr != nil {
 		return draftOut{}, perr
 	}
@@ -197,7 +207,7 @@ func updateDraft(ctx context.Context, d Deps, in updateDraftIn) (draftOut, *prot
 	if perr := required("id", in.ID); perr != nil {
 		return draftOut{}, perr
 	}
-	tmpl, perr := draftTemplate(in.To, in.CC, in.BCC, in.Subject, in.Body, in.MIMEType)
+	tmpl, perr := draftTemplate(draftFields{To: in.To, CC: in.CC, BCC: in.BCC, Subject: in.Subject, Body: in.Body, MIMEType: in.MIMEType})
 	if perr != nil {
 		return draftOut{}, perr
 	}
