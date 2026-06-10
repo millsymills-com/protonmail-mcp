@@ -2,6 +2,7 @@ package tools_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/millsymills-com/protonmail-mcp/internal/testharness"
@@ -34,8 +35,14 @@ func TestDeleteMessagesDevServer(t *testing.T) {
 		t.Fatalf("want ok=true, got %#v", out)
 	}
 
-	if _, err := h.Call(ctx, "proton_get_message", map[string]any{"id": id}); err == nil {
+	// The dev server answers 422 Code=2001 (not 404) for a missing message,
+	// which proterr maps to proton/validation.
+	_, err = h.Call(ctx, "proton_get_message", map[string]any{"id": id})
+	if err == nil {
 		t.Fatal("deleted message still fetchable; expected an error")
+	}
+	if !strings.Contains(err.Error(), "proton/validation") {
+		t.Fatalf("want proton/validation error for deleted message, got: %v", err)
 	}
 }
 

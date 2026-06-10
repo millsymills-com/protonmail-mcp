@@ -2,6 +2,7 @@ package tools_test
 
 import (
 	"context"
+	"fmt"
 	"slices"
 	"testing"
 
@@ -22,7 +23,7 @@ func TestDeleteMessagesGateMatrix(t *testing.T) {
 		{"1", "1", true},
 	}
 	for _, tc := range cases {
-		t.Run(tc.writes+"_"+tc.dangerous, func(t *testing.T) {
+		t.Run(fmt.Sprintf("writes=%s,dangerous=%s", tc.writes, tc.dangerous), func(t *testing.T) {
 			t.Setenv("PROTONMAIL_MCP_ENABLE_WRITES", tc.writes)
 			t.Setenv("PROTONMAIL_MCP_ENABLE_DANGEROUS", tc.dangerous)
 			h := testharness.BootDevServer(t, "gate@example.test", "password")

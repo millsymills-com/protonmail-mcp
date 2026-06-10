@@ -97,11 +97,15 @@ func recordDeleteMessages(ctx context.Context) error {
 			if err != nil {
 				return fmt.Errorf("create throwaway draft: %w", err)
 			}
-			if _, err := c.GetMessageMetadataPage(ctx, 0, 1, proton.MessageFilter{
+			meta, err := c.GetMessageMetadataPage(ctx, 0, 1, proton.MessageFilter{
 				LabelID: proton.DraftsLabel,
 				Desc:    proton.Bool(true),
-			}); err != nil {
+			})
+			if err != nil {
 				return fmt.Errorf("search drafts: %w", err)
+			}
+			if len(meta) == 0 || meta[0].ID != draft.ID {
+				return fmt.Errorf("drafts search returned %d hits, first != throwaway draft — newer drafts exist; clean the Drafts folder and re-record", len(meta))
 			}
 			if err := c.DeleteMessage(ctx, draft.ID); err != nil {
 				return fmt.Errorf("delete: %w", err)

@@ -97,6 +97,10 @@ func client(ctx context.Context, d Deps) (*proton.Client, *proterr.Error) {
 	return c, nil
 }
 
+// boolPtr exists because some mcp.ToolAnnotations fields (e.g. DestructiveHint)
+// are *bool rather than bool.
+func boolPtr(b bool) *bool { return &b }
+
 // required returns a structured validation error when value is empty. Used at
 // tool entry to give callers a clear "missing X" error before any API call,
 // instead of letting the raw layer reject the request with a less specific

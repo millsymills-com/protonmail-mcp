@@ -7,8 +7,6 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-func boolPtr(b bool) *bool { return &b }
-
 type organizeOut struct {
 	OK         bool     `json:"ok"`
 	MessageIDs []string `json:"message_ids"`
@@ -51,14 +49,13 @@ func registerOrganize(server *mcp.Server, d Deps) {
 		Name:        "proton_mark_messages",
 		Description: "Marks one or more messages read (read=true) or unread (read=false). Reversible. Not atomic across many IDs: requests are chunked (150/batch) and a mid-batch failure leaves earlier batches applied.",
 	}, markMessages)
-	if !DangerousEnabled() {
-		return
+	if DangerousEnabled() {
+		addTool(server, d, &mcp.Tool{
+			Name:        "proton_delete_messages",
+			Description: "PERMANENTLY deletes one or more messages (irreversible expunge — NOT trash). Requires PROTONMAIL_MCP_ENABLE_DANGEROUS in addition to ENABLE_WRITES. To trash recoverably, use proton_label_messages with label_id \"3\" instead. Not atomic across many IDs: requests are chunked (150/batch) and run in parallel, so a failure may leave an arbitrary subset of batches permanently deleted.",
+			Annotations: &mcp.ToolAnnotations{DestructiveHint: boolPtr(true)},
+		}, deleteMessages)
 	}
-	addTool(server, d, &mcp.Tool{
-		Name:        "proton_delete_messages",
-		Description: "PERMANENTLY deletes one or more messages (irreversible expunge — NOT trash). Requires PROTONMAIL_MCP_ENABLE_DANGEROUS in addition to ENABLE_WRITES. To trash recoverably, use proton_label_messages with label_id \"3\" instead. Not atomic across many IDs: requests are chunked (150/batch) and a mid-batch failure leaves earlier batches applied.",
-		Annotations: &mcp.ToolAnnotations{DestructiveHint: boolPtr(true)},
-	}, deleteMessages)
 }
 
 func labelMessages(ctx context.Context, d Deps, in labelMessagesIn) (organizeOut, *proterr.Error) {
@@ -112,6 +109,9 @@ type deleteMessagesIn struct {
 }
 
 func deleteMessages(ctx context.Context, d Deps, in deleteMessagesIn) (organizeOut, *proterr.Error) {
+	if !WritesEnabled() || !DangerousEnabled() {
+		return organizeOut{}, proterr.WritesDisabled()
+	}
 	if perr := validateMessageIDs(in.MessageIDs); perr != nil {
 		return organizeOut{}, perr
 	}
