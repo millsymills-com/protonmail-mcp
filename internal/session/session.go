@@ -78,6 +78,21 @@ type Session struct {
 	// subsequent call — which would hammer Proton's login endpoint and risk its
 	// anti-abuse lockout — until Login or Logout resets it.
 	reloginExhausted bool
+
+	// scopeReloginExhausted is the dedicated latch for the keyring-unlock
+	// self-heal: set after one unattended relogin failed to produce a session
+	// that can unlock the keyring (ineligible creds, CAPTCHA, or a fresh token
+	// still under-scoped). Kept separate from reloginExhausted so a
+	// refresh-rejection self-heal and a scope-insufficiency self-heal can't
+	// consume each other's one-attempt budget — the two conditions co-occur.
+	// Reset only by explicit Login/Logout.
+	scopeReloginExhausted bool
+
+	// reloginScope is a test seam for the scope-insufficiency self-heal relogin.
+	// nil in production, where reloginForScope runs reloginLocked under s.mu;
+	// tests set it to simulate a relogin outcome (and swap keyFetcher) without
+	// standing up a live login.
+	reloginScope func(context.Context) bool
 }
 
 // ErrSessionInconsistent is returned when a prior Login persist rollback
@@ -192,6 +207,44 @@ func (s *Session) Keyrings(ctx context.Context) (*keyring.Keyrings, error) {
 		return cached, nil
 	}
 
+	krs, err := s.unlockOnce(ctx)
+	if err == nil {
+		s.storeKeyrings(krs)
+		return krs, nil
+	}
+
+	// Self-heal only the precise scope-insufficiency denial (#195 sentinel:
+	// 403 + Code 9100), and only once per session. A fresh login from stored
+	// creds yields a full-scope token (the post-2FA upgrade) that can unlock the
+	// keyring; any other unlock error, or a spent latch, returns verbatim.
+	if !proterr.ScopeDenied(err) || s.scopeReloginSpent() {
+		return nil, err
+	}
+	slog.Info("session: keyring unlock denied for insufficient scope; attempting one self-heal relogin")
+	if s.reloginForScope(ctx) {
+		healed, rerr := s.unlockOnce(ctx)
+		if rerr == nil {
+			slog.Info("session: self-heal relogin restored keyring-unlock scope")
+			s.storeKeyrings(healed)
+			return healed, nil
+		}
+		// Login produced a working client but its token still can't unlock (an
+		// unfixable 9100): fall through to the actionable error, and latch below
+		// so the next cache-miss does not relogin-loop.
+		err = rerr
+	}
+	s.mu.Lock()
+	s.scopeReloginExhausted = true
+	s.mu.Unlock()
+	slog.Warn("session: self-heal relogin did not restore keyring-unlock scope; latch held until next login")
+	return nil, err
+}
+
+// unlockOnce runs one keyring unlock against the current fetcher and the stored
+// mailbox password (login password for one-password accounts), without touching
+// the cache. It returns the wrapped error verbatim — including the #195
+// scope-denial tag — so the caller can classify it.
+func (s *Session) unlockOnce(ctx context.Context) (*keyring.Keyrings, error) {
 	f, err := s.fetcher(ctx)
 	if err != nil {
 		return nil, err
@@ -208,10 +261,41 @@ func (s *Session) Keyrings(ctx context.Context) (*keyring.Keyrings, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unlock keyrings: %w", err)
 	}
+	return krs, nil
+}
+
+func (s *Session) storeKeyrings(krs *keyring.Keyrings) {
 	s.mu.Lock()
 	s.keyrings = krs
 	s.mu.Unlock()
-	return krs, nil
+}
+
+func (s *Session) scopeReloginSpent() bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.scopeReloginExhausted
+}
+
+// reloginForScope runs one unattended relogin to upgrade an under-scoped
+// session to a full-scope one, returning true when a working client was
+// produced. It holds s.mu only around the login mutation and releases it before
+// returning, so the caller's network retry-unlock never runs under s.mu
+// (reloginLocked requires s.mu; keyring.Unlock does I/O and must not). It logs
+// the mapped outcome only — never creds or tokens.
+func (s *Session) reloginForScope(ctx context.Context) bool {
+	if s.reloginScope != nil {
+		return s.reloginScope(ctx)
+	}
+	s.mu.Lock()
+	c, captcha := s.reloginLocked(ctx)
+	s.mu.Unlock()
+	if c != nil {
+		return true
+	}
+	if captcha != nil {
+		slog.Warn("session: self-heal relogin for keyring scope needs human verification")
+	}
+	return false
 }
 
 // CalendarKeyring returns the unlocked keyring for calendarID, resolving it on
@@ -519,6 +603,7 @@ func (s *Session) Logout() error {
 	s.persistDegraded = false
 	s.persistErrReason = ""
 	s.reloginExhausted = false
+	s.scopeReloginExhausted = false
 	return nil
 }
 
@@ -665,6 +750,7 @@ func (s *Session) loginLocked(ctx context.Context, in LoginInput) error {
 	s.current = next
 	s.raw.setAuth(next.AccessToken, next.UID)
 	s.reloginExhausted = false
+	s.scopeReloginExhausted = false
 	s.clearKeyringCache()
 	return nil
 }
