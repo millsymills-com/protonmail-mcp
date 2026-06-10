@@ -304,7 +304,7 @@ func WritesDisabled() *Error {
 	return &Error{
 		Code:    "proton/writes_disabled",
 		Message: "Writes are disabled.",
-		Hint:    "Set PROTONMAIL_MCP_ENABLE_WRITES=1 and restart the MCP server.",
+		Hint: "Set PROTONMAIL_MCP_ENABLE_WRITES=1 (and PROTONMAIL_MCP_ENABLE_DANGEROUS=1 for permanent delete) and restart the MCP server.",
 	}
 }
 

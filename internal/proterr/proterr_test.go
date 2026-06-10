@@ -213,6 +213,13 @@ func TestWritesDisabled(t *testing.T) {
 	}
 }
 
+func TestWritesDisabledHintMentionsDangerousTier(t *testing.T) {
+	e := proterr.WritesDisabled()
+	if !strings.Contains(e.Hint, "PROTONMAIL_MCP_ENABLE_DANGEROUS") {
+		t.Fatalf("hint should mention the dangerous tier for delete, got %q", e.Hint)
+	}
+}
+
 func TestTwoFARequired(t *testing.T) {
 	got := proterr.TwoFARequired()
 	if got == nil || got.Code != "proton/2fa_required" {

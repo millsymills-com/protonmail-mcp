@@ -1,5 +1,6 @@
 // Package tools registers MCP tools against an mcp.Server. Reads are always
-// registered; writes are registered only when PROTONMAIL_MCP_ENABLE_WRITES=1.
+// registered; writes are registered only when PROTONMAIL_MCP_ENABLE_WRITES=1,
+// and irreversible tools additionally require PROTONMAIL_MCP_ENABLE_DANGEROUS=1.
 package tools
 
 import (

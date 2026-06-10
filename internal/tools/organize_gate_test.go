@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/millsymills-com/protonmail-mcp/internal/testharness"
@@ -41,5 +42,22 @@ func TestDeleteMessagesGateMatrix(t *testing.T) {
 				t.Fatalf("writes=%q dangerous=%q: present=%v want %v", tc.writes, tc.dangerous, got, tc.present)
 			}
 		})
+	}
+}
+
+// The handler re-checks the gates at call time (belt-and-suspenders above the
+// registration gate). Clearing DANGEROUS after boot must yield the structured
+// writes-disabled error rather than an expunge.
+func TestDeleteMessagesRuntimeRecheck(t *testing.T) {
+	t.Setenv("PROTONMAIL_MCP_ENABLE_WRITES", "1")
+	t.Setenv("PROTONMAIL_MCP_ENABLE_DANGEROUS", "1")
+	h := testharness.BootDevServer(t, "recheck@example.test", "password")
+	defer h.Close()
+	t.Setenv("PROTONMAIL_MCP_ENABLE_DANGEROUS", "")
+	_, err := h.Call(context.Background(), "proton_delete_messages", map[string]any{
+		"message_ids": []any{"any-id"},
+	})
+	if err == nil || !strings.Contains(err.Error(), "proton/writes_disabled") {
+		t.Fatalf("want proton/writes_disabled from the runtime re-check, got %v", err)
 	}
 }

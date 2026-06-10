@@ -8,7 +8,7 @@ A Model Context Protocol (MCP) server for [Proton Mail](https://proton.me/mail),
 
 Stage: S2 — read and write tools, writes env-gated default-off, CI green, lockfile committed. Full Proton-parity surface (the climb to S3) is tracked in the feature-parity roadmap.
 
-v1. 26 tools total: 15 reads (always registered) + 11 writes (registered when `PROTONMAIL_MCP_ENABLE_WRITES=1`).
+v2. 33 tools total: 16 reads (always registered) + 15 writes (`PROTONMAIL_MCP_ENABLE_WRITES=1`) + 1 dangerous write (`PROTONMAIL_MCP_ENABLE_WRITES=1` + `PROTONMAIL_MCP_ENABLE_DANGEROUS=1`).
 
 | Capability | v1 | Notes |
 |---|---|---|
@@ -21,7 +21,9 @@ v1. 26 tools total: 15 reads (always registered) + 11 writes (registered when `P
 | Encryption keys (list with fingerprint + armored public key) | yes | via `gopenpgp/v2` |
 | Encryption key generation / set primary | **deferred to v1.5** | requires keyring unlock + signed KeyList |
 | Mail search + header inspection | yes | metadata + raw headers; `proton_get_message` with `include_body=true` decrypts the plaintext body when the keyring unlocks |
-| Mail send / draft / label mutations | **v2** | |
+| Mail draft create/update | yes | `proton_create_draft`, `proton_update_draft` |
+| Mail label / mark / permanent-delete | yes | `proton_label_messages`, `proton_mark_messages`, `proton_delete_messages` (dangerous-gated) |
+| Mail send | **v2.x** | requires SRP-signed send path |
 | Calendar (list calendars, list events with recurrence expansion, get event) | yes | read-only; upstream exposes no event-write methods |
 | Drive | **v3** | |
 
@@ -82,6 +84,7 @@ PROTONMAIL_MCP_ENABLE_WRITES=1 ./protonmail-mcp
 | `PROTONMAIL_MCP_CREDENTIAL_BACKEND` | `keychain` \| `file` | `keychain` | always |
 | `PROTONMAIL_MCP_STATE_DIR` | credentials dir | `$STATE_DIRECTORY` → `$XDG_STATE_HOME/protonmail-mcp` → `~/.local/state/protonmail-mcp` | file only |
 | `PROTONMAIL_MCP_ENABLE_WRITES` | `1`/`true`/`yes` registers mutating tools | unset (reads only) | always |
+| `PROTONMAIL_MCP_ENABLE_DANGEROUS` | `1`/`true`/`yes` additionally registers permanent-delete tools (currently `proton_delete_messages`); requires `PROTONMAIL_MCP_ENABLE_WRITES` too | unset | always |
 | `PROTONMAIL_MCP_LOG_LEVEL` | `debug` for verbose JSON logs to stderr | `info` | always |
 | `PROTONMAIL_MCP_API_URL` | override Proton API base URL (used in tests) | `https://mail.proton.me/api` | always |
 
@@ -98,11 +101,15 @@ Each tool advertises its full input schema and field-by-field description over M
 
 ### Reads (always)
 
-`proton_whoami`, `proton_session_status`, `proton_list_addresses`, `proton_get_address`, `proton_list_custom_domains`, `proton_get_custom_domain`, `proton_get_catchall`, `proton_get_mail_settings`, `proton_get_core_settings`, `proton_list_address_keys`, `proton_search_messages`, `proton_get_message`.
+`proton_whoami`, `proton_session_status`, `proton_list_addresses`, `proton_get_address`, `proton_list_custom_domains`, `proton_get_custom_domain`, `proton_get_catchall`, `proton_get_mail_settings`, `proton_get_core_settings`, `proton_list_address_keys`, `proton_search_messages`, `proton_get_message`, `proton_list_labels`.
 
-### Writes (gated)
+### Writes (gated: `PROTONMAIL_MCP_ENABLE_WRITES=1`)
 
-`proton_create_address`, `proton_update_address`, `proton_set_address_status`, `proton_delete_address`, `proton_add_custom_domain`, `proton_verify_custom_domain`, `proton_remove_custom_domain`, `proton_set_catchall`, `proton_disable_catchall`, `proton_update_mail_settings`, `proton_update_core_settings`.
+`proton_create_address`, `proton_update_address`, `proton_set_address_status`, `proton_delete_address`, `proton_add_custom_domain`, `proton_verify_custom_domain`, `proton_remove_custom_domain`, `proton_set_catchall`, `proton_disable_catchall`, `proton_update_mail_settings`, `proton_update_core_settings`, `proton_create_draft`, `proton_update_draft`, `proton_label_messages`, `proton_mark_messages`.
+
+### Dangerous writes (gated: `PROTONMAIL_MCP_ENABLE_WRITES=1` + `PROTONMAIL_MCP_ENABLE_DANGEROUS=1`)
+
+`proton_delete_messages` — permanent expunge; irreversible. To move to Trash recoverably, use `proton_label_messages` with `label_id "3"` instead.
 
 ## Security model
 
