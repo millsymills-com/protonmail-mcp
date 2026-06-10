@@ -36,7 +36,10 @@ FCvpWushDM+MY5+eAQCOxasCOs1L1Mh2/mWTU1eNT9uVqijqZ7XsqPcDqsLvDA==
 -----END PGP PRIVATE KEY BLOCK-----`
 
 // calEventsICS is the plaintext encrypted into interaction id=3's event body,
-// kept so the regeneration recipe on calEventsKey is self-contained.
+// kept so the regeneration recipe on calEventsKey is self-contained. Its
+// BEGIN:VCALENDAR…END wrapper is assumed, not yet live-confirmed (#196 item 2);
+// once the calendar_list_events_happy live trace reports the real wrapper shape,
+// reconcile this to match and re-encrypt.
 const calEventsICS = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\n" +
 	"UID:u1\r\nSUMMARY:Weekly Standup\r\nLOCATION:Room 1\r\n" +
 	"RRULE:FREQ=WEEKLY;BYDAY=MO\r\n" +
