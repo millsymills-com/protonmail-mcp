@@ -58,3 +58,17 @@ func TestResolveMIMETypeExplicitPlain(t *testing.T) {
 		t.Fatalf("want TextPlain, got %v %+v", mt, perr)
 	}
 }
+
+func TestQuoteTruncCapsOversizedInput(t *testing.T) {
+	in := strings.Repeat("a", 150)
+	got := quoteTrunc(in)
+	if !strings.Contains(got, "…") {
+		t.Fatalf("want truncation marker in %q", got)
+	}
+	if !strings.HasPrefix(got, `"`) || !strings.HasSuffix(got, `"`) {
+		t.Fatalf("want quoted output, got %q", got)
+	}
+	if len(got) > 120 {
+		t.Fatalf("output not capped: %d chars", len(got))
+	}
+}

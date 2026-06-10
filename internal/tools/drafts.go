@@ -63,7 +63,7 @@ func resolveSender(ctx context.Context, c *proton.Client, addressID string) (pro
 			return proton.Address{}, proterr.Map(err)
 		}
 		if a.Status != proton.AddressStatusEnabled || !bool(a.Send) {
-			return proton.Address{}, &proterr.Error{Code: "proton/validation", Message: "address " + addressID + " cannot send (disabled or receive-only)"}
+			return proton.Address{}, &proterr.Error{Code: "proton/validation", Message: "address " + quoteTrunc(addressID) + " cannot send (disabled or receive-only)"}
 		}
 		return a, nil
 	}
@@ -103,17 +103,19 @@ type draftOut struct {
 
 type updateDraftIn struct {
 	ID            string   `json:"id"`
-	FromAddressID string   `json:"from_address_id,omitempty"`
-	To            []string `json:"to,omitempty"`
+	FromAddressID string   `json:"from_address_id,omitempty" jsonschema:"sender address ID; defaults to the primary sending address"`
+	To            []string `json:"to,omitempty" jsonschema:"recipient email addresses"`
 	CC            []string `json:"cc,omitempty"`
 	BCC           []string `json:"bcc,omitempty"`
 	Subject       string   `json:"subject,omitempty"`
 	Body          string   `json:"body,omitempty"`
-	MIMEType      string   `json:"mime_type,omitempty"`
+	MIMEType      string   `json:"mime_type,omitempty" jsonschema:"text/plain (default) or text/html"`
 }
 
-func draftTemplate(sender proton.Address,
-	to, cc, bcc []string, subject, body, mimeType string) (proton.DraftTemplate, *proterr.Error) {
+// draftTemplate validates and parses the pure inputs; Sender is left nil so
+// handlers can run this before any network call and attach the resolved
+// sender afterwards.
+func draftTemplate(to, cc, bcc []string, subject, body, mimeType string) (proton.DraftTemplate, *proterr.Error) {
 	toL, perr := parseRecipients(to)
 	if perr != nil {
 		return proton.DraftTemplate{}, perr
@@ -132,7 +134,6 @@ func draftTemplate(sender proton.Address,
 	}
 	return proton.DraftTemplate{
 		Subject:  subject,
-		Sender:   &mail.Address{Name: sender.DisplayName, Address: sender.Email},
 		ToList:   toL,
 		CCList:   ccL,
 		BCCList:  bccL,
@@ -168,6 +169,10 @@ func registerDrafts(server *mcp.Server, d Deps) {
 }
 
 func createDraft(ctx context.Context, d Deps, in createDraftIn) (draftOut, *proterr.Error) {
+	tmpl, perr := draftTemplate(in.To, in.CC, in.BCC, in.Subject, in.Body, in.MIMEType)
+	if perr != nil {
+		return draftOut{}, perr
+	}
 	c, perr := client(ctx, d)
 	if perr != nil {
 		return draftOut{}, perr
@@ -176,10 +181,7 @@ func createDraft(ctx context.Context, d Deps, in createDraftIn) (draftOut, *prot
 	if perr != nil {
 		return draftOut{}, perr
 	}
-	tmpl, perr := draftTemplate(sender, in.To, in.CC, in.BCC, in.Subject, in.Body, in.MIMEType)
-	if perr != nil {
-		return draftOut{}, perr
-	}
+	tmpl.Sender = &mail.Address{Name: sender.DisplayName, Address: sender.Email}
 	kr, perr := senderKeyRing(ctx, d, sender.ID)
 	if perr != nil {
 		return draftOut{}, perr
@@ -195,6 +197,10 @@ func updateDraft(ctx context.Context, d Deps, in updateDraftIn) (draftOut, *prot
 	if perr := required("id", in.ID); perr != nil {
 		return draftOut{}, perr
 	}
+	tmpl, perr := draftTemplate(in.To, in.CC, in.BCC, in.Subject, in.Body, in.MIMEType)
+	if perr != nil {
+		return draftOut{}, perr
+	}
 	c, perr := client(ctx, d)
 	if perr != nil {
 		return draftOut{}, perr
@@ -203,10 +209,7 @@ func updateDraft(ctx context.Context, d Deps, in updateDraftIn) (draftOut, *prot
 	if perr != nil {
 		return draftOut{}, perr
 	}
-	tmpl, perr := draftTemplate(sender, in.To, in.CC, in.BCC, in.Subject, in.Body, in.MIMEType)
-	if perr != nil {
-		return draftOut{}, perr
-	}
+	tmpl.Sender = &mail.Address{Name: sender.DisplayName, Address: sender.Email}
 	kr, perr := senderKeyRing(ctx, d, sender.ID)
 	if perr != nil {
 		return draftOut{}, perr
