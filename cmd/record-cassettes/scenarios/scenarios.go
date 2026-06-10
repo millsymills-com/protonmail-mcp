@@ -17,6 +17,7 @@ var registry = map[string]Func{}
 // before Names() or Lookup(). Each sibling file in this package contributes
 // an unexported register*() that this function invokes.
 func RegisterAll() {
+	registerCalendarFlows()
 	registerCLIFlows()
 	registerCustomDomainLifecycle()
 	registerErrorEnvelopes()

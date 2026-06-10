@@ -145,7 +145,7 @@ func newFakeProtonAuthServerWithTwoFA(twoFA, acceptAnyCode bool) (*httptest.Serv
 			})
 			return
 		}
-		if err := json.Unmarshal(body, &req); err != nil {
+		if err = json.Unmarshal(body, &req); err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]any{
 				"Code": 2001, "Error": "decode body: " + err.Error(),
 			})
@@ -189,7 +189,7 @@ func newFakeProtonAuthServerWithTwoFA(twoFA, acceptAnyCode bool) (*httptest.Serv
 			})
 			return
 		}
-		if err := json.Unmarshal(body, &req); err != nil {
+		if err = json.Unmarshal(body, &req); err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]any{
 				"Code": 2001, "Error": "decode body: " + err.Error(),
 			})
