@@ -31,7 +31,7 @@ func TestDeleteMessagesHappyCassette(t *testing.T) {
 	}
 }
 
-func TestLabelMessageHappyCassette(t *testing.T) {
+func TestLabelMessagesHappyCassette(t *testing.T) {
 	t.Setenv("PROTONMAIL_MCP_ENABLE_WRITES", "1")
 	h := testharness.BootWithCassette(t, "organize_label_happy")
 	defer h.Close()

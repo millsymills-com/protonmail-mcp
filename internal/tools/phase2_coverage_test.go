@@ -1,8 +1,7 @@
 package tools_test
 
-// Phase 2 coverage tests: validation and error branches for labels, drafts,
-// and organize tools. Each group targets the specific uncovered branches
-// identified by go tool cover -func=cov.out.
+// Validation and error-branch tests for the labels, drafts, and organize
+// tools, driven against the in-process dev server.
 
 import (
 	"context"

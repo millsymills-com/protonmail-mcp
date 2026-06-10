@@ -103,7 +103,7 @@ Each tool advertises its full input schema and field-by-field description over M
 
 ### Reads (always)
 
-`proton_whoami`, `proton_session_status`, `proton_list_addresses`, `proton_get_address`, `proton_list_custom_domains`, `proton_get_custom_domain`, `proton_get_catchall`, `proton_get_mail_settings`, `proton_get_core_settings`, `proton_list_address_keys`, `proton_search_messages`, `proton_get_message`, `proton_list_labels`.
+`proton_whoami`, `proton_session_status`, `proton_list_addresses`, `proton_get_address`, `proton_list_custom_domains`, `proton_get_custom_domain`, `proton_get_catchall`, `proton_get_mail_settings`, `proton_get_core_settings`, `proton_list_address_keys`, `proton_search_messages`, `proton_get_message`, `proton_list_labels`, `proton_list_calendars`, `proton_list_events`, `proton_get_event`.
 
 ### Writes (gated: `PROTONMAIL_MCP_ENABLE_WRITES=1`)
 

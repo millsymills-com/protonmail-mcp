@@ -43,7 +43,7 @@ func registerOrganize(server *mcp.Server, d Deps) {
 	}
 	addTool(server, d, &mcp.Tool{
 		Name:        "proton_label_messages",
-		Description: "Adds or removes a label on one or more messages. Moving to Trash is action=add with label_id \"3\" (see proton_list_labels). Reversible. Not atomic across many IDs: requests are chunked (150/batch) and a mid-batch failure leaves earlier batches applied.",
+		Description: "Adds or removes a label on one or more messages. Moving to Trash is action=add with label_id \"3\" (see proton_list_labels). Reversible. Not atomic across many IDs: requests are chunked (150/batch); an API-level failure rolls back earlier batches, but a transport failure mid-run can leave them applied.",
 	}, labelMessages)
 	addTool(server, d, &mcp.Tool{
 		Name:        "proton_mark_messages",
