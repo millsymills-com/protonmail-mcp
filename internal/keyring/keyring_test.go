@@ -415,6 +415,38 @@ func TestUnlockAllAddressesSkippedReturnsError(t *testing.T) {
 	}
 }
 
+func TestAddressKeyRingReturnsKeyringForKnownAddress(t *testing.T) {
+	kr := newTestKeyRing(t)
+	krs := &Keyrings{User: kr, Addr: map[string]*crypto.KeyRing{"addr-1": kr}}
+	got, err := krs.AddressKeyRing("addr-1")
+	if err != nil {
+		t.Fatalf("AddressKeyRing: %v", err)
+	}
+	if got == nil {
+		t.Fatal("expected a non-nil address keyring")
+	}
+	// Round-trip proves the keyring is usable for the draft-encryption path.
+	enc, err := got.Encrypt(crypto.NewPlainMessageFromString("hello draft"), nil)
+	if err != nil {
+		t.Fatalf("encrypt: %v", err)
+	}
+	dec, err := got.Decrypt(enc, nil, 0)
+	if err != nil {
+		t.Fatalf("decrypt: %v", err)
+	}
+	if s := dec.GetString(); s != "hello draft" {
+		t.Fatalf("round-trip mismatch: got %q", s)
+	}
+}
+
+func TestAddressKeyRingUnknownAddressErrors(t *testing.T) {
+	kr := newTestKeyRing(t)
+	krs := &Keyrings{User: kr, Addr: map[string]*crypto.KeyRing{"addr-1": kr}}
+	if _, err := krs.AddressKeyRing("does-not-exist"); err == nil {
+		t.Fatal("want an error for an unknown address ID")
+	}
+}
+
 func assertZeroed(t *testing.T, b []byte) {
 	t.Helper()
 	for i, v := range b {
