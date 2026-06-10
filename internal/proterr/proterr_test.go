@@ -48,6 +48,11 @@ func TestMap(t *testing.T) {
 			"proton/body_undecryptable",
 		},
 		{
+			"address-keyring-missing",
+			fmt.Errorf("address keyring: %w", proterr.ErrAddressKeyringMissing),
+			"proton/address_keyring_missing",
+		},
+		{
 			"totp-rejected",
 			fmt.Errorf("submit 2fa: %w", proterr.ErrTOTPRejected),
 			"proton/2fa_rejected",
@@ -205,6 +210,13 @@ func TestWritesDisabled(t *testing.T) {
 	}
 	if got.Hint == "" {
 		t.Fatalf("expected non-empty Hint")
+	}
+}
+
+func TestWritesDisabledHintMentionsDangerousTier(t *testing.T) {
+	e := proterr.WritesDisabled()
+	if !strings.Contains(e.Hint, "PROTONMAIL_MCP_ENABLE_DANGEROUS") {
+		t.Fatalf("hint should mention the dangerous tier for delete, got %q", e.Hint)
 	}
 }
 

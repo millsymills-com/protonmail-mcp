@@ -148,7 +148,7 @@ func BootDevServer(t *testing.T, email, password string, opts ...Option) *Harnes
 	}
 
 	mcpSrv := mcp.NewServer(&mcp.Implementation{Name: "protonmail-mcp-test", Version: "0.0.0"}, nil)
-	tools.Register(mcpSrv, tools.Deps{Session: sess})
+	tools.Register(mcpSrv, tools.Deps{Session: cfg.depsSession(sess)})
 
 	h := &Harness{
 		t:      t,

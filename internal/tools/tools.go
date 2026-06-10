@@ -1,5 +1,6 @@
 // Package tools registers MCP tools against an mcp.Server. Reads are always
-// registered; writes are registered only when PROTONMAIL_MCP_ENABLE_WRITES=1.
+// registered; writes are registered only when PROTONMAIL_MCP_ENABLE_WRITES=1,
+// and permanent-delete tools additionally require PROTONMAIL_MCP_ENABLE_DANGEROUS=1.
 package tools
 
 import (
@@ -29,6 +30,9 @@ func Register(server *mcp.Server, d Deps) {
 	registerSettings(server, d)
 	registerKeys(server, d)
 	registerMessages(server, d)
+	registerLabels(server, d)
+	registerDrafts(server, d)
+	registerOrganize(server, d)
 	registerCalendar(server, d)
 }
 
@@ -37,6 +41,18 @@ func Register(server *mcp.Server, d Deps) {
 func WritesEnabled() bool {
 	v := os.Getenv("PROTONMAIL_MCP_ENABLE_WRITES")
 	switch v {
+	case "1", "true", "True", "TRUE", "yes", "Yes", "YES":
+		return true
+	}
+	return false
+}
+
+// DangerousEnabled returns true when PROTONMAIL_MCP_ENABLE_DANGEROUS is set to a
+// truthy value. It gates irreversible operations (permanent delete) that sit
+// above the ENABLE_WRITES tier; a dangerous tool registers only when both this
+// and WritesEnabled() are true.
+func DangerousEnabled() bool {
+	switch os.Getenv("PROTONMAIL_MCP_ENABLE_DANGEROUS") {
 	case "1", "true", "True", "TRUE", "yes", "Yes", "YES":
 		return true
 	}
@@ -81,6 +97,10 @@ func client(ctx context.Context, d Deps) (*proton.Client, *proterr.Error) {
 	}
 	return c, nil
 }
+
+// boolPtr exists because some mcp.ToolAnnotations fields (e.g. DestructiveHint)
+// are *bool rather than bool.
+func boolPtr(b bool) *bool { return &b }
 
 // required returns a structured validation error when value is empty. Used at
 // tool entry to give callers a clear "missing X" error before any API call,

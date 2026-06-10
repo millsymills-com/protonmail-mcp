@@ -22,6 +22,7 @@ func RegisterAll() {
 	registerCustomDomainLifecycle()
 	registerErrorEnvelopes()
 	registerLogoutInvalidates()
+	registerMailWriteFlows()
 	registerReadTools()
 	registerRefreshRevoked()
 	registerReloginAfterRefreshReject()

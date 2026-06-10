@@ -30,8 +30,9 @@ Reading encrypted content (mail bodies via proton_get_message with include_body,
 	`requires an unlocked keyring. A read that fails with a permission/keyring-unlock error means the ` +
 	`session token lacks the keyring-unlock scope; the session must be re-established, not retried.
 
-Write tools (create_*/update_*/delete_*/set_*/add_*/remove_*/disable_*/verify_*) are registered only when ` +
-	`PROTONMAIL_MCP_ENABLE_WRITES=1. If a write tool is absent, writes are disabled by configuration.`
+Write tools (create_*/update_*/delete_*/set_*/add_*/remove_*/disable_*/verify_*/label_*/mark_*) are registered only when ` +
+	`PROTONMAIL_MCP_ENABLE_WRITES=1; permanent-delete tools additionally require PROTONMAIL_MCP_ENABLE_DANGEROUS=1. ` +
+	`If a write tool is absent, writes are disabled by configuration.`
 
 // RegisterAll attaches every v1 tool to srv against sess. Exposed so tests
 // can construct a server without owning the stdio transport.
