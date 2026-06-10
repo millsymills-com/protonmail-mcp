@@ -7,7 +7,9 @@ import (
 
 	"github.com/ProtonMail/gluon/rfc822"
 	proton "github.com/ProtonMail/go-proton-api"
+	"github.com/ProtonMail/gopenpgp/v2/crypto"
 	"github.com/millsymills-com/protonmail-mcp/internal/proterr"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 // parseRecipients parses RFC 5322 address strings ("a@x" or "Name <a@x>"). An
@@ -83,4 +85,135 @@ func resolveSender(ctx context.Context, c *proton.Client, addressID string) (pro
 		return proton.Address{}, &proterr.Error{Code: "proton/validation", Message: "no enabled sending address found"}
 	}
 	return *best, nil
+}
+
+type createDraftIn struct {
+	FromAddressID string   `json:"from_address_id,omitempty" jsonschema:"sender address ID; defaults to the primary sending address"`
+	To            []string `json:"to,omitempty" jsonschema:"recipient email addresses"`
+	CC            []string `json:"cc,omitempty"`
+	BCC           []string `json:"bcc,omitempty"`
+	Subject       string   `json:"subject,omitempty"`
+	Body          string   `json:"body,omitempty"`
+	MIMEType      string   `json:"mime_type,omitempty" jsonschema:"text/plain (default) or text/html"`
+}
+
+type draftOut struct {
+	Message messageStubDTO `json:"message"`
+}
+
+type updateDraftIn struct {
+	ID            string   `json:"id"`
+	FromAddressID string   `json:"from_address_id,omitempty"`
+	To            []string `json:"to,omitempty"`
+	CC            []string `json:"cc,omitempty"`
+	BCC           []string `json:"bcc,omitempty"`
+	Subject       string   `json:"subject,omitempty"`
+	Body          string   `json:"body,omitempty"`
+	MIMEType      string   `json:"mime_type,omitempty"`
+}
+
+func draftTemplate(sender proton.Address,
+	to, cc, bcc []string, subject, body, mimeType string) (proton.DraftTemplate, *proterr.Error) {
+	toL, perr := parseRecipients(to)
+	if perr != nil {
+		return proton.DraftTemplate{}, perr
+	}
+	ccL, perr := parseRecipients(cc)
+	if perr != nil {
+		return proton.DraftTemplate{}, perr
+	}
+	bccL, perr := parseRecipients(bcc)
+	if perr != nil {
+		return proton.DraftTemplate{}, perr
+	}
+	mt, perr := resolveMIMEType(mimeType)
+	if perr != nil {
+		return proton.DraftTemplate{}, perr
+	}
+	return proton.DraftTemplate{
+		Subject:  subject,
+		Sender:   &mail.Address{Name: sender.DisplayName, Address: sender.Email},
+		ToList:   toL,
+		CCList:   ccL,
+		BCCList:  bccL,
+		Body:     body,
+		MIMEType: mt,
+	}, nil
+}
+
+func senderKeyRing(ctx context.Context, d Deps, addrID string) (*crypto.KeyRing, *proterr.Error) {
+	krs, err := d.Session.Keyrings(ctx)
+	if err != nil {
+		return nil, proterr.Map(err)
+	}
+	kr, err := krs.AddressKeyRing(addrID)
+	if err != nil {
+		return nil, proterr.Map(err)
+	}
+	return kr, nil
+}
+
+func registerDrafts(server *mcp.Server, d Deps) {
+	if !WritesEnabled() {
+		return
+	}
+	addTool(server, d, &mcp.Tool{
+		Name:        "proton_create_draft",
+		Description: "Creates a draft message encrypted to the sender's own key. Does NOT send. from_address_id defaults to the primary sending address. Returns the created draft's metadata (use the returned id with proton_update_draft).",
+	}, createDraft)
+	addTool(server, d, &mcp.Tool{
+		Name:        "proton_update_draft",
+		Description: "Replaces an existing draft's content by ID: subject, recipients, and body are overwritten with the provided values, and omitted fields are cleared (this is a full replace, not a merge — re-supply every field you want kept). The body is re-encrypted to the sender key; from_address_id defaults to the primary sending address, which may differ from the draft's original sender. Does NOT send.",
+	}, updateDraft)
+}
+
+func createDraft(ctx context.Context, d Deps, in createDraftIn) (draftOut, *proterr.Error) {
+	c, perr := client(ctx, d)
+	if perr != nil {
+		return draftOut{}, perr
+	}
+	sender, perr := resolveSender(ctx, c, in.FromAddressID)
+	if perr != nil {
+		return draftOut{}, perr
+	}
+	tmpl, perr := draftTemplate(sender, in.To, in.CC, in.BCC, in.Subject, in.Body, in.MIMEType)
+	if perr != nil {
+		return draftOut{}, perr
+	}
+	kr, perr := senderKeyRing(ctx, d, sender.ID)
+	if perr != nil {
+		return draftOut{}, perr
+	}
+	msg, err := c.CreateDraft(ctx, kr, proton.CreateDraftReq{Message: tmpl})
+	if err != nil {
+		return draftOut{}, proterr.Map(err)
+	}
+	return draftOut{Message: toMessageStubDTO(msg.MessageMetadata)}, nil
+}
+
+func updateDraft(ctx context.Context, d Deps, in updateDraftIn) (draftOut, *proterr.Error) {
+	if perr := required("id", in.ID); perr != nil {
+		return draftOut{}, perr
+	}
+	c, perr := client(ctx, d)
+	if perr != nil {
+		return draftOut{}, perr
+	}
+	sender, perr := resolveSender(ctx, c, in.FromAddressID)
+	if perr != nil {
+		return draftOut{}, perr
+	}
+	tmpl, perr := draftTemplate(sender, in.To, in.CC, in.BCC, in.Subject, in.Body, in.MIMEType)
+	if perr != nil {
+		return draftOut{}, perr
+	}
+	kr, perr := senderKeyRing(ctx, d, sender.ID)
+	if perr != nil {
+		return draftOut{}, perr
+	}
+	msg, err := c.UpdateDraft(ctx, in.ID, kr, proton.UpdateDraftReq{Message: tmpl})
+	if err != nil {
+		return draftOut{}, proterr.Map(err)
+	}
+	return draftOut{Message: toMessageStubDTO(msg.MessageMetadata)}, nil
 }
