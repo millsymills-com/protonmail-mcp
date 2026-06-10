@@ -22,7 +22,7 @@ type fixedAddrKeyrings struct {
 }
 
 func (f fixedAddrKeyrings) Keyrings(ctx context.Context) (*keyring.Keyrings, error) {
-	c, err := f.Service.Client(ctx)
+	c, err := f.Client(ctx)
 	if err != nil {
 		return nil, err
 	}
