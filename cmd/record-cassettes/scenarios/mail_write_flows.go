@@ -48,6 +48,7 @@ func registerMailWriteFlows() {
 	Register("list_labels_happy", recordListLabels)
 	Register("create_draft_happy", recordCreateDraft)
 	Register("organize_label_happy", recordOrganizeLabel)
+	Register("delete_messages_happy", recordDeleteMessages)
 }
 
 // recordListLabels captures GetLabels for all three label types. No keyring
@@ -57,6 +58,53 @@ func recordListLabels(ctx context.Context) error {
 		func(c *proton.Client) error {
 			if _, err := c.GetLabels(ctx, proton.LabelTypeSystem, proton.LabelTypeFolder, proton.LabelTypeLabel); err != nil {
 				return fmt.Errorf("get labels: %w", err)
+			}
+			return nil
+		})
+}
+
+// recordDeleteMessages creates a throwaway draft (needs an unlockable account,
+// like create_draft, see #196) then permanently deletes it, so the trace
+// exercises the expunge without destroying a real message. The drafts search
+// between create and delete is what the cassette test replays to find the ID;
+// its filter must stay byte-identical to what proton_search_messages sends for
+// label_id "8" / limit 1 (LabelID + Desc:true, page 0, size 1).
+func recordDeleteMessages(ctx context.Context) error {
+	return recordRawTool(ctx, "delete_messages_happy", toolsCassetteDir,
+		func(ctx context.Context, s *session.Session) error {
+			c, err := s.Client(ctx)
+			if err != nil {
+				return fmt.Errorf("client: %w", err)
+			}
+			addrs, err := c.GetAddresses(ctx)
+			if err != nil {
+				return fmt.Errorf("get addresses: %w", err)
+			}
+			if len(addrs) == 0 {
+				return fmt.Errorf("no addresses on account")
+			}
+			krs, err := s.Keyrings(ctx)
+			if err != nil {
+				return fmt.Errorf("keyrings (needs unlockable account, see #196): %w", err)
+			}
+			kr, err := krs.AddressKeyRing(addrs[0].ID)
+			if err != nil {
+				return fmt.Errorf("address keyring: %w", err)
+			}
+			draft, err := c.CreateDraft(ctx, kr, proton.CreateDraftReq{Message: proton.DraftTemplate{
+				Subject: "throwaway", Sender: &mail.Address{Address: addrs[0].Email}, Body: "delete me",
+			}})
+			if err != nil {
+				return fmt.Errorf("create throwaway draft: %w", err)
+			}
+			if _, err := c.GetMessageMetadataPage(ctx, 0, 1, proton.MessageFilter{
+				LabelID: proton.DraftsLabel,
+				Desc:    proton.Bool(true),
+			}); err != nil {
+				return fmt.Errorf("search drafts: %w", err)
+			}
+			if err := c.DeleteMessage(ctx, draft.ID); err != nil {
+				return fmt.Errorf("delete: %w", err)
 			}
 			return nil
 		})

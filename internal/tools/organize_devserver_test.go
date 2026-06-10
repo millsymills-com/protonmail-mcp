@@ -7,6 +7,38 @@ import (
 	"github.com/millsymills-com/protonmail-mcp/internal/testharness"
 )
 
+func TestDeleteMessagesDevServer(t *testing.T) {
+	t.Setenv("PROTONMAIL_MCP_ENABLE_WRITES", "1")
+	t.Setenv("PROTONMAIL_MCP_ENABLE_DANGEROUS", "1")
+	h := testharness.BootDevServer(t, "deleter@example.test", "hunter2")
+	defer h.Close()
+	ctx := context.Background()
+
+	created, err := h.Call(ctx, "proton_create_draft", map[string]any{
+		"subject": "throwaway", "body": "delete me",
+	})
+	if err != nil {
+		t.Fatalf("create draft: %v", err)
+	}
+	msg, _ := created["message"].(map[string]any)
+	id, _ := msg["id"].(string)
+	if id == "" {
+		t.Fatalf("no draft id: %#v", created)
+	}
+
+	out, err := h.Call(ctx, "proton_delete_messages", map[string]any{"message_ids": []any{id}})
+	if err != nil {
+		t.Fatalf("delete: %v", err)
+	}
+	if ok, _ := out["ok"].(bool); !ok {
+		t.Fatalf("want ok=true, got %#v", out)
+	}
+
+	if _, err := h.Call(ctx, "proton_get_message", map[string]any{"id": id}); err == nil {
+		t.Fatal("deleted message still fetchable; expected an error")
+	}
+}
+
 // fetchMessageState returns the message stub's label_ids and unread flag via
 // proton_get_message, so each organize operation is verified against server
 // state rather than the handler's echoed inputs.

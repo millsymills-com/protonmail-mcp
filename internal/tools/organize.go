@@ -7,6 +7,8 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
+func boolPtr(b bool) *bool { return &b }
+
 type organizeOut struct {
 	OK         bool     `json:"ok"`
 	MessageIDs []string `json:"message_ids"`
@@ -49,6 +51,14 @@ func registerOrganize(server *mcp.Server, d Deps) {
 		Name:        "proton_mark_messages",
 		Description: "Marks one or more messages read (read=true) or unread (read=false). Reversible. Not atomic across many IDs: requests are chunked (150/batch) and a mid-batch failure leaves earlier batches applied.",
 	}, markMessages)
+	if !DangerousEnabled() {
+		return
+	}
+	addTool(server, d, &mcp.Tool{
+		Name:        "proton_delete_messages",
+		Description: "PERMANENTLY deletes one or more messages (irreversible expunge — NOT trash). Requires PROTONMAIL_MCP_ENABLE_DANGEROUS in addition to ENABLE_WRITES. To trash recoverably, use proton_label_messages with label_id \"3\" instead. Not atomic across many IDs: requests are chunked (150/batch) and a mid-batch failure leaves earlier batches applied.",
+		Annotations: &mcp.ToolAnnotations{DestructiveHint: boolPtr(true)},
+	}, deleteMessages)
 }
 
 func labelMessages(ctx context.Context, d Deps, in labelMessagesIn) (organizeOut, *proterr.Error) {
@@ -92,6 +102,24 @@ func markMessages(ctx context.Context, d Deps, in markMessagesIn) (organizeOut, 
 		err = c.MarkMessagesUnread(ctx, in.MessageIDs...)
 	}
 	if err != nil {
+		return organizeOut{}, proterr.Map(err)
+	}
+	return organizeOut{OK: true, MessageIDs: in.MessageIDs}, nil
+}
+
+type deleteMessagesIn struct {
+	MessageIDs []string `json:"message_ids"`
+}
+
+func deleteMessages(ctx context.Context, d Deps, in deleteMessagesIn) (organizeOut, *proterr.Error) {
+	if perr := validateMessageIDs(in.MessageIDs); perr != nil {
+		return organizeOut{}, perr
+	}
+	c, perr := client(ctx, d)
+	if perr != nil {
+		return organizeOut{}, perr
+	}
+	if err := c.DeleteMessage(ctx, in.MessageIDs...); err != nil {
 		return organizeOut{}, proterr.Map(err)
 	}
 	return organizeOut{OK: true, MessageIDs: in.MessageIDs}, nil
