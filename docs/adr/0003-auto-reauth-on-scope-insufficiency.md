@@ -1,6 +1,6 @@
 # 0003. Self-heal under-scoped sessions by reusing the unattended relogin
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-06-09
 - **Deciders:** maintainer
 - **Issue:** #197 (spike; depends on the #195 scope-denial sentinel, now landed)
