@@ -21,6 +21,16 @@ var ErrKeyringLocked = errors.New("keyring locked or unusable")
 // they all route through the same keyring unlock.
 var ErrKeyringUnlockScope = errors.New("session lacks keyring-unlock scope")
 
+// ErrTOTPRejected signals Proton rejected the submitted two-factor code at the
+// /auth/v4/2fa step (HTTP 422 / Proton Code 8002). Proton reuses PasswordWrong
+// (8002) for both a wrong password and a rejected TOTP, so the password-auth
+// step already succeeded by the time this is raised — the misleading "Incorrect
+// login credentials" text refers to the code, not the password. The session
+// login path wraps this sentinel so Map can give an actionable hint (check the
+// otpauth secret matches this account; check the host clock is synced) instead
+// of echoing Proton's verbatim message.
+var ErrTOTPRejected = errors.New("two-factor code rejected")
+
 // ErrBodyUndecryptable signals a specific message body cannot be decrypted even
 // though the keyring is unlocked: it's empty/plaintext/unparseable, encrypted to
 // a key we don't hold, or its address has no usable keyring. Distinct from
