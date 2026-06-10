@@ -10,7 +10,7 @@ Stage: S2 — read and write tools, writes env-gated default-off, CI green, lock
 
 v2. 32 tools total: 16 reads (always registered) + 15 writes (`PROTONMAIL_MCP_ENABLE_WRITES=1`) + 1 dangerous write (`PROTONMAIL_MCP_ENABLE_WRITES=1` + `PROTONMAIL_MCP_ENABLE_DANGEROUS=1`).
 
-| Capability | v1 | Notes |
+| Capability | Available | Notes |
 |---|---|---|
 | Addresses (list, get, set status, delete) | yes | via `go-proton-api` |
 | Create address (alias on custom domain) | yes | via `internal/protonraw` |
@@ -67,11 +67,13 @@ Configure your MCP host (Claude Code, etc.) to launch:
 ./protonmail-mcp
 ```
 
-over stdio. By default the server registers **read-only** tools. To expose mutating tools (create address, add domain, delete, update settings):
+over stdio. By default the server registers **read-only** tools. To expose mutating tools (create address, add domain, create draft, label messages, update settings):
 
 ```
 PROTONMAIL_MCP_ENABLE_WRITES=1 ./protonmail-mcp
 ```
+
+Permanent message deletion additionally requires `PROTONMAIL_MCP_ENABLE_DANGEROUS=1` — see the [tool reference](#tool-reference).
 
 ## Environment variables
 
