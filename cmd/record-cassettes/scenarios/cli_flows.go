@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 
 	"github.com/millsymills-com/protonmail-mcp/internal/keychain"
+	"github.com/millsymills-com/protonmail-mcp/internal/proterr"
 	"github.com/millsymills-com/protonmail-mcp/internal/session"
 	"github.com/millsymills-com/protonmail-mcp/internal/testvcr"
 )
@@ -25,6 +26,7 @@ func registerCLIFlows() {
 	Register("login_with_2fa", func(ctx context.Context) error {
 		return recordLogin(ctx, "login_with_2fa", cliCassetteDir, true)
 	})
+	Register("login_2fa_rejected", recordLogin2FARejected)
 }
 
 func recordStatusLoggedIn(ctx context.Context) (retErr error) {
@@ -123,4 +125,57 @@ func recordLogin(ctx context.Context, scenario, cassetteDir string, twoFA bool) 
 		in.TOTPCode = loginFixture2FACode
 	}
 	return sess.Login(ctx, in)
+}
+
+// recordLogin2FARejected records the 2FA-rejection path: SRP succeeds, then the
+// /auth/v4/2fa submit fails because the code is wrong (the fake server answers
+// 8002, the same shape Proton returns). The recorded cassette lets the consumer
+// test replay a rejected two-factor login and assert it maps to
+// proton/2fa_rejected rather than the raw "Incorrect login credentials" text.
+func recordLogin2FARejected(ctx context.Context) (retErr error) {
+	target := filepath.Join(cliCassetteDir, "login_2fa_rejected")
+	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+		return err
+	}
+	rt, stop, err := testvcr.NewAtPath(target, testvcr.ModeRecord)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if closeErr := stop(); closeErr != nil && retErr == nil {
+			retErr = closeErr
+		}
+	}()
+
+	fake, err := newFakeProtonAuthServerTwoFA()
+	if err != nil {
+		return fmt.Errorf("start fake Proton server: %w", err)
+	}
+	defer fake.Close()
+
+	kc := keychain.New()
+	sess := session.New(fake.URL+"/api", kc,
+		session.WithTransport(rt),
+		session.WithSkipProofVerificationForRecording(),
+	)
+	defer func() {
+		if clearErr := kc.Clear(); clearErr != nil && retErr == nil {
+			retErr = fmt.Errorf("clear fixture keychain: %w", clearErr)
+		}
+	}()
+
+	in := session.LoginInput{Username: loginFixtureEmail, Password: loginFixturePassword}
+	if loginErr := sess.Login(ctx, in); loginErr != nil &&
+		!errors.Is(loginErr, session.ErrTOTPRequired) {
+		return fmt.Errorf("priming login: %w", loginErr)
+	}
+	in.TOTPCode = "000000" // valid shape, wrong value: the fixture code is 123456
+	loginErr := sess.Login(ctx, in)
+	if loginErr == nil {
+		return fmt.Errorf("expected 2FA rejection, login succeeded")
+	}
+	if !errors.Is(loginErr, proterr.ErrTOTPRejected) {
+		return fmt.Errorf("expected ErrTOTPRejected, got: %w", loginErr)
+	}
+	return nil
 }

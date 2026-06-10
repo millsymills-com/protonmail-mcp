@@ -732,6 +732,9 @@ func (s *Session) loginLocked(ctx context.Context, in LoginInput) error {
 		c.AddPostRequestHook(captured.hook)
 		if err = c.Auth2FA(ctx, proton.Auth2FAReq{TwoFactorCode: code}); err != nil {
 			c.Close()
+			if proterr.IsTOTPRejected(err) {
+				return fmt.Errorf("submit 2fa: %w", proterr.ErrTOTPRejected)
+			}
 			return fmt.Errorf("submit 2fa: %w", err)
 		}
 		if post := captured.merge(auth); post != nil {

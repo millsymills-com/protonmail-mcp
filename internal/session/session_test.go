@@ -151,6 +151,22 @@ func TestRotatedTokenPersistedToKeychain(t *testing.T) {
 	}
 }
 
+func TestHOTPMatchesRFC4226Vectors(t *testing.T) {
+	// RFC 4226 Appendix D: seed "12345678901234567890", counters 0..9. Asserts
+	// the core HOTP generation is correct independent of the wall clock, so a
+	// rejected TOTP at login can be attributed to the secret/clock, not us.
+	key := []byte("12345678901234567890")
+	want := []string{
+		"755224", "287082", "359152", "969429", "338314",
+		"254676", "287922", "162583", "399871", "520489",
+	}
+	for i, w := range want {
+		if got := session.HOTPForTest(key, uint64(i)); got != w {
+			t.Fatalf("counter=%d: got %s, want %s", i, got, w)
+		}
+	}
+}
+
 func TestTOTPRoundsToSixDigits(t *testing.T) {
 	// RFC 6238 test seed "12345678901234567890" base32 = GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ.
 	code, err := session.GenerateTOTPForTest("GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ")
