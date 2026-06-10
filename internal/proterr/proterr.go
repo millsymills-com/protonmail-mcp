@@ -144,6 +144,17 @@ func errToMCP(err error) *Error {
 		}
 	}
 
+	// Missing address keyring on the encryption path: local and deterministic
+	// (unknown or disabled address ID), not an upstream failure — without this
+	// case it would fall through to proton/upstream and invite retries.
+	if errors.Is(err, ErrAddressKeyringMissing) {
+		return &Error{
+			Code:    "proton/address_keyring_missing",
+			Message: "No unlocked keyring for that address; it may be disabled or the address ID may be wrong.",
+			Hint:    "Call proton_list_addresses and use the ID of an enabled address.",
+		}
+	}
+
 	// Keyring unlock/decrypt failure: non-retryable. Checked last (after the
 	// APIError/HTTPError/NetError probes) so a Proton API error carried under a
 	// keyring fetch still maps via its status rather than being shadowed here.
@@ -293,7 +304,7 @@ func WritesDisabled() *Error {
 	return &Error{
 		Code:    "proton/writes_disabled",
 		Message: "Writes are disabled.",
-		Hint:    "Set PROTONMAIL_MCP_ENABLE_WRITES=1 and restart the MCP server.",
+		Hint:    "Set PROTONMAIL_MCP_ENABLE_WRITES=1 (and PROTONMAIL_MCP_ENABLE_DANGEROUS=1 for permanent delete) and restart the MCP server.",
 	}
 }
 

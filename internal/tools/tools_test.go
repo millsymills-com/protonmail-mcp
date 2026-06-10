@@ -45,6 +45,29 @@ func TestClient_NilSession(t *testing.T) {
 	_, _ = client(context.Background(), Deps{Session: nil})
 }
 
+func TestDangerousEnabled(t *testing.T) {
+	tests := []struct {
+		value string
+		want  bool
+	}{
+		{"", false},
+		{"0", false},
+		{"false", false},
+		{"1", true},
+		{"true", true},
+		{"yes", true},
+		{"YES", true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.value, func(t *testing.T) {
+			t.Setenv("PROTONMAIL_MCP_ENABLE_DANGEROUS", tc.value)
+			if got := DangerousEnabled(); got != tc.want {
+				t.Errorf("v=%q want %v got %v", tc.value, tc.want, got)
+			}
+		})
+	}
+}
+
 func TestWritesEnabled(t *testing.T) {
 	tests := []struct {
 		value string

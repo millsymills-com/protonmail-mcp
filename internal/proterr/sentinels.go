@@ -37,3 +37,11 @@ var ErrTOTPRejected = errors.New("two-factor code rejected")
 // ErrKeyringLocked so the operator is not told to re-check their mailbox password
 // for a body that was never decryptable with the available keys.
 var ErrBodyUndecryptable = errors.New("message body is not decryptable")
+
+// ErrAddressKeyringMissing signals the named address has no unlocked keyring
+// even though the mailbox keyring unlocked fine: the address ID is unknown, or
+// the address was disabled/skipped at unlock time. Raised on the encryption
+// path (draft bodies are encrypted to the sender's own key), where retrying or
+// re-checking the mailbox password cannot help — the remedy is a valid enabled
+// address ID.
+var ErrAddressKeyringMissing = errors.New("no unlocked keyring for address")
