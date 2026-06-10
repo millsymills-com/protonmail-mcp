@@ -65,7 +65,8 @@ func runLogin(
 		err = sess.Login(ctx, in)
 	}
 	if err != nil {
-		if pe := proterr.Map(err); pe != nil && pe.Code == "proton/captcha" {
+		if pe := proterr.Map(err); pe != nil &&
+			(pe.Code == "proton/captcha" || pe.Code == "proton/2fa_rejected") {
 			return fmt.Errorf("%s: %s\n%s", pe.Code, pe.Message, pe.Hint)
 		}
 		return err

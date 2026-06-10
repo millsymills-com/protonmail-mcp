@@ -1,0 +1,172 @@
+---
+version: 2
+interactions:
+    - id: 0
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 32
+        host: 127.0.0.1:64409
+        body: '{"Username":"user@example.test"}'
+        headers:
+            Content-Type:
+                - application/json
+            User-Agent:
+                - go-resty/2.10.0 (https://github.com/go-resty/resty)
+            X-Pm-Appversion:
+                - macos-bridge@3.24.1
+        url: http://127.0.0.1:64409/api/auth/v4/info
+        method: POST
+      response:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 1148
+        body: '{"2FA":{"Enabled":0},"Code":1000,"Modulus":"-----BEGIN PGP SIGNED MESSAGE-----\nHash: SHA256\n\nW2z5HBi8RvsfYzZTS7qBaUxxPhsfHJFZpu3Kd6s1JafNrCCH9rfvPLrfuqocxWPgWDH2R8neK7PkNvjxto9TStuY5z7jAzWRvFWN9cQhAKkdWgy0JY6ywVn22+HFpF4cYesHrqFIKUPDMSSIlWjBVmEJZ/MusD44ZT29xcPrOqeZvwtCffKtGAIjLYPZIEbZKnDM1Dm3q2K/xS5h+xdhjnndhsrkwm9U9oyA2wxzSXFL+pdfj2fOdRwuR5nW0J2NFrq3kJjkRmpO/Genq1UW+TEknIWAb6VzJJJA244K/H8cnSx2+nSNZO3bbo6Ys228ruV9A8m6DhxmS+bihN3ttQ==\n-----BEGIN PGP SIGNATURE-----\nVersion: ProtonMail\nComment: https://protonmail.com\n\nwl4EARYIABAFAlwB1j0JEDUFhcTpUY8mAAD8CgEAnsFnF4cF0uSHKkXa1GIa\nGO86yMV4zDZEZcDSJo0fgr8A/AlupGN9EdHlsrZLmTA1vhIx+rOgxdEff28N\nkvNM7qIK\n=q6vu\n-----END PGP SIGNATURE-----","SRPSession":"REDACTED_SRPSESSION_1","Salt":"ASNFZ4mrze8QMlR2mLrc/g==","ServerEphemeral":"Zu3WSPgn7eOvR/6BTr6AsqANuZSl9sPNlCJYaF5OLKZDU26SloMP1c2ZbLNMor/Wq7ll7vPShPeAHp+bbXyiPuOFQ9ZVOZctcaCXRqCyg+j+XjK6UDSY0a3OIOt0gXBgj7WerMwc7oQGPEEol3dcJNR2BK/lWvdt7nEdEyYGrSv878mi90FQZ0MxzdSYqJhTeO5aVaRUTJtuUocObLTjEhEsdf1dXnDv1M6/GvWFUKaAiUhEARserc767b9XITbRD1VBRdCSxbkPGh5sgoJafmLYqGKRNYk6rHmD4SB7tsrMYw/xDahTH3K08qKV6Ua8bBops5vTslS8/U9tJTZNTg==","Version":4}'
+        headers:
+            Content-Length:
+                - "1148"
+            Content-Type:
+                - application/json
+            Date:
+                - Mon, 01 Jan 2001 00:00:00 GMT
+        status: 200 OK
+        code: 200
+        duration: 574.583µs
+    - id: 1
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 908
+        host: 127.0.0.1:64409
+        body: '{"ClientEphemeral":"UkVEQUNURURfQ0xJRU5URVBIRU1FUkFMXzE=","ClientProof":"UkVEQUNURURfQ0xJRU5UUFJPT0ZfMQ==","FIDO2":{"AuthenticationOptions":null,"AuthenticatorData":"","ClientData":"","CredentialID":null,"Signature":""},"SRPSession":"REDACTED_SRPSESSION_1","Username":"user@example.test"}'
+        headers:
+            Content-Type:
+                - application/json
+            User-Agent:
+                - go-resty/2.10.0 (https://github.com/go-resty/resty)
+            X-Pm-Appversion:
+                - macos-bridge@3.24.1
+        url: http://127.0.0.1:64409/api/auth/v4
+        method: POST
+      response:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 627
+        body: '{"2FA":{"Enabled":1},"AccessToken":"REDACTED_ACCESSTOKEN_1","Code":1000,"PasswordMode":1,"RefreshToken":"REDACTED_REFRESHTOKEN_1","Scope":"full self parent user loggedin paid nondelinquent mail verified settings","ServerProof":"UkVEQUNURURfU0VSVkVSUFJPT0ZfMQ==","UID":"REDACTED_UID_1","UserID":"REDACTED_USERID_1"}'
+        headers:
+            Content-Length:
+                - "627"
+            Content-Type:
+                - application/json
+            Date:
+                - Mon, 01 Jan 2001 00:00:00 GMT
+        status: 200 OK
+        code: 200
+        duration: 11.566125ms
+    - id: 2
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 32
+        host: 127.0.0.1:64409
+        body: '{"Username":"user@example.test"}'
+        headers:
+            Content-Type:
+                - application/json
+            User-Agent:
+                - go-resty/2.10.0 (https://github.com/go-resty/resty)
+            X-Pm-Appversion:
+                - macos-bridge@3.24.1
+        url: http://127.0.0.1:64409/api/auth/v4/info
+        method: POST
+      response:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 1148
+        body: '{"2FA":{"Enabled":0},"Code":1000,"Modulus":"-----BEGIN PGP SIGNED MESSAGE-----\nHash: SHA256\n\nW2z5HBi8RvsfYzZTS7qBaUxxPhsfHJFZpu3Kd6s1JafNrCCH9rfvPLrfuqocxWPgWDH2R8neK7PkNvjxto9TStuY5z7jAzWRvFWN9cQhAKkdWgy0JY6ywVn22+HFpF4cYesHrqFIKUPDMSSIlWjBVmEJZ/MusD44ZT29xcPrOqeZvwtCffKtGAIjLYPZIEbZKnDM1Dm3q2K/xS5h+xdhjnndhsrkwm9U9oyA2wxzSXFL+pdfj2fOdRwuR5nW0J2NFrq3kJjkRmpO/Genq1UW+TEknIWAb6VzJJJA244K/H8cnSx2+nSNZO3bbo6Ys228ruV9A8m6DhxmS+bihN3ttQ==\n-----BEGIN PGP SIGNATURE-----\nVersion: ProtonMail\nComment: https://protonmail.com\n\nwl4EARYIABAFAlwB1j0JEDUFhcTpUY8mAAD8CgEAnsFnF4cF0uSHKkXa1GIa\nGO86yMV4zDZEZcDSJo0fgr8A/AlupGN9EdHlsrZLmTA1vhIx+rOgxdEff28N\nkvNM7qIK\n=q6vu\n-----END PGP SIGNATURE-----","SRPSession":"REDACTED_SRPSESSION_1","Salt":"ASNFZ4mrze8QMlR2mLrc/g==","ServerEphemeral":"Zu3WSPgn7eOvR/6BTr6AsqANuZSl9sPNlCJYaF5OLKZDU26SloMP1c2ZbLNMor/Wq7ll7vPShPeAHp+bbXyiPuOFQ9ZVOZctcaCXRqCyg+j+XjK6UDSY0a3OIOt0gXBgj7WerMwc7oQGPEEol3dcJNR2BK/lWvdt7nEdEyYGrSv878mi90FQZ0MxzdSYqJhTeO5aVaRUTJtuUocObLTjEhEsdf1dXnDv1M6/GvWFUKaAiUhEARserc767b9XITbRD1VBRdCSxbkPGh5sgoJafmLYqGKRNYk6rHmD4SB7tsrMYw/xDahTH3K08qKV6Ua8bBops5vTslS8/U9tJTZNTg==","Version":4}'
+        headers:
+            Content-Length:
+                - "1148"
+            Content-Type:
+                - application/json
+            Date:
+                - Mon, 01 Jan 2001 00:00:00 GMT
+        status: 200 OK
+        code: 200
+        duration: 133.708µs
+    - id: 3
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 908
+        host: 127.0.0.1:64409
+        body: '{"ClientEphemeral":"UkVEQUNURURfQ0xJRU5URVBIRU1FUkFMXzE=","ClientProof":"UkVEQUNURURfQ0xJRU5UUFJPT0ZfMQ==","FIDO2":{"AuthenticationOptions":null,"AuthenticatorData":"","ClientData":"","CredentialID":null,"Signature":""},"SRPSession":"REDACTED_SRPSESSION_1","Username":"user@example.test"}'
+        headers:
+            Content-Type:
+                - application/json
+            User-Agent:
+                - go-resty/2.10.0 (https://github.com/go-resty/resty)
+            X-Pm-Appversion:
+                - macos-bridge@3.24.1
+        url: http://127.0.0.1:64409/api/auth/v4
+        method: POST
+      response:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 627
+        body: '{"2FA":{"Enabled":1},"AccessToken":"REDACTED_ACCESSTOKEN_1","Code":1000,"PasswordMode":1,"RefreshToken":"REDACTED_REFRESHTOKEN_1","Scope":"full self parent user loggedin paid nondelinquent mail verified settings","ServerProof":"UkVEQUNURURfU0VSVkVSUFJPT0ZfMQ==","UID":"REDACTED_UID_1","UserID":"REDACTED_USERID_1"}'
+        headers:
+            Content-Length:
+                - "627"
+            Content-Type:
+                - application/json
+            Date:
+                - Mon, 01 Jan 2001 00:00:00 GMT
+        status: 200 OK
+        code: 200
+        duration: 12.07875ms
+    - id: 4
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 139
+        host: 127.0.0.1:64409
+        body: '{"FIDO2":{"AuthenticationOptions":null,"AuthenticatorData":"","ClientData":"","CredentialID":null,"Signature":""},"TwoFactorCode":"REDACTED_TWOFACTORCODE_1"}'
+        headers:
+            Authorization:
+                - REDACTED
+            Content-Type:
+                - application/json
+            User-Agent:
+                - go-resty/2.10.0 (https://github.com/go-resty/resty)
+            X-Pm-Appversion:
+                - macos-bridge@3.24.1
+            X-Pm-Uid:
+                - REDACTED
+        url: http://127.0.0.1:64409/api/auth/v4/2fa
+        method: POST
+      response:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 44
+        body: '{"Code":8002,"Error":"Incorrect 2FA code."}'
+        headers:
+            Content-Length:
+                - "44"
+            Content-Type:
+                - application/json
+            Date:
+                - Mon, 01 Jan 2001 00:00:00 GMT
+        status: 422 Unprocessable Entity
+        code: 422
+        duration: 158.5µs
