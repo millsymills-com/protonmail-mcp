@@ -124,13 +124,15 @@ func (k *Keyrings) ClearPrivateParams() {
 }
 
 // AddressKeyRing returns the unlocked keyring for addrID, used to encrypt
-// outgoing draft bodies to the sender's own key. It returns a descriptive
-// error (which proterr.Map classifies) when the address is unknown, mirroring
-// DecryptBody's lookup so callers never index the Addr map directly.
+// outgoing draft bodies to the sender's own key. An unknown or disabled
+// address yields ErrAddressKeyringMissing (mapped by proterr.Map to an
+// actionable error) so callers never index the Addr map directly. The returned
+// keyring holds decrypted private key material — never persist or log it, and
+// note ClearPrivateParams invalidates it.
 func (k *Keyrings) AddressKeyRing(addrID string) (*crypto.KeyRing, error) {
 	kr, ok := k.Addr[addrID]
 	if !ok {
-		return nil, fmt.Errorf("no keyring for address %q", addrID)
+		return nil, fmt.Errorf("%w: no keyring for address %q", proterr.ErrAddressKeyringMissing, addrID)
 	}
 	return kr, nil
 }

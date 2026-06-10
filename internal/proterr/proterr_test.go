@@ -48,6 +48,11 @@ func TestMap(t *testing.T) {
 			"proton/body_undecryptable",
 		},
 		{
+			"address-keyring-missing",
+			fmt.Errorf("address keyring: %w", proterr.ErrAddressKeyringMissing),
+			"proton/address_keyring_missing",
+		},
+		{
 			"totp-rejected",
 			fmt.Errorf("submit 2fa: %w", proterr.ErrTOTPRejected),
 			"proton/2fa_rejected",

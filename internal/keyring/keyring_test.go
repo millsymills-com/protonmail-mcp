@@ -442,8 +442,9 @@ func TestAddressKeyRingReturnsKeyringForKnownAddress(t *testing.T) {
 func TestAddressKeyRingUnknownAddressErrors(t *testing.T) {
 	kr := newTestKeyRing(t)
 	krs := &Keyrings{User: kr, Addr: map[string]*crypto.KeyRing{"addr-1": kr}}
-	if _, err := krs.AddressKeyRing("does-not-exist"); err == nil {
-		t.Fatal("want an error for an unknown address ID")
+	_, err := krs.AddressKeyRing("does-not-exist")
+	if !errors.Is(err, proterr.ErrAddressKeyringMissing) {
+		t.Fatalf("want ErrAddressKeyringMissing for an unknown address ID, got %v", err)
 	}
 }
 
