@@ -29,6 +29,7 @@ func TestCreateAddressHappy(t *testing.T) {
 
 func TestDeleteAddressHappy(t *testing.T) {
 	t.Setenv("PROTONMAIL_MCP_ENABLE_WRITES", "1")
+	t.Setenv("PROTONMAIL_MCP_ENABLE_DANGEROUS", "1")
 	h := testharness.BootWithCassette(t, "create_delete_address")
 	defer h.Close()
 	ctx := context.Background()

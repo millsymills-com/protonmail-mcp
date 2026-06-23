@@ -73,6 +73,7 @@ func TestAddCustomDomainHappy(t *testing.T) {
 
 func TestRemoveCustomDomainHappy(t *testing.T) {
 	t.Setenv("PROTONMAIL_MCP_ENABLE_WRITES", "1")
+	t.Setenv("PROTONMAIL_MCP_ENABLE_DANGEROUS", "1")
 	h := testharness.BootWithCassette(t, "add_remove_custom_domain")
 	defer h.Close()
 	ctx := context.Background()
