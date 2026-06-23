@@ -168,27 +168,25 @@ func registerAddresses(server *mcp.Server, d Deps) {
 		return setAddressStatusOut{OK: true}, nil
 	})
 
-	if !DangerousEnabled() {
-		return
+	if DangerousEnabled() {
+		addTool(server, d, &mcp.Tool{
+			Name:        "proton_delete_address",
+			Description: "PERMANENTLY deletes an address (irreversible). Requires PROTONMAIL_MCP_ENABLE_DANGEROUS in addition to ENABLE_WRITES. To stop using an address recoverably, disable it with proton_set_address_status instead.",
+			Annotations: &mcp.ToolAnnotations{DestructiveHint: boolPtr(true)},
+		}, func(ctx context.Context, d Deps, in deleteAddressIn) (deleteAddressOut, *proterr.Error) {
+			if !WritesEnabled() || !DangerousEnabled() {
+				return deleteAddressOut{}, proterr.WritesDisabled()
+			}
+			c, perr := client(ctx, d)
+			if perr != nil {
+				return deleteAddressOut{}, perr
+			}
+			if err := c.DeleteAddress(ctx, in.ID); err != nil {
+				return deleteAddressOut{}, proterr.Map(err)
+			}
+			return deleteAddressOut{OK: true}, nil
+		})
 	}
-
-	addTool(server, d, &mcp.Tool{
-		Name:        "proton_delete_address",
-		Description: "PERMANENTLY deletes an address (irreversible). Requires PROTONMAIL_MCP_ENABLE_DANGEROUS in addition to ENABLE_WRITES. To stop using an address recoverably, disable it with proton_set_address_status instead.",
-		Annotations: &mcp.ToolAnnotations{DestructiveHint: boolPtr(true)},
-	}, func(ctx context.Context, d Deps, in deleteAddressIn) (deleteAddressOut, *proterr.Error) {
-		if !WritesEnabled() || !DangerousEnabled() {
-			return deleteAddressOut{}, proterr.WritesDisabled()
-		}
-		c, perr := client(ctx, d)
-		if perr != nil {
-			return deleteAddressOut{}, perr
-		}
-		if err := c.DeleteAddress(ctx, in.ID); err != nil {
-			return deleteAddressOut{}, proterr.Map(err)
-		}
-		return deleteAddressOut{OK: true}, nil
-	})
 }
 
 func toAddressDTO(a proton.Address) addressDTO {
