@@ -61,6 +61,9 @@ func TestMissingRequiredFields(t *testing.T) {
 			if tc.writable {
 				t.Setenv("PROTONMAIL_MCP_ENABLE_WRITES", "1")
 			}
+			if tc.tool == "proton_delete_address" || tc.tool == "proton_remove_custom_domain" {
+				t.Setenv("PROTONMAIL_MCP_ENABLE_DANGEROUS", "1")
+			}
 			h := testharness.BootWithCassette(t, "whoami_happy")
 			defer h.Close()
 			_, err := h.Call(context.Background(), tc.tool, tc.args)

@@ -168,10 +168,18 @@ func registerAddresses(server *mcp.Server, d Deps) {
 		return setAddressStatusOut{OK: true}, nil
 	})
 
+	if !DangerousEnabled() {
+		return
+	}
+
 	addTool(server, d, &mcp.Tool{
 		Name:        "proton_delete_address",
-		Description: "Permanently deletes an address. DESTRUCTIVE — cannot be undone.",
+		Description: "PERMANENTLY deletes an address (irreversible). Requires PROTONMAIL_MCP_ENABLE_DANGEROUS in addition to ENABLE_WRITES. To stop using an address recoverably, disable it with proton_set_address_status instead.",
+		Annotations: &mcp.ToolAnnotations{DestructiveHint: boolPtr(true)},
 	}, func(ctx context.Context, d Deps, in deleteAddressIn) (deleteAddressOut, *proterr.Error) {
+		if !WritesEnabled() || !DangerousEnabled() {
+			return deleteAddressOut{}, proterr.WritesDisabled()
+		}
 		c, perr := client(ctx, d)
 		if perr != nil {
 			return deleteAddressOut{}, perr
