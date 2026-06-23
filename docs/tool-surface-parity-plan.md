@@ -60,6 +60,11 @@ account-settings 11, addresses-keys 8, domains-labels 12 → **73 total**.
 | domains-labels | create label/folder | write | Client.CreateLabel | no |
 | domains-labels | update label/folder | write | Client.UpdateLabel | no |
 | domains-labels | delete label/folder | write | Client.DeleteLabel | no |
+
+> Label CRUD (`CreateLabel`/`UpdateLabel`/`DeleteLabel`) appears in both the
+> mail-messages and domains-labels rows because each domain's denominator counts
+> it independently; it is one capability, delivered once by Phase A, and credited
+> once toward coverage (Phase A adds 5 ops, not 8).
 | drive | list drive volumes | read | Client.ListVolumes | no |
 | drive | get drive volume | read | Client.GetVolume | no |
 | drive | list drive shares | read | Client.ListShares | no |
