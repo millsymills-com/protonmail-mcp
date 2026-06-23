@@ -1,0 +1,18 @@
+# Known-PII denylist for the cassette scrub-leak scan (testvcr.Scan).
+#
+# This file ships ONLY sha256 digests so this public repo never restates the
+# identifiers it guards. It is the single source of truth shared by every
+# consumer of `make verify-cassettes`: the prek pre-commit hook and the CI gate
+# both run the same scan, so an entry added here is enforced in all three places.
+#
+# Normalization (must match denylistHits in lint.go): the candidate text is
+# lowercased and split into tokens on any char outside [a-z0-9.@/_-]; the scan
+# hashes every 1- to 4-token window joined by single spaces. To add an entry,
+# run `make pii-hash` and paste the digest below with a non-identifying label.
+#
+# Each line: <64-hex-sha256>  # non-identifying label
+5139ea44ccfd22d82e5d61de6f4b9d0ea1babc7dcdf1f8f22c2d060dcf65a7e7  # account holder name
+c82ce7f8f4ee5f2faaf3c995026b6e74a06632051c3aec75f4c9fc6484246222  # proton custom domain
+4b8a8d5b3252e840be9a7853c6b69f743a50bf895f07ae413ebaca1a97993eeb  # third-party repo slug from a notification cassette
+903db258f204ab3bfa47c792f52242c6ef1b4b330de1cc5f42b2067adf07c6e0  # test canary (unigram), exercised by lint_test.go (not PII)
+2e02997d000ba6acb992137e10c6188a2f5d5806133d00269e59ff42004c7354  # test canary (3-word window), exercised by lint_test.go (not PII)

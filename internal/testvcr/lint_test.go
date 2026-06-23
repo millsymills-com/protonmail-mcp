@@ -109,6 +109,78 @@ func TestLintFlagsProtonEmail(t *testing.T) {
 	}
 }
 
+func TestLintFlagsForeignEmail(t *testing.T) {
+	// An email-shaped token on a non-reserved domain is an unscrubbed
+	// identifier (the #235 leak was a custom domain). Use a non-reserved
+	// placeholder domain here so the test source stays PII-free.
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "leaky.yaml"), []byte(`"Address":"someone@not-a-test-domain.io"`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got := testvcr.Scan(dir)
+	found := false
+	for _, f := range got {
+		if f.Rule == "foreign-email" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("expected foreign-email finding; got %+v", got)
+	}
+}
+
+func TestLintAllowsReservedEmailDomains(t *testing.T) {
+	// The synthetic domains the scrubber emits must never trip foreign-email:
+	// user@example.test and esp.example are the two it actually produces;
+	// example.com and an .invalid TLD round out the RFC 2606 / 6761 reserved
+	// set the rule allows.
+	for _, addr := range []string{
+		"user@example.test", "noreply@esp.example",
+		"x@example.com", "y@host.invalid",
+	} {
+		t.Run(addr, func(t *testing.T) {
+			dir := t.TempDir()
+			if err := os.WriteFile(filepath.Join(dir, "ok.yaml"), []byte(`"Address":"`+addr+`"`), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			for _, f := range testvcr.Scan(dir) {
+				if f.Rule == "foreign-email" {
+					t.Fatalf("reserved domain %s flagged: %+v", addr, f)
+				}
+			}
+		})
+	}
+}
+
+func TestLintFlagsDenylistedToken(t *testing.T) {
+	// The embedded denylist ships hash-only, so it can't be tested against real
+	// PII without restating it. Two non-PII canary entries
+	// (pii-denylist.txt) stand in: one single token, one 3-word window that
+	// only matches if n-gram tokenization survives surrounding JSON
+	// punctuation. Changing the normalization in denylistHits breaks these.
+	cases := map[string]string{
+		"unigram": `"Tag":"denylist-canary-token"`,
+		"window":  `{"Name":"Canary Phrase Token","x":1}`,
+	}
+	for name, body := range cases {
+		t.Run(name, func(t *testing.T) {
+			dir := t.TempDir()
+			if err := os.WriteFile(filepath.Join(dir, "leaky.yaml"), []byte(body), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			found := false
+			for _, f := range testvcr.Scan(dir) {
+				if f.Rule == "pii-denylist" {
+					found = true
+				}
+			}
+			if !found {
+				t.Fatalf("expected pii-denylist finding for %q; scan returned none", body)
+			}
+		})
+	}
+}
+
 func TestLintAllowsScrubbedAccessToken(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "ok.yaml"), []byte(`"AccessToken": "REDACTED_ACCESSTOKEN_1"`), 0o644); err != nil {

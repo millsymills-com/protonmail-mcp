@@ -2,6 +2,9 @@ package testvcr
 
 import (
 	"bufio"
+	"crypto/sha256"
+	_ "embed"
+	"encoding/hex"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -57,6 +60,107 @@ var lintRules = []lintRule{
 	{"proton-email", regexp.MustCompile(`(?i)@protonmail\.|@proton\.me|@pm\.me`)},
 }
 
+//go:embed pii-denylist.txt
+var piiDenylistRaw string
+
+// piiDenylist holds sha256 hex digests of normalized known-PII strings. The
+// embedded file (see pii-denylist.txt) ships only hashes so this public repo
+// never restates the identifiers it guards; the same scan backs the prek hook
+// and the CI gate, so the denylist is enforced in all three places.
+var piiDenylist = parseDenylist(piiDenylistRaw)
+
+// reservedEmailTLDs are the RFC 6761 labels guaranteed never to name a real
+// host. The scrubber rewrites real addresses to synthetic domains under these
+// (e.g. user@example.test, noreply@esp.example), so an email-shaped token on
+// any other domain is an unscrubbed identifier (a real recipient, or a custom
+// domain like the #235 leak) and trips foreign-email. Proton's own public
+// domains are caught separately by the proton-email rule.
+var reservedEmailTLDs = map[string]bool{
+	"test":      true,
+	"example":   true,
+	"invalid":   true,
+	"localhost": true,
+}
+
+// reservedEmailDomains are the RFC 2606 example.* names, which live under real
+// TLDs (.com/.net/.org) and so need an explicit allow.
+var reservedEmailDomains = map[string]bool{
+	"example.com": true,
+	"example.net": true,
+	"example.org": true,
+}
+
+var emailRe = regexp.MustCompile(`[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}`)
+
+// tokenRe matches denylist-comparable tokens: alnum-led runs that keep the
+// connectors found in domains, paths, and addresses (. @ / _ -). Splitting on
+// everything else lets a JSON value like "Name":"Jane Doe" tokenize to
+// jane + doe regardless of the surrounding punctuation.
+var tokenRe = regexp.MustCompile(`[A-Za-z0-9][A-Za-z0-9.@/_\-]*`)
+
+const denylistMaxGram = 4
+
+// parseDenylist reads sha256 hex digests, one per line, ignoring `#` comments
+// and blank lines.
+func parseDenylist(raw string) map[string]bool {
+	out := map[string]bool{}
+	for _, line := range strings.Split(raw, "\n") {
+		if i := strings.IndexByte(line, '#'); i >= 0 {
+			line = line[:i]
+		}
+		line = strings.ToLower(strings.TrimSpace(line))
+		if len(line) == 64 {
+			out[line] = true
+		}
+	}
+	return out
+}
+
+// foreignEmailHits returns email-shaped tokens whose domain is not synthetic.
+func foreignEmailHits(line string) []string {
+	var hits []string
+	for _, m := range emailRe.FindAllString(line, -1) {
+		domain := strings.ToLower(m[strings.LastIndexByte(m, '@')+1:])
+		if emailDomainAllowed(domain) {
+			continue
+		}
+		hits = append(hits, m)
+	}
+	return hits
+}
+
+func emailDomainAllowed(domain string) bool {
+	if i := strings.LastIndexByte(domain, '.'); i >= 0 && reservedEmailTLDs[domain[i+1:]] {
+		return true
+	}
+	for allowed := range reservedEmailDomains {
+		if domain == allowed || strings.HasSuffix(domain, "."+allowed) {
+			return true
+		}
+	}
+	return false
+}
+
+// denylistHits hashes every 1- to denylistMaxGram-token window of line and
+// returns the windows whose digest is in the denylist.
+func denylistHits(line string) []string {
+	if len(piiDenylist) == 0 {
+		return nil
+	}
+	tokens := tokenRe.FindAllString(strings.ToLower(line), -1)
+	var hits []string
+	for i := range tokens {
+		for n := 1; n <= denylistMaxGram && i+n <= len(tokens); n++ {
+			window := strings.Join(tokens[i:i+n], " ")
+			sum := sha256.Sum256([]byte(window))
+			if piiDenylist[hex.EncodeToString(sum[:])] {
+				hits = append(hits, window)
+			}
+		}
+	}
+	return hits
+}
+
 const staleThreshold = 90 * 24 * time.Hour
 
 // Scan walks root directories and returns findings for cassette lines matching
@@ -105,6 +209,12 @@ func Scan(roots ...string) []Finding {
 						}
 						out = append(out, Finding{Path: path, Line: line, Rule: rule.name, Hit: m})
 					}
+				}
+				for _, m := range foreignEmailHits(txt) {
+					out = append(out, Finding{Path: path, Line: line, Rule: "foreign-email", Hit: m})
+				}
+				for _, m := range denylistHits(txt) {
+					out = append(out, Finding{Path: path, Line: line, Rule: "pii-denylist", Hit: m})
 				}
 			}
 			return nil
