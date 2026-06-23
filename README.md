@@ -94,24 +94,15 @@ For headless Linux deployments (systemd + SSE + file backend), see [`docs/headle
 
 ## Tool reference
 
-Each tool advertises its full input schema and field-by-field description over MCP (`tools/list`); the handlers live in `internal/tools/`. Key behaviors worth knowing:
+Each tool advertises its full input schema and field-by-field description over MCP (`tools/list`); the handlers live in `internal/tools/`. For a generated tool-by-tool input/output field matrix (modes, env gates, required fields), see [`docs/tool-schema-matrix.md`](docs/tool-schema-matrix.md) — kept in sync by `TestSchemaMatrixNoDrift`. Key behaviors worth knowing:
 
 - **`proton_update_address`** updates the *global* account display name / signature (upstream's `SetDisplayName` / `SetSignature` are not per-address). The `id` parameter is accepted for forward compatibility but ignored. The tool description spells this out.
 - **`proton_update_core_settings`** toggles telemetry and crash reports - `SetUserSettingsLocale` is not exposed by upstream `go-proton-api` master, so locale update is intentionally absent.
 - **`proton_list_address_keys`** uses `gopenpgp/v2` to extract the fingerprint + armored public key from each stored key. Private key material never leaves the process.
 - **DNS records** for custom domains are returned as structured JSON; orchestrate with your DNS provider's MCP (e.g. Gandi MCP) to publish them.
+- **`proton_delete_messages`** (dangerous tier) is a permanent expunge and is irreversible. To move to Trash recoverably, use `proton_label_messages` with `label_id "3"` instead.
 
-### Reads (always)
-
-`proton_whoami`, `proton_session_status`, `proton_list_addresses`, `proton_get_address`, `proton_list_custom_domains`, `proton_get_custom_domain`, `proton_get_catchall`, `proton_get_mail_settings`, `proton_get_core_settings`, `proton_list_address_keys`, `proton_search_messages`, `proton_get_message`, `proton_list_labels`, `proton_list_calendars`, `proton_list_events`, `proton_get_event`.
-
-### Writes (gated: `PROTONMAIL_MCP_ENABLE_WRITES=1`)
-
-`proton_create_address`, `proton_update_address`, `proton_set_address_status`, `proton_delete_address`, `proton_add_custom_domain`, `proton_verify_custom_domain`, `proton_remove_custom_domain`, `proton_set_catchall`, `proton_disable_catchall`, `proton_update_mail_settings`, `proton_update_core_settings`, `proton_create_draft`, `proton_update_draft`, `proton_label_messages`, `proton_mark_messages`.
-
-### Dangerous writes (gated: `PROTONMAIL_MCP_ENABLE_WRITES=1` + `PROTONMAIL_MCP_ENABLE_DANGEROUS=1`)
-
-`proton_delete_messages` — permanent expunge; irreversible. To move to Trash recoverably, use `proton_label_messages` with `label_id "3"` instead.
+The full tool list with modes and env gates is in [`docs/tool-schema-matrix.md`](docs/tool-schema-matrix.md).
 
 ## Security model
 
