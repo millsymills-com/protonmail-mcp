@@ -8,14 +8,14 @@ A Model Context Protocol (MCP) server for [Proton Mail](https://proton.me/mail),
 
 Stage: S2 — read and write tools, writes env-gated default-off, CI green, lockfile committed. Full Proton-parity surface (the climb to S3) is tracked in the feature-parity roadmap.
 
-v2. 32 tools total: 16 reads (always registered) + 15 writes (`PROTONMAIL_MCP_ENABLE_WRITES=1`) + 1 dangerous write (`PROTONMAIL_MCP_ENABLE_WRITES=1` + `PROTONMAIL_MCP_ENABLE_DANGEROUS=1`).
+v2. 32 tools total: 16 reads (always registered) + 13 writes (`PROTONMAIL_MCP_ENABLE_WRITES=1`) + 3 dangerous writes (`PROTONMAIL_MCP_ENABLE_WRITES=1` + `PROTONMAIL_MCP_ENABLE_DANGEROUS=1`).
 
 | Capability | Available | Notes |
 |---|---|---|
-| Addresses (list, get, set status, delete) | yes | via `go-proton-api` |
+| Addresses (list, get, set status, delete) | yes | via `go-proton-api`; `proton_delete_address` is dangerous-gated |
 | Create address (alias on custom domain) | yes | via `internal/protonraw` |
 | Update address display name + signature | yes | global account fields; upstream has no per-address setter |
-| Custom domains (list, get, add, verify, remove) | yes | via `internal/protonraw` |
+| Custom domains (list, get, add, verify, remove) | yes | via `internal/protonraw`; `proton_remove_custom_domain` is dangerous-gated |
 | Mail settings (get, update display name + signature) | yes | |
 | Account settings (get, update telemetry + crash reports) | yes | locale update is not exposed by upstream |
 | Encryption keys (list with fingerprint + armored public key) | yes | via `gopenpgp/v2` |
@@ -73,7 +73,7 @@ over stdio. By default the server registers **read-only** tools. To expose mutat
 PROTONMAIL_MCP_ENABLE_WRITES=1 ./protonmail-mcp
 ```
 
-Permanent message deletion additionally requires `PROTONMAIL_MCP_ENABLE_DANGEROUS=1` — see the [tool reference](#tool-reference).
+Irreversible operations (permanent message deletion, address deletion, custom-domain removal) additionally require `PROTONMAIL_MCP_ENABLE_DANGEROUS=1` — see the [tool reference](#tool-reference).
 
 ## Environment variables
 
@@ -86,7 +86,7 @@ Permanent message deletion additionally requires `PROTONMAIL_MCP_ENABLE_DANGEROU
 | `PROTONMAIL_MCP_CREDENTIAL_BACKEND` | `keychain` \| `file` | `keychain` | always |
 | `PROTONMAIL_MCP_STATE_DIR` | credentials dir | `$STATE_DIRECTORY` → `$XDG_STATE_HOME/protonmail-mcp` → `~/.local/state/protonmail-mcp` | file only |
 | `PROTONMAIL_MCP_ENABLE_WRITES` | `1`/`true`/`yes` registers mutating tools | unset (reads only) | always |
-| `PROTONMAIL_MCP_ENABLE_DANGEROUS` | `1`/`true`/`yes` additionally registers permanent-delete tools (currently `proton_delete_messages`); requires `PROTONMAIL_MCP_ENABLE_WRITES` too | unset | always |
+| `PROTONMAIL_MCP_ENABLE_DANGEROUS` | `1`/`true`/`yes` additionally registers irreversible tools (`proton_delete_messages`, `proton_delete_address`, `proton_remove_custom_domain`); requires `PROTONMAIL_MCP_ENABLE_WRITES` too | unset | always |
 | `PROTONMAIL_MCP_LOG_LEVEL` | `debug` for verbose JSON logs to stderr | `info` | always |
 | `PROTONMAIL_MCP_API_URL` | override Proton API base URL (used in tests) | `https://mail.proton.me/api` | always |
 
@@ -101,6 +101,7 @@ Each tool advertises its full input schema and field-by-field description over M
 - **`proton_list_address_keys`** uses `gopenpgp/v2` to extract the fingerprint + armored public key from each stored key. Private key material never leaves the process.
 - **DNS records** for custom domains are returned as structured JSON; orchestrate with your DNS provider's MCP (e.g. Gandi MCP) to publish them.
 - **`proton_delete_messages`** (dangerous tier) is a permanent expunge and is irreversible. To move to Trash recoverably, use `proton_label_messages` with `label_id "3"` instead.
+- **`proton_delete_address`** and **`proton_remove_custom_domain`** (dangerous tier) are irreversible: deleting an address is permanent, and removing a custom domain orphans all aliases on it. To stop using an address recoverably, disable it with `proton_set_address_status` instead.
 
 The full tool list with modes and env gates is in [`docs/tool-schema-matrix.md`](docs/tool-schema-matrix.md).
 

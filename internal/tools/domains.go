@@ -163,15 +163,21 @@ func registerDomains(server *mcp.Server, d Deps) {
 		return verifyDomainOut{Domain: toDomainDTO(raw)}, nil
 	})
 
-	addTool(server, d, &mcp.Tool{
-		Name:        "proton_remove_custom_domain",
-		Description: "Removes a custom domain. DESTRUCTIVE — orphans all aliases on the domain.",
-	}, func(ctx context.Context, d Deps, in removeDomainIn) (removeDomainOut, *proterr.Error) {
-		if err := protonraw.RemoveCustomDomain(ctx, d.Session.Raw(ctx), in.ID); err != nil {
-			return removeDomainOut{}, proterr.Map(err)
-		}
-		return removeDomainOut{OK: true}, nil
-	})
+	if DangerousEnabled() {
+		addTool(server, d, &mcp.Tool{
+			Name:        "proton_remove_custom_domain",
+			Description: "Removes a custom domain. DESTRUCTIVE — irreversibly orphans all aliases on the domain. Requires PROTONMAIL_MCP_ENABLE_DANGEROUS in addition to ENABLE_WRITES.",
+			Annotations: &mcp.ToolAnnotations{DestructiveHint: boolPtr(true)},
+		}, func(ctx context.Context, d Deps, in removeDomainIn) (removeDomainOut, *proterr.Error) {
+			if !WritesEnabled() || !DangerousEnabled() {
+				return removeDomainOut{}, proterr.WritesDisabled()
+			}
+			if err := protonraw.RemoveCustomDomain(ctx, d.Session.Raw(ctx), in.ID); err != nil {
+				return removeDomainOut{}, proterr.Map(err)
+			}
+			return removeDomainOut{OK: true}, nil
+		})
+	}
 
 	addTool(server, d, &mcp.Tool{
 		Name:        "proton_set_catchall",
