@@ -15,53 +15,54 @@ import (
 // failure before any session call.
 func TestMissingRequiredFields(t *testing.T) {
 	tests := []struct {
-		name     string
-		tool     string
-		args     map[string]any
-		field    string
-		writable bool
+		name      string
+		tool      string
+		args      map[string]any
+		field     string
+		writable  bool
+		dangerous bool
 	}{
-		{"get_message_missing_id", "proton_get_message", map[string]any{}, "id", false},
-		{"get_address_missing_id", "proton_get_address", map[string]any{}, "id", false},
+		{"get_message_missing_id", "proton_get_message", map[string]any{}, "id", false, false},
+		{"get_address_missing_id", "proton_get_address", map[string]any{}, "id", false, false},
 		{"list_address_keys_missing_id", "proton_list_address_keys",
-			map[string]any{}, "address_id", false},
+			map[string]any{}, "address_id", false, false},
 		{"get_catchall_missing_domain_id", "proton_get_catchall",
-			map[string]any{}, "domain_id", false},
+			map[string]any{}, "domain_id", false, false},
 		{"get_custom_domain_missing_id", "proton_get_custom_domain",
-			map[string]any{}, "id", false},
+			map[string]any{}, "id", false, false},
 		{"update_mail_settings_no_fields", "proton_update_mail_settings",
-			map[string]any{}, "", true},
+			map[string]any{}, "", true, false},
 		{"update_core_settings_no_fields", "proton_update_core_settings",
-			map[string]any{}, "", true},
+			map[string]any{}, "", true, false},
 		{"update_address_missing_id", "proton_update_address",
-			map[string]any{"display_name": "x"}, "id", true},
+			map[string]any{"display_name": "x"}, "id", true, false},
 		{"set_address_status_missing_id", "proton_set_address_status",
-			map[string]any{"enabled": true}, "id", true},
+			map[string]any{"enabled": true}, "id", true, false},
 		{"create_address_missing_domain_id", "proton_create_address",
-			map[string]any{"local_part": "x"}, "domain_id", true},
+			map[string]any{"local_part": "x"}, "domain_id", true, false},
 		{"create_address_missing_local_part", "proton_create_address",
-			map[string]any{"domain_id": "REDACTED_DOMAINID_1"}, "local_part", true},
+			map[string]any{"domain_id": "REDACTED_DOMAINID_1"}, "local_part", true, false},
 		{"delete_address_missing_id", "proton_delete_address",
-			map[string]any{}, "id", true},
+			map[string]any{}, "id", true, true},
 		{"add_custom_domain_missing_name", "proton_add_custom_domain",
-			map[string]any{}, "domain_name", true},
+			map[string]any{}, "domain_name", true, false},
 		{"verify_custom_domain_missing_id", "proton_verify_custom_domain",
-			map[string]any{}, "id", true},
+			map[string]any{}, "id", true, false},
 		{"remove_custom_domain_missing_id", "proton_remove_custom_domain",
-			map[string]any{}, "id", true},
+			map[string]any{}, "id", true, true},
 		{"set_catchall_missing_domain_id", "proton_set_catchall",
-			map[string]any{"destination_address_id": "x"}, "domain_id", true},
+			map[string]any{"destination_address_id": "x"}, "domain_id", true, false},
 		{"set_catchall_missing_dest", "proton_set_catchall",
-			map[string]any{"domain_id": "x"}, "destination_address_id", true},
+			map[string]any{"domain_id": "x"}, "destination_address_id", true, false},
 		{"disable_catchall_missing_domain_id", "proton_disable_catchall",
-			map[string]any{}, "domain_id", true},
+			map[string]any{}, "domain_id", true, false},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			if tc.writable {
 				t.Setenv("PROTONMAIL_MCP_ENABLE_WRITES", "1")
 			}
-			if tc.tool == "proton_delete_address" || tc.tool == "proton_remove_custom_domain" {
+			if tc.dangerous {
 				t.Setenv("PROTONMAIL_MCP_ENABLE_DANGEROUS", "1")
 			}
 			h := testharness.BootWithCassette(t, "whoami_happy")
