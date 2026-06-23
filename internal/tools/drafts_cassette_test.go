@@ -2,6 +2,7 @@ package tools_test
 
 import (
 	"context"
+	"sync"
 	"testing"
 
 	"github.com/ProtonMail/gopenpgp/v2/crypto"
@@ -18,7 +19,32 @@ import (
 // unknown until the cassette is recorded.
 type fixedAddrKeyrings struct {
 	session.Service
-	kr *crypto.KeyRing
+	gen *lazyKey
+}
+
+// lazyKey memoizes a generated keyring. It must be generated only after the
+// first replayed response: go-proton-api calls crypto.UpdateTime with each
+// response's Date header, pinning gopenpgp's clock to the (past) recording
+// moment. A key generated before that (at real now) is dated after the pinned
+// clock and is rejected as a future key when CreateDraft encrypts the body
+// ("no valid encryption keys"). Generating lazily inside Keyrings — after
+// GetAddresses has pinned the clock — stamps the key at the cassette's time.
+type lazyKey struct {
+	once sync.Once
+	kr   *crypto.KeyRing
+	err  error
+}
+
+func (l *lazyKey) keyring() (*crypto.KeyRing, error) {
+	l.once.Do(func() {
+		key, err := crypto.GenerateKey("test", "test@example.test", "x25519", 0)
+		if err != nil {
+			l.err = err
+			return
+		}
+		l.kr, l.err = crypto.NewKeyRing(key)
+	})
+	return l.kr, l.err
 }
 
 func (f fixedAddrKeyrings) Keyrings(ctx context.Context) (*keyring.Keyrings, error) {
@@ -30,25 +56,22 @@ func (f fixedAddrKeyrings) Keyrings(ctx context.Context) (*keyring.Keyrings, err
 	if err != nil {
 		return nil, err
 	}
+	kr, err := f.gen.keyring()
+	if err != nil {
+		return nil, err
+	}
 	m := make(map[string]*crypto.KeyRing, len(addrs))
 	for _, a := range addrs {
-		m[a.ID] = f.kr
+		m[a.ID] = kr
 	}
-	return &keyring.Keyrings{User: f.kr, Addr: m}, nil
+	return &keyring.Keyrings{User: kr, Addr: m}, nil
 }
 
 func newFixedAddrKeyrings(t *testing.T) func(session.Service) session.Service {
 	t.Helper()
-	key, err := crypto.GenerateKey("test", "test@example.test", "x25519", 0)
-	if err != nil {
-		t.Fatalf("generate key: %v", err)
-	}
-	kr, err := crypto.NewKeyRing(key)
-	if err != nil {
-		t.Fatalf("keyring: %v", err)
-	}
+	gen := &lazyKey{}
 	return func(s session.Service) session.Service {
-		return fixedAddrKeyrings{Service: s, kr: kr}
+		return fixedAddrKeyrings{Service: s, gen: gen}
 	}
 }
 
