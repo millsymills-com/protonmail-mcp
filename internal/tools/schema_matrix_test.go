@@ -23,8 +23,11 @@ const matrixPath = "../../docs/tool-schema-matrix.md"
 
 // updateMatrix regenerates the golden matrix instead of asserting against it:
 //
-//	go test ./internal/tools -run TestSchemaMatrix -update
-var updateMatrix = flag.Bool("update", false, "regenerate docs/tool-schema-matrix.md")
+//	go test ./internal/tools -run TestSchemaMatrix -update-matrix
+//
+// The flag is package-scoped (not the bare -update convention) so a sibling
+// test file in this package can register its own update flag without colliding.
+var updateMatrix = flag.Bool("update-matrix", false, "regenerate docs/tool-schema-matrix.md")
 
 // TestSchemaMatrixNoDrift asserts that docs/tool-schema-matrix.md exactly
 // describes the tools the server advertises. The matrix is derived from the
@@ -44,11 +47,11 @@ func TestSchemaMatrixNoDrift(t *testing.T) {
 
 	want, err := os.ReadFile(matrixPath)
 	if err != nil {
-		t.Fatalf("read matrix (run `go test ./internal/tools -run TestSchemaMatrix -update`): %v", err)
+		t.Fatalf("read matrix (run `go test ./internal/tools -run TestSchemaMatrix -update-matrix`): %v", err)
 	}
 	if string(want) != got {
 		t.Fatalf("docs/tool-schema-matrix.md is out of date.\n"+
-			"Regenerate with: go test ./internal/tools -run TestSchemaMatrix -update\n\n%s",
+			"Regenerate with: go test ./internal/tools -run TestSchemaMatrix -update-matrix\n\n%s",
 			firstDiff(string(want), got))
 	}
 }
@@ -86,7 +89,7 @@ func renderMatrix(t *testing.T) string {
 }
 
 const matrixHeader = "<!-- GENERATED FILE — do not edit by hand.\n" +
-	"     Regenerate: go test ./internal/tools -run TestSchemaMatrix -update\n" +
+	"     Regenerate: go test ./internal/tools -run TestSchemaMatrix -update-matrix\n" +
 	"     Source of truth: the tools registered in internal/tools (MCP tools/list). -->\n\n" +
 	"# Tool ↔ schema coverage matrix\n\n" +
 	"Every tool the server advertises, with its input/output schema fields and the\n" +
@@ -94,6 +97,9 @@ const matrixHeader = "<!-- GENERATED FILE — do not edit by hand.\n" +
 	"asserts this file matches the live schema; it fails if a tool or field drifts.\n\n"
 
 // classify returns the mode and gate for a tool from the set differences.
+// This assumes the gates nest (dangerous ⊆ writes-enabled): a tool absent from
+// both reads and withWrites is treated as dangerous. A future tool gated on
+// DANGEROUS alone (without WRITES) would be misclassified as "write".
 func classify(name string, reads, withWrites map[string]*mcp.Tool) (mode, gate string) {
 	switch {
 	case contains(reads, name):
@@ -175,7 +181,7 @@ func typeString(raw json.RawMessage) string {
 	}
 	var many []string
 	if err := json.Unmarshal(raw, &many); err == nil {
-		nonNull := many[:0]
+		nonNull := make([]string, 0, len(many))
 		for _, x := range many {
 			if x != "null" {
 				nonNull = append(nonNull, x)
