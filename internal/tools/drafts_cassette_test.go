@@ -2,6 +2,7 @@ package tools_test
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"testing"
 
@@ -39,10 +40,15 @@ func (l *lazyKey) keyring() (*crypto.KeyRing, error) {
 	l.once.Do(func() {
 		key, err := crypto.GenerateKey("test", "test@example.test", "x25519", 0)
 		if err != nil {
-			l.err = err
+			l.err = fmt.Errorf("generate test keyring: %w", err)
 			return
 		}
-		l.kr, l.err = crypto.NewKeyRing(key)
+		kr, err := crypto.NewKeyRing(key)
+		if err != nil {
+			l.err = fmt.Errorf("build test keyring: %w", err)
+			return
+		}
+		l.kr = kr
 	})
 	return l.kr, l.err
 }
@@ -56,6 +62,9 @@ func (f fixedAddrKeyrings) Keyrings(ctx context.Context) (*keyring.Keyrings, err
 	if err != nil {
 		return nil, err
 	}
+	// Generate only here, after GetAddresses has replayed and pinned gopenpgp's
+	// clock to the cassette's recording time (see lazyKey). Generating before
+	// this point reintroduces the future-dated-key encryption failure.
 	kr, err := f.gen.keyring()
 	if err != nil {
 		return nil, err
@@ -88,7 +97,11 @@ func TestCreateDraftHappyCassette(t *testing.T) {
 	if err != nil {
 		t.Fatalf("call: %v", err)
 	}
-	if _, ok := out["message"]; !ok {
-		t.Fatalf("envelope missing %q: %#v", "message", out)
+	msg, ok := out["message"].(map[string]any)
+	if !ok {
+		t.Fatalf("envelope missing %q object: %#v", "message", out)
+	}
+	if id, _ := msg["id"].(string); id == "" {
+		t.Fatalf("created draft has empty id: %#v", msg)
 	}
 }

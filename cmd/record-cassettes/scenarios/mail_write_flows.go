@@ -91,6 +91,10 @@ func recordDeleteMessages(ctx context.Context) error {
 			if err != nil {
 				return fmt.Errorf("address keyring: %w", err)
 			}
+			// MIMEType is required: Proton rejects a draft without it (400
+			// Code=2011), and it keeps the create request body byte-identical
+			// to what proton_create_draft emits, per the canonical-JSON match
+			// invariant documented on recordCreateDraft below.
 			draft, err := c.CreateDraft(ctx, kr, proton.CreateDraftReq{Message: proton.DraftTemplate{
 				Subject: "throwaway", Sender: &mail.Address{Address: addrs[0].Email}, Body: "delete me",
 				MIMEType: rfc822.TextPlain,
