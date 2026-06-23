@@ -1,5 +1,5 @@
 <!-- GENERATED FILE — do not edit by hand.
-     Regenerate: go test ./internal/tools -run TestSchemaMatrix -update
+     Regenerate: go test ./internal/tools -run TestSchemaMatrix -update-matrix
      Source of truth: the tools registered in internal/tools (MCP tools/list). -->
 
 # Tool ↔ schema coverage matrix
