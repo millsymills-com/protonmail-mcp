@@ -105,3 +105,26 @@ func TestCreateDraftHappyCassette(t *testing.T) {
 		t.Fatalf("created draft has empty id: %#v", msg)
 	}
 }
+
+func TestCreateDraftHTMLHappyCassette(t *testing.T) {
+	t.Setenv("PROTONMAIL_MCP_ENABLE_WRITES", "1")
+	h := testharness.BootWithCassette(t, "create_draft_html_happy",
+		testharness.WithSessionService(newFixedAddrKeyrings(t)))
+	defer h.Close()
+	out, err := h.Call(context.Background(), "proton_create_draft", map[string]any{
+		"to":        []any{"recipient@example.test"},
+		"subject":   "Hello in HTML",
+		"body":      "<p>This is an HTML draft body.</p>",
+		"mime_type": "text/html",
+	})
+	if err != nil {
+		t.Fatalf("call: %v", err)
+	}
+	msg, ok := out["message"].(map[string]any)
+	if !ok {
+		t.Fatalf("envelope missing %q object: %#v", "message", out)
+	}
+	if id, _ := msg["id"].(string); id == "" {
+		t.Fatalf("created draft has empty id: %#v", msg)
+	}
+}

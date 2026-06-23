@@ -47,6 +47,7 @@ func recordOrganizeLabel(ctx context.Context) error {
 func registerMailWriteFlows() {
 	Register("list_labels_happy", recordListLabels)
 	Register("create_draft_happy", recordCreateDraft)
+	Register("create_draft_html_happy", recordCreateDraftHTML)
 	Register("organize_label_happy", recordOrganizeLabel)
 	Register("delete_messages_happy", recordDeleteMessages)
 }
@@ -168,6 +169,58 @@ func recordCreateDraft(ctx context.Context) error {
 				ToList:   []*mail.Address{{Address: "recipient@example.test"}},
 				Body:     "This is a draft body.",
 				MIMEType: rfc822.TextPlain,
+			}})
+			if err != nil {
+				return fmt.Errorf("create draft: %w", err)
+			}
+			return nil
+		})
+}
+
+// recordCreateDraftHTML records create_draft with MIMEType text/html, pinning
+// the one branch (resolveMIMEType -> rfc822.TextHTML) that recordCreateDraft's
+// text/plain default leaves unexercised against a live request body. Same
+// keyring-unlockable-account precondition and byte-identical-body INVARIANT as
+// recordCreateDraft: Subject, ToList, and MIMEType must match what
+// TestCreateDraftHTMLHappyCassette makes proton_create_draft send.
+func recordCreateDraftHTML(ctx context.Context) error {
+	return recordRawTool(ctx, "create_draft_html_happy", toolsCassetteDir,
+		func(ctx context.Context, s *session.Session) error {
+			c, err := s.Client(ctx)
+			if err != nil {
+				return fmt.Errorf("client: %w", err)
+			}
+			addrs, err := c.GetAddresses(ctx)
+			if err != nil {
+				return fmt.Errorf("get addresses: %w", err)
+			}
+			var sender *proton.Address
+			for i := range addrs {
+				a := &addrs[i]
+				if a.Status != proton.AddressStatusEnabled || !bool(a.Send) {
+					continue
+				}
+				if sender == nil || a.Order < sender.Order {
+					sender = a
+				}
+			}
+			if sender == nil {
+				return fmt.Errorf("no enabled sending address on account")
+			}
+			krs, err := s.Keyrings(ctx)
+			if err != nil {
+				return fmt.Errorf("keyrings (needs unlockable account, see #196): %w", err)
+			}
+			kr, err := krs.AddressKeyRing(sender.ID)
+			if err != nil {
+				return fmt.Errorf("address keyring: %w", err)
+			}
+			_, err = c.CreateDraft(ctx, kr, proton.CreateDraftReq{Message: proton.DraftTemplate{
+				Subject:  "Hello in HTML",
+				Sender:   &mail.Address{Name: sender.DisplayName, Address: sender.Email},
+				ToList:   []*mail.Address{{Address: "recipient@example.test"}},
+				Body:     "<p>This is an HTML draft body.</p>",
+				MIMEType: rfc822.TextHTML,
 			}})
 			if err != nil {
 				return fmt.Errorf("create draft: %w", err)
