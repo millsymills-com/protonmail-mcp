@@ -26,6 +26,7 @@ secret:
     # Tests carrying dummy credentials: placeholder passwords ("pw", "hunter2"),
     # the public RFC 6238 TOTP seed, and gopenpgp-generated calendar keys.
     - "internal/credfile/credfile_test.go"
+    - "internal/keychain/keychain_test.go"
     - "internal/log/log_test.go"
     - "internal/calendar/calendartest_test.go"
     - "cmd/protonmail-mcp/run_test.go"
