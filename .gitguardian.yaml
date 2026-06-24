@@ -1,0 +1,25 @@
+# GitGuardian / ggshield configuration.
+#
+# The repo ships generated PGP "private key" fixtures so that recorded VCR
+# cassettes parse on replay (proton.Key.UnmarshalJSON requires valid armored
+# PGP). These keys are dummies generated for this repo with gopenpgp — their
+# armor carries "Version: GopenPGP", never "Version: ProtonMail" — and have no
+# real-world use. See internal/testvcr/fixtures.go for provenance.
+#
+# A *real* key (scrubber miss) is caught independently by the in-repo cassette
+# linter: internal/testvcr/lint.go flags any armor with "Version: ProtonMail",
+# plus raw auth tokens and @proton.me/@pm.me addresses. That linter — not
+# GitGuardian — is the guard against an actual leak, so scoping GitGuardian off
+# these test-only paths does not weaken leak detection.
+version: 2
+secret:
+  ignored-paths:
+    # Recorded VCR cassettes carry the scrubbed gopenpgp fixture key.
+    - "**/testdata/cassettes/**"
+    # Definitional homes of the dummy keypairs / sample armor.
+    - "internal/testvcr/fixtures.go"
+    - "internal/tools/calendar_events_cassette_test.go"
+    # Scrubber/linter tests that embed sample PGP armor as test input.
+    - "internal/testvcr/lint_test.go"
+    - "internal/testvcr/scrub_test.go"
+    - "internal/tools/keys_test.go"
