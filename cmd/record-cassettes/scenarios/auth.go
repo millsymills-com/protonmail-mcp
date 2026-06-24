@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/millsymills-com/protonmail-mcp/internal/keychain"
 	"github.com/millsymills-com/protonmail-mcp/internal/session"
 	"github.com/millsymills-com/protonmail-mcp/internal/testvcr"
 )
@@ -26,10 +25,10 @@ func defaultAPIURL() string {
 // even when the password is correct. Cache survives until FinalLogout fires.
 var (
 	cachedSess *session.Session
-	cachedKc   *keychain.Keychain
+	cachedKc   session.Store
 )
 
-func loginAndPersistSession(ctx context.Context, kc *keychain.Keychain) (*session.Session, error) {
+func loginAndPersistSession(ctx context.Context, kc session.Store) (*session.Session, error) {
 	if cachedSess != nil {
 		return cachedSess, nil
 	}
@@ -79,7 +78,7 @@ func FinalLogout() {
 // Cost: each call pays ~1 SRP round-trip and counts against Proton's
 // anti-abuse threshold (~10 logins/min before 422 Code=8002). Caller is
 // responsible for spacing batches.
-func freshLoginForScenario(ctx context.Context, kc *keychain.Keychain) (*session.Session, error) {
+func freshLoginForScenario(ctx context.Context, kc session.Store) (*session.Session, error) {
 	if cachedSess != nil {
 		_ = cachedSess.Logout()
 		if cachedKc != nil {

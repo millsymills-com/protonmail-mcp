@@ -93,6 +93,7 @@ func recordDeleteMessages(ctx context.Context) error {
 			}
 			draft, err := c.CreateDraft(ctx, kr, proton.CreateDraftReq{Message: proton.DraftTemplate{
 				Subject: "throwaway", Sender: &mail.Address{Address: addrs[0].Email}, Body: "delete me",
+				MIMEType: rfc822.TextPlain,
 			}})
 			if err != nil {
 				return fmt.Errorf("create throwaway draft: %w", err)

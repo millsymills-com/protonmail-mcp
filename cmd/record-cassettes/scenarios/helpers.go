@@ -10,7 +10,6 @@ import (
 
 	proton "github.com/ProtonMail/go-proton-api"
 
-	"github.com/millsymills-com/protonmail-mcp/internal/keychain"
 	"github.com/millsymills-com/protonmail-mcp/internal/session"
 	"github.com/millsymills-com/protonmail-mcp/internal/testvcr"
 )
@@ -42,7 +41,10 @@ func recordReadTool(
 		}
 	}()
 
-	kc := keychain.New()
+	kc, storeErr := session.SelectStore(os.Getenv)
+	if storeErr != nil {
+		return fmt.Errorf("select credential store: %w", storeErr)
+	}
 	_, loginErr := loginAndPersistSession(ctx, kc)
 	if loginErr != nil {
 		return loginErr
@@ -80,7 +82,10 @@ func recordRawTool(
 		}
 	}()
 
-	kc := keychain.New()
+	kc, storeErr := session.SelectStore(os.Getenv)
+	if storeErr != nil {
+		return fmt.Errorf("select credential store: %w", storeErr)
+	}
 	_, loginErr := loginAndPersistSession(ctx, kc)
 	if loginErr != nil {
 		return loginErr
