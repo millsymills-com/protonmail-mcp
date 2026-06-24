@@ -277,8 +277,8 @@ func TestScrubReplacesPGPSignatureAndMessage(t *testing.T) {
 // also has foo@protonmail.com). proton_list_addresses returns every alias,
 // and a substring rewrite of just RECORD_EMAIL misses the siblings.
 func TestScrubRewritesSiblingProtonAddresses(t *testing.T) {
-	t.Setenv("RECORD_EMAIL", "overm1nd@pm.me")
-	body := `{"Addresses":[{"Email":"overm1nd@pm.me"},{"Email":"overm1nd@protonmail.com"},{"Email":"overm1nd@proton.me"},{"Email":"overm1nd@protonmail.ch"}]}`
+	t.Setenv("RECORD_EMAIL", "agentuser@pm.me")
+	body := `{"Addresses":[{"Email":"agentuser@pm.me"},{"Email":"agentuser@protonmail.com"},{"Email":"agentuser@proton.me"},{"Email":"agentuser@protonmail.ch"}]}`
 	i := &cassette.Interaction{
 		Response: cassette.Response{Body: body, Headers: http.Header{"Content-Type": []string{"application/json"}}},
 	}
@@ -286,8 +286,8 @@ func TestScrubRewritesSiblingProtonAddresses(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, tld := range []string{"@pm.me", "@protonmail.com", "@proton.me", "@protonmail.ch"} {
-		if strings.Contains(i.Response.Body, "overm1nd"+tld) {
-			t.Fatalf("sibling address overm1nd%s survived: %s", tld, i.Response.Body)
+		if strings.Contains(i.Response.Body, "agentuser"+tld) {
+			t.Fatalf("sibling address agentuser%s survived: %s", tld, i.Response.Body)
 		}
 	}
 }
@@ -297,8 +297,8 @@ func TestScrubRewritesSiblingProtonAddresses(t *testing.T) {
 // substring replace on the full email misses these — the walk-time
 // exact-match check is what catches them.
 func TestScrubRewritesEmailLocalPart(t *testing.T) {
-	t.Setenv("RECORD_EMAIL", "overm1nd@pm.me")
-	body := `{"Name":"overm1nd","DisplayName":"overm1nd","Unrelated":"overm1nd-prime"}`
+	t.Setenv("RECORD_EMAIL", "agentuser@pm.me")
+	body := `{"Name":"agentuser","DisplayName":"agentuser","Unrelated":"agentuser-prime"}`
 	i := &cassette.Interaction{
 		Response: cassette.Response{Body: body, Headers: http.Header{"Content-Type": []string{"application/json"}}},
 	}
@@ -315,7 +315,7 @@ func TestScrubRewritesEmailLocalPart(t *testing.T) {
 	if got["DisplayName"] != "user" {
 		t.Fatalf("DisplayName not rewritten: %v", got["DisplayName"])
 	}
-	if got["Unrelated"] != "overm1nd-prime" {
+	if got["Unrelated"] != "agentuser-prime" {
 		t.Fatalf("substring false-positive: %v", got["Unrelated"])
 	}
 }
@@ -384,19 +384,19 @@ func TestScrubBase64EncodesProofPlaceholders(t *testing.T) {
 
 // TestScrubRewritesSiblingLocalParts covers RECORD_LOCAL_PARTS: an account
 // holds aliases on a different local part (not just a different TLD), e.g. the
-// "mills@" sibling that leaked in the get_message_happy cassette. Both the
+// "altuser@" sibling that leaked in the get_message_happy cassette. Both the
 // standalone local part (Name field) and the full sibling address must scrub.
 func TestScrubRewritesSiblingLocalParts(t *testing.T) {
-	t.Setenv("RECORD_EMAIL", "overm1nd@pm.me")
-	t.Setenv("RECORD_LOCAL_PARTS", "mills, overm1nd")
-	body := `{"Name":"mills","Addresses":[{"Email":"mills@proton.me"},{"Email":"mills@pm.me"}]}`
+	t.Setenv("RECORD_EMAIL", "agentuser@pm.me")
+	t.Setenv("RECORD_LOCAL_PARTS", "altuser, agentuser")
+	body := `{"Name":"altuser","Addresses":[{"Email":"altuser@proton.me"},{"Email":"altuser@pm.me"}]}`
 	i := &cassette.Interaction{
 		Response: cassette.Response{Body: body, Headers: http.Header{"Content-Type": []string{"application/json"}}},
 	}
 	if err := saveHook(i); err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(i.Response.Body, "mills") {
+	if strings.Contains(i.Response.Body, "altuser") {
 		t.Fatalf("sibling local part survived: %s", i.Response.Body)
 	}
 	var got map[string]any
@@ -414,7 +414,7 @@ func TestScrubRewritesSiblingLocalParts(t *testing.T) {
 // every value whose name is not on the structural allowlist (Content-Type
 // here) is redacted, including a folded multi-line DKIM-Signature.
 func TestScrubRedactsRawRFC2822Header(t *testing.T) {
-	raw := "From: \"Andrew Mills\" <notifications@github.com>\n" +
+	raw := "From: \"Test User\" <notifications@github.com>\n" +
 		"To: protonmail-mcp@noreply.github.com\n" +
 		"Subject: [millsymills-com/protonmail-mcp] PR run failed (69de588)\n" +
 		"Message-Id: <abc.123@github.com>\n" +
