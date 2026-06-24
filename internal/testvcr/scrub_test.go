@@ -126,7 +126,7 @@ func TestScrubRewritesEmailCaseInsensitively(t *testing.T) {
 // TestScrubRewritesDomainCaseInsensitively extends the same guarantee to the
 // custom-domain rewrites: DNS names are case-insensitive too.
 func TestScrubRewritesDomainCaseInsensitively(t *testing.T) {
-	t.Setenv("RECORD_DOMAIN", "myalias.dev")
+	t.Setenv("RECORD_DOMAINS", "myalias.dev")
 	body := `{"Domain":"MyAlias.Dev"}`
 	i := &cassette.Interaction{
 		Response: cassette.Response{Body: body, Headers: http.Header{"Content-Type": []string{"application/json"}}},
@@ -284,7 +284,7 @@ func mustFirstAddress(t *testing.T, body string) map[string]any {
 }
 
 func TestScrubRewritesDomain(t *testing.T) {
-	t.Setenv("RECORD_DOMAIN", "myalias.dev")
+	t.Setenv("RECORD_DOMAINS", "myalias.dev")
 	body := `{"Domain":"myalias.dev","Subdomain":"mail.myalias.dev"}`
 	i := &cassette.Interaction{
 		Response: cassette.Response{Body: body, Headers: http.Header{"Content-Type": []string{"application/json"}}},
@@ -294,6 +294,28 @@ func TestScrubRewritesDomain(t *testing.T) {
 	}
 	if got := i.Response.Body; got != `{"Domain":"example.test","Subdomain":"mail.example.test"}` {
 		t.Fatalf("domain not rewritten: %s", got)
+	}
+}
+
+// TestScrubRewritesMultipleCustomDomains pins the multi-domain case: a single
+// Proton account can hold addresses across several custom domains at once
+// (discovered while preparing the #237 re-record — the account carried two). A
+// singular RECORD_DOMAIN rewrites only one, leaving the others to leak, which is
+// the #235 class of failure. RECORD_DOMAINS takes a comma-separated list and
+// every entry must be rewritten.
+func TestScrubRewritesMultipleCustomDomains(t *testing.T) {
+	t.Setenv("RECORD_DOMAINS", "first.example, second.example")
+	body := `{"A":"mills@first.example","B":"alias@second.example","C":"sub.first.example"}`
+	i := &cassette.Interaction{
+		Response: cassette.Response{Body: body, Headers: http.Header{"Content-Type": []string{"application/json"}}},
+	}
+	if err := saveHook(i); err != nil {
+		t.Fatal(err)
+	}
+	for _, leak := range []string{"first.example", "second.example"} {
+		if strings.Contains(i.Response.Body, leak) {
+			t.Fatalf("custom domain %q survived scrub: %s", leak, i.Response.Body)
+		}
 	}
 }
 

@@ -127,7 +127,7 @@ func saveHook(i *cassette.Interaction) error {
 type bodyScrubber struct {
 	counters        map[string]int
 	email           string
-	domain          string
+	domains         []string
 	throwawayDomain string
 	localParts      []string
 }
@@ -138,24 +138,35 @@ type bodyScrubber struct {
 // Proton accounts commonly own sibling aliases on a different local part (not
 // just a different TLD), and a Name/DisplayName or address carrying one of
 // those local parts would otherwise survive scrubbing.
+//
+// domains is likewise a comma-separated list (RECORD_DOMAINS): one account can
+// hold addresses across several custom domains simultaneously, and a single
+// domain value would leave the others in the recording.
 func newBodyScrubber() *bodyScrubber {
 	email := RecordEmail()
 	var localParts []string
 	if at := strings.IndexByte(email, '@'); at > 0 {
 		localParts = append(localParts, email[:at])
 	}
-	for _, lp := range strings.Split(os.Getenv("RECORD_LOCAL_PARTS"), ",") {
-		if lp = strings.TrimSpace(lp); lp != "" {
-			localParts = append(localParts, lp)
-		}
-	}
 	return &bodyScrubber{
 		counters:        map[string]int{},
 		email:           email,
-		domain:          strings.TrimSpace(os.Getenv("RECORD_DOMAIN")),
+		domains:         splitEnvList("RECORD_DOMAINS"),
 		throwawayDomain: strings.TrimSpace(os.Getenv("RECORD_THROWAWAY_DOMAIN")),
-		localParts:      localParts,
+		localParts:      append(localParts, splitEnvList("RECORD_LOCAL_PARTS")...),
 	}
+}
+
+// splitEnvList reads a comma-separated env var into a slice of trimmed,
+// non-empty entries.
+func splitEnvList(key string) []string {
+	var out []string
+	for _, v := range strings.Split(os.Getenv(key), ",") {
+		if v = strings.TrimSpace(v); v != "" {
+			out = append(out, v)
+		}
+	}
+	return out
 }
 
 func (s *bodyScrubber) scrub(body, contentType string) (string, error) {
@@ -453,8 +464,8 @@ func (s *bodyScrubber) rewriteIdentifiers(in string) string {
 	if s.throwawayDomain != "" {
 		out = replaceAllFold(out, s.throwawayDomain, "throwaway.example.test")
 	}
-	if s.domain != "" {
-		out = replaceAllFold(out, s.domain, "example.test")
+	for _, d := range s.domains {
+		out = replaceAllFold(out, d, "example.test")
 	}
 	return out
 }
