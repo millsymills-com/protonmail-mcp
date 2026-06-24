@@ -165,6 +165,124 @@ func TestScrubReplacesPGPKeysWithFixture(t *testing.T) {
 	}
 }
 
+// TestScrubRedactsThirdPartySenderIdentity covers the structured-JSON message
+// shape that leaked in PR #235 (issue #237): a Sender object carrying a
+// third-party display Name and a non-account Address. rewriteIdentifiers only
+// knows the recording account's own identifiers, so a GitHub/gandi notification
+// sender survives both it and matchesLocalPart entirely. Within an address-pair
+// object (one with an "Address" string), Name and Address must be redacted; the
+// REDACTED_ placeholder also lets BodyAwareMatcher wildcard the field on replay.
+func TestScrubRedactsThirdPartySenderIdentity(t *testing.T) {
+	t.Setenv("RECORD_EMAIL", "overm1nd@pm.me")
+	body := `{"Sender":{"Name":"Andrew Mills","Address":"1782252398@github.com","IsProton":0}}`
+	i := &cassette.Interaction{
+		Response: cassette.Response{Body: body, Headers: http.Header{"Content-Type": []string{"application/json"}}},
+	}
+	if err := saveHook(i); err != nil {
+		t.Fatal(err)
+	}
+	for _, leak := range []string{"Andrew Mills", "1782252398@github.com"} {
+		if strings.Contains(i.Response.Body, leak) {
+			t.Fatalf("third-party identity %q survived scrub: %s", leak, i.Response.Body)
+		}
+	}
+	var got map[string]any
+	if err := json.Unmarshal([]byte(i.Response.Body), &got); err != nil {
+		t.Fatal(err)
+	}
+	sender := got["Sender"].(map[string]any)
+	if name, _ := sender["Name"].(string); !strings.HasPrefix(name, "REDACTED_") {
+		t.Fatalf("Sender.Name not redacted: %v", sender["Name"])
+	}
+	if addr, _ := sender["Address"].(string); !strings.HasPrefix(addr, "REDACTED_") {
+		t.Fatalf("Sender.Address not redacted: %v", sender["Address"])
+	}
+	if sender["IsProton"] != float64(0) {
+		t.Fatalf("structural field IsProton altered: %v", sender["IsProton"])
+	}
+}
+
+// TestScrubRedactsRecipientListIdentities covers the array shape: ToList carries
+// one {Name, Address} per recipient. Every entry's identity must scrub, and the
+// per-key counter must stay deterministic across the array (array order is
+// stable) so re-scrubbing the same cassette yields a byte-identical result.
+func TestScrubRedactsRecipientListIdentities(t *testing.T) {
+	body := `{"ToList":[{"Name":"First Last","Address":"first@third.example"},` +
+		`{"Name":"Other Person","Address":"other@third.example"}]}`
+	i := &cassette.Interaction{
+		Response: cassette.Response{Body: body, Headers: http.Header{"Content-Type": []string{"application/json"}}},
+	}
+	if err := saveHook(i); err != nil {
+		t.Fatal(err)
+	}
+	for _, leak := range []string{"First Last", "first@third.example", "Other Person", "other@third.example"} {
+		if strings.Contains(i.Response.Body, leak) {
+			t.Fatalf("recipient identity %q survived scrub: %s", leak, i.Response.Body)
+		}
+	}
+	if !strings.Contains(i.Response.Body, "REDACTED_NAME_1") || !strings.Contains(i.Response.Body, "REDACTED_NAME_2") {
+		t.Fatalf("recipient name counter not deterministic across array: %s", i.Response.Body)
+	}
+}
+
+// TestScrubRedactsOwnAddressDisplayName covers proton_list_addresses entries
+// (keyed by "Email", not "Address"): the account's own real DisplayName is PII
+// even though the Email rewrites to user@example.test and the Name is the local
+// part. The Email-keyed branch of isIdentityObject is what reaches DisplayName.
+func TestScrubRedactsOwnAddressDisplayName(t *testing.T) {
+	t.Setenv("RECORD_EMAIL", "overm1nd@pm.me")
+	body := `{"Addresses":[{"Email":"overm1nd@pm.me","DisplayName":"Andrew Mills","Name":"overm1nd"}]}`
+	i := &cassette.Interaction{
+		Response: cassette.Response{Body: body, Headers: http.Header{"Content-Type": []string{"application/json"}}},
+	}
+	if err := saveHook(i); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(i.Response.Body, "Andrew Mills") {
+		t.Fatalf("own DisplayName survived scrub: %s", i.Response.Body)
+	}
+	addr := mustFirstAddress(t, i.Response.Body)
+	if addr["Email"] != "user@example.test" {
+		t.Fatalf("own Email not rewritten: %v", addr["Email"])
+	}
+	if dn, _ := addr["DisplayName"].(string); !strings.HasPrefix(dn, "REDACTED_") {
+		t.Fatalf("own DisplayName not redacted: %v", addr["DisplayName"])
+	}
+	if addr["Name"] != "user" {
+		t.Fatalf("local-part Name precedence lost: %v", addr["Name"])
+	}
+}
+
+// TestScrubPreservesNonIdentityName pins the negative: an object with no Address
+// or Email sibling (a label, folder, or calendar) is not an identity object, so
+// its Name is structural data and must survive. This is what keeps the redaction
+// from clobbering label/folder names returned by list_labels.
+func TestScrubPreservesNonIdentityName(t *testing.T) {
+	body := `{"Label":{"ID":"lbl-1","Name":"Work","Type":1}}`
+	i := &cassette.Interaction{
+		Response: cassette.Response{Body: body, Headers: http.Header{"Content-Type": []string{"application/json"}}},
+	}
+	if err := saveHook(i); err != nil {
+		t.Fatal(err)
+	}
+	var got map[string]any
+	if err := json.Unmarshal([]byte(i.Response.Body), &got); err != nil {
+		t.Fatal(err)
+	}
+	if name := got["Label"].(map[string]any)["Name"]; name != "Work" {
+		t.Fatalf("non-identity label Name must be preserved, got: %v", name)
+	}
+}
+
+func mustFirstAddress(t *testing.T, body string) map[string]any {
+	t.Helper()
+	var got map[string]any
+	if err := json.Unmarshal([]byte(body), &got); err != nil {
+		t.Fatal(err)
+	}
+	return got["Addresses"].([]any)[0].(map[string]any)
+}
+
 func TestScrubRewritesDomain(t *testing.T) {
 	t.Setenv("RECORD_DOMAIN", "myalias.dev")
 	body := `{"Domain":"myalias.dev","Subdomain":"mail.myalias.dev"}`

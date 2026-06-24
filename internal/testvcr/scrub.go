@@ -198,6 +198,9 @@ func (s *bodyScrubber) walk(v any) {
 					t[k] = "user"
 					continue
 				}
+				if s.scrubIdentityField(t, k, str) {
+					continue
+				}
 			}
 			if meta, ok := lookupSensitiveJSONKey(k); ok {
 				if str, ok := vv.(string); ok {
@@ -266,6 +269,49 @@ func (s *bodyScrubber) replacePGPArmor(k, v string) (string, bool) {
 func (s *bodyScrubber) matchesLocalPart(v string) bool {
 	for _, lp := range s.localParts {
 		if strings.EqualFold(v, lp) {
+			return true
+		}
+	}
+	return false
+}
+
+// identityPIIKeys are the per-recipient identity fields inside a Proton
+// address-pair object (Sender, ToList[*], CCList[*], BCCList[*], ReplyTos[*])
+// or an address-list entry. Their values are arbitrary third-party display
+// names and addresses that rewriteIdentifiers (account-only) and matchesLocalPart
+// never reach. "Email" is deliberately absent: it only ever holds the recording
+// account's own address, which rewriteIdentifiers rewrites to user@example.test.
+var identityPIIKeys = map[string]bool{"name": true, "displayname": true, "address": true}
+
+// scrubIdentityField redacts a third-party identity value (display Name,
+// DisplayName, or recipient Address) to a REDACTED_*_N placeholder when t is an
+// identity object. The placeholder both removes the PII and keeps BodyAwareMatcher
+// matching on replay (it wildcards any REDACTED_ string). It runs after the
+// matchesLocalPart check so the account's own local part still normalizes to
+// "user" as before; only non-account identities reach here. Returns true when it
+// handled the entry so walk skips its generic processing.
+func (s *bodyScrubber) scrubIdentityField(t map[string]any, k, v string) bool {
+	if !identityPIIKeys[strings.ToLower(k)] || !isIdentityObject(t) {
+		return false
+	}
+	canonical := strings.ToUpper(k)
+	s.counters[canonical]++
+	t[k] = fmt.Sprintf("REDACTED_%s_%d", canonical, s.counters[canonical])
+	return true
+}
+
+// isIdentityObject reports whether t is a Proton address-pair or address-list
+// entry — recognized by a string "Address" (recipient/sender pair) or "Email"
+// (address-list entry) key. Both shapes carry sender-controlled display names
+// and, for the pair shape, third-party addresses that the account-scoped rewrites
+// miss. Gating on these keys keeps the redaction off unrelated objects that
+// merely carry a Name (handled by matchesLocalPart) without an address sibling.
+func isIdentityObject(t map[string]any) bool {
+	for k, v := range t {
+		if _, ok := v.(string); !ok {
+			continue
+		}
+		if strings.EqualFold(k, "Address") || strings.EqualFold(k, "Email") {
 			return true
 		}
 	}
