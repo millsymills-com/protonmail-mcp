@@ -6,11 +6,22 @@
 # armor carries "Version: GopenPGP", never "Version: ProtonMail" — and have no
 # real-world use. See internal/testvcr/fixtures.go for provenance.
 #
-# A *real* key (scrubber miss) is caught independently by the in-repo cassette
-# linter: internal/testvcr/lint.go flags any armor with "Version: ProtonMail",
-# plus raw auth tokens and @proton.me/@pm.me addresses. That linter — not
-# GitGuardian — is the guard against an actual leak, so scoping GitGuardian off
-# these test-only paths does not weaken leak detection.
+# Coverage of these two path groups differs — do not conflate them:
+#
+#   - Cassettes (**/testdata/cassettes/**): a scrubber miss is caught
+#     independently by the in-repo cassette linter (internal/testvcr/lint.go,
+#     run as `make verify-cassettes` on every push and PR). It flags any armor
+#     with "Version: ProtonMail", raw auth tokens, and @proton.me/@pm.me
+#     addresses. That linter — not GitGuardian — is the real guard here, so
+#     ignoring cassettes does not weaken leak detection.
+#
+#   - The enumerated *.go files below: the cassette linter only scans .yaml
+#     under testdata/cassettes, so it does NOT re-scan these. They are ignored
+#     because their secret-shaped content is trusted-by-inspection dummy
+#     material (gopenpgp keys with "Version: GopenPGP", placeholder passwords,
+#     the public RFC 6238 TOTP seed, synthetic bearer tokens). Anyone adding a
+#     fixture here owns verifying it carries no real secret — GitGuardian will
+#     not catch one on these paths.
 version: 2
 secret:
   ignored-paths:
