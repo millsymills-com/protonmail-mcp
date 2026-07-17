@@ -2,6 +2,8 @@ module github.com/millsymills-com/protonmail-mcp
 
 go 1.26.4
 
+toolchain go1.26.5
+
 require (
 	github.com/ProtonMail/gluon v0.17.1-0.20260225115619-c0f05c033a4a
 	github.com/ProtonMail/go-proton-api v0.4.1-0.20260424150947-6bf7f5a61eb8
