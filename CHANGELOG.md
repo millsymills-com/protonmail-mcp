@@ -52,6 +52,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   the prior hardcoded root list (#66).
 
 ### Fixed
+- Isolate logged-out CLI status tests from credentials stored on the host by
+  giving each test a temporary state directory.
 - `testvcr`: match identifiers case-insensitively when scrubbing — Proton
   usernames and DNS names are case-insensitive, so a mixed-case `RECORD_EMAIL`
   could log in while lowercase echoes in response bodies survived scrubbing.
