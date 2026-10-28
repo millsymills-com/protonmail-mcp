@@ -39,12 +39,7 @@ func Register(server *mcp.Server, d Deps) {
 // WritesEnabled returns true when PROTONMAIL_MCP_ENABLE_WRITES is set to a
 // truthy value ("1", "true", "yes", case insensitive).
 func WritesEnabled() bool {
-	v := os.Getenv("PROTONMAIL_MCP_ENABLE_WRITES")
-	switch v {
-	case "1", "true", "True", "TRUE", "yes", "Yes", "YES":
-		return true
-	}
-	return false
+	return envEnabled("PROTONMAIL_MCP_ENABLE_WRITES")
 }
 
 // DangerousEnabled returns true when PROTONMAIL_MCP_ENABLE_DANGEROUS is set to a
@@ -52,7 +47,11 @@ func WritesEnabled() bool {
 // above the ENABLE_WRITES tier; a dangerous tool registers only when both this
 // and WritesEnabled() are true.
 func DangerousEnabled() bool {
-	switch os.Getenv("PROTONMAIL_MCP_ENABLE_DANGEROUS") {
+	return envEnabled("PROTONMAIL_MCP_ENABLE_DANGEROUS")
+}
+
+func envEnabled(name string) bool {
+	switch os.Getenv(name) {
 	case "1", "true", "True", "TRUE", "yes", "Yes", "YES":
 		return true
 	}

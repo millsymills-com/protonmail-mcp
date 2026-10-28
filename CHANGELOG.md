@@ -35,6 +35,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   and the shared-cassette pattern used by paired tests (#67).
 
 ### Changed
+- Share environment-value parsing between the write and dangerous permission
+  gates while preserving the accepted values.
 - Go toolchain directive bumped 1.26.2 -> 1.26.3 (#41).
 - Dependency bump: `github.com/modelcontextprotocol/go-sdk` 1.5.0 -> 1.6.0
   (#47).
