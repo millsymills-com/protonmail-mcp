@@ -94,7 +94,8 @@ func TestStatusLoggedOutRunsHookWithDefaultAPIURL(t *testing.T) {
 	stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
 	var hooked *session.Session
 	code := runWithSessionHook(context.Background(),
-		[]string{"status"}, nil, strings.NewReader(""), stdout, stderr, nil,
+		[]string{"status"}, []string{"PROTONMAIL_MCP_STATE_DIR=" + t.TempDir()},
+		strings.NewReader(""), stdout, stderr, nil,
 		func(s *session.Session) { hooked = s })
 	if code != 0 {
 		t.Fatalf("exit = %d, stderr=%s", code, stderr.String())

@@ -17,7 +17,10 @@ func TestStatusLoggedOut(t *testing.T) {
 	stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
 	code := run(context.Background(),
 		[]string{"status"},
-		[]string{"PROTONMAIL_MCP_API_URL=https://mail.proton.me/api"},
+		[]string{
+			"PROTONMAIL_MCP_API_URL=https://mail.proton.me/api",
+			"PROTONMAIL_MCP_STATE_DIR=" + t.TempDir(),
+		},
 		strings.NewReader(""),
 		stdout,
 		stderr,
