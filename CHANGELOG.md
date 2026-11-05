@@ -6,6 +6,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Security
+- Require Go 1.26.10 and select its patched toolchain for standard-library
+  security fixes through the October 2026 crypto/x509 update.
+- Update `golang.org/x/net` to v0.60.0 and its required companion modules
+  to address four HTTP/2 advisories. CI checks canonical module metadata
+  with `go mod tidy -diff` before verification, tests and the existing audit.
+
 ### Added
 - Cross-link to canonical MCP standards (`consistency-check/docs/standards/`).
 - `CONTRIBUTING.md` (#33).
