@@ -6,6 +6,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Security
+- Require Go 1.26.10 and select its patched toolchain for standard-library
+  security fixes through the October 2026 crypto/x509 update. Module-level
+  vulnerability findings require separate remediation.
+
 ### Added
 - Cross-link to canonical MCP standards (`consistency-check/docs/standards/`).
 - `CONTRIBUTING.md` (#33).
