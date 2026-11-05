@@ -18,6 +18,8 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+      - name: mod tidy
+        run: go mod tidy -diff
       - name: mod verify
         run: go mod verify
       - name: gofmt
