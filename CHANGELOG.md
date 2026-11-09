@@ -7,6 +7,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Security
+- Add focused Claude settings credential checks to CI and pre-commit, and ignore
+  local settings at every directory depth.
 - Require Go 1.26.10 and select its patched toolchain for standard-library
   security fixes through the October 2026 crypto/x509 update.
 - Update `golang.org/x/net` to v0.60.0 and its required companion modules
