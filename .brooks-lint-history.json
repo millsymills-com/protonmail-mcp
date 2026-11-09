@@ -1,0 +1,13 @@
+[
+  {
+    "date": "2026-10-28",
+    "mode": "Full Sweep",
+    "score": 94,
+    "findings": {
+      "critical": 0,
+      "warning": 1,
+      "suggestion": 1
+    },
+    "scope": "entire repository (304 tracked files)"
+  }
+]

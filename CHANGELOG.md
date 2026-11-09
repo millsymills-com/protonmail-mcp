@@ -16,6 +16,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   with `go mod tidy -diff` before verification, tests and the existing audit.
 
 ### Added
+- Initial Brooks full sweep history record for tracking estimated code-quality
+  scores and residual finding counts.
 - Cross-link to canonical MCP standards (`consistency-check/docs/standards/`).
 - `CONTRIBUTING.md` (#33).
 - `.golangci.yml` config with a full clear of new findings (GO-004) (#34).
