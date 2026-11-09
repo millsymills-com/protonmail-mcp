@@ -6,6 +6,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Security
+- Add focused Claude settings credential checks to CI and pre-commit, and ignore
+  local settings at every directory depth.
+- Require Go 1.26.10 and select its patched toolchain for standard-library
+  security fixes through the October 2026 crypto/x509 update.
+- Update `golang.org/x/net` to v0.60.0 and its required companion modules
+  to address four HTTP/2 advisories. CI checks canonical module metadata
+  with `go mod tidy -diff` before verification, tests and the existing audit.
+
 ### Added
 - Cross-link to canonical MCP standards (`consistency-check/docs/standards/`).
 - `CONTRIBUTING.md` (#33).
@@ -54,6 +63,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   the prior hardcoded root list (#66).
 
 ### Fixed
+- Isolate logged-out CLI status tests from credentials stored on the host by
+  giving each test a temporary state directory.
 - `testvcr`: match identifiers case-insensitively when scrubbing — Proton
   usernames and DNS names are case-insensitive, so a mixed-case `RECORD_EMAIL`
   could log in while lowercase echoes in response bodies survived scrubbing.
