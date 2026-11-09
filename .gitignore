@@ -37,3 +37,6 @@ cov.html
 
 # Agent planning scaffolding (kept local, not shipped)
 docs/superpowers/
+
+# Claude Code local settings can contain machine-specific permissions and secrets.
+**/.claude/settings.local.json
